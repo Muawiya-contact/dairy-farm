@@ -1,26 +1,60 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+  Palette, taken from the farm itself:
+  doodh (milk white with a little green), berseem (fodder green),
+  haldi (turmeric, for "pay attention"), udhaar (ledger red), neel (indigo ink).
+*/
+@theme {
+  --color-ground: #f2f4ef;
+  --color-paper: #ffffff;
+  --color-ink: #16221a;
+  --color-muted: #536058;
+  --color-line: #d9dfd4;
+  --color-berseem: #2d6a39;
+  --color-berseem-deep: #1d4626;
+  --color-berseem-soft: #e1ecdd;
+  --color-haldi: #e3a52c;
+  --color-haldi-ink: #774f00;
+  --color-haldi-soft: #faefd3;
+  --color-udhaar: #a3302a;
+  --color-udhaar-soft: #f6e1df;
+  --color-neel: #2f5577;
+  --color-neel-soft: #e0e9f1;
+  --color-rule: #c9d8e6;
+
+  --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Hind", ui-sans-serif, system-ui, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+html { -webkit-text-size-adjust: 100%; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-ground);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* Visible keyboard focus everywhere */
+:focus-visible {
+  outline: 3px solid var(--color-haldi);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Bahi-khata page: blue rules + red margin line, like a real register */
+.ledger-page {
+  background-color: #fff;
+  background-image:
+    linear-gradient(to right, transparent 54px, #d9776f 54px, #d9776f 55px, transparent 55px, transparent 58px, #d9776f 58px, #d9776f 59px, transparent 59px),
+    repeating-linear-gradient(to bottom, transparent 0, transparent 51px, var(--color-rule) 51px, var(--color-rule) 52px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fill-rise { animation: fill-rise 700ms cubic-bezier(.2,.7,.2,1) both; }
+  @keyframes fill-rise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 }

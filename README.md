@@ -1,7 +1,9 @@
 # Dairy Farm App (preview)
 
-Owner login and farm settings use Supabase. The dashboard, animals, milk, customer ledger, and expenses are still preview screens with dummy records; their save buttons do not persist data yet.
+Email signup, login, and farm settings use Supabase. The dashboard, animals, milk, customer ledger, and expenses are still preview screens with dummy records; their save buttons do not persist data yet.
 Language: Roman Urdu. Works on phone and laptop.
+
+This is an open, shared testing preview: anyone who signs up can view and change the same farm data. Use test data only until access is restricted for the client launch.
 
 ## Screens
 
@@ -20,7 +22,7 @@ Only the Settings form saves to the database. The other forms remain demo intera
 ## Where things are
 
 - `src/lib/mock-data.ts`: dummy data for the preview screens.
-- `supabase/migrations/`: database schema, reports, owner-only RLS, and generic defaults.
+- `supabase/migrations/`: database schema, reports, preview access rules, and generic defaults.
 - `src/lib/supabase.ts`: browser client using a publishable key.
 - `src/lib/calc.ts`: all calculations (balances, sale, profit, delivery date, formatting).
 - `src/components/`: shared UI and the interactive parts.
@@ -54,12 +56,13 @@ The app is a static export (`out/` folder). `netlify.toml` is already set up.
 
 ## Database setup
 
-Apply the four migration files in `supabase/migrations/` in filename order through the Supabase CLI or GitHub integration. Do not paste the schema into the production SQL Editor, because that bypasses migration history.
+Apply the five migration files in `supabase/migrations/` in filename order through the Supabase CLI or GitHub integration. Do not paste the schema into the production SQL Editor, because that bypasses migration history.
 
-In Supabase Authentication, disable **Allow new users to sign up** and create the owner account. After the migrations are applied, assign that user's UID in the SQL Editor:
+In Supabase Authentication, leave **Allow new users to sign up** enabled. Keep **Confirm Email** enabled so users verify their addresses. In **Authentication → URL Configuration**, add the preview and production login URLs to the redirect allow list:
 
-```sql
-insert into private.app_owner (user_id) values ('OWNER_USER_UID_HERE');
+```text
+https://deploy-preview-2--demo-dairy-app.netlify.app/login/
+https://demo-dairy-app.netlify.app/login/
 ```
 
-Only that UID can read or write farm tables. Until it is assigned, all browser data access is denied. To replace the temporary owner later, update this one row through a trusted database administrator session. Do not add a service-role or secret key to the browser app or Git repository.
+After all migrations are applied, any signed-in user can access the same farm tables; unauthenticated visitors cannot. The owner UID is not needed for this temporary preview policy. Before using real client data, replace the preview policy with restricted access. Do not add a service-role or secret key to the browser app or Git repository.

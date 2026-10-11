@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { OWNER_NAME, TODAY, farmMilk } from "@/lib/mock-data";
+import { TODAY, farmMilk } from "@/lib/mock-data";
 import {
   alerts, dayExpenses, daySales, dayName, herdCounts, longDate, num, rs, shiftSummary, yearSeries, shortDate,
 } from "@/lib/calc";
 import ProfitChart from "@/components/ProfitChart";
 import { Body, Demo, Panel } from "@/components/ui";
 import { BellIcon, PlusIcon } from "@/components/icons";
+import DashboardGreeting from "@/components/DashboardGreeting";
 
 export default function Dashboard() {
   const m = shiftSummary(TODAY, "morning");
@@ -29,7 +30,7 @@ export default function Dashboard() {
       <header className="flex items-center justify-between gap-3 px-4 pt-5 pb-2 sm:px-6 lg:px-8 lg:pt-8">
         <div>
           <p className="text-[15px] text-muted">{dayName(TODAY)}, {longDate(TODAY)}</p>
-          <h1 className="font-display text-[24px] font-bold leading-tight lg:text-[30px]">Assalam o Alaikum, {OWNER_NAME}</h1>
+          <h1 className="font-display text-[24px] font-bold leading-tight lg:text-[30px]">Assalam o Alaikum, <DashboardGreeting /></h1>
         </div>
         <a href="#alerts" aria-label={`${alerts().length} alerts`} className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-paper">
           <BellIcon />

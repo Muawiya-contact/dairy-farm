@@ -1,9 +1,9 @@
 # Dairy Farm App (preview)
 
-Email signup, login, and farm settings use Supabase. The dashboard, animals, milk, customer ledger, and expenses are still preview screens with dummy records; their save buttons do not persist data yet.
+Farm settings use Supabase without a login. The dashboard, animals, milk, customer ledger, and expenses are still preview screens with dummy records; their save buttons do not persist data yet.
 Language: Roman Urdu. Works on phone and laptop.
 
-This is an open, shared testing preview: anyone who signs up can view and change the same farm data. Use test data only until access is restricted for the client launch.
+This is an open, shared testing preview: anyone with the link can view and change the same farm data. Use test data only until access is restricted for the client launch.
 
 ## Screens
 
@@ -56,13 +56,6 @@ The app is a static export (`out/` folder). `netlify.toml` is already set up.
 
 ## Database setup
 
-Apply the five migration files in `supabase/migrations/` in filename order through the Supabase CLI or GitHub integration. Do not paste the schema into the production SQL Editor, because that bypasses migration history.
+Apply the six migration files in `supabase/migrations/` in filename order through the Supabase CLI or GitHub integration. Do not paste the schema into the production SQL Editor, because that bypasses migration history.
 
-In Supabase Authentication, leave **Allow new users to sign up** enabled. Keep **Confirm Email** enabled so users verify their addresses. In **Authentication → URL Configuration**, add the preview and production login URLs to the redirect allow list:
-
-```text
-https://deploy-preview-2--demo-dairy-app.netlify.app/login/
-https://demo-dairy-app.netlify.app/login/
-```
-
-After all migrations are applied, any signed-in user can access the same farm tables; unauthenticated visitors cannot. The owner UID is not needed for this temporary preview policy. Before using real client data, replace the preview policy with restricted access. Do not add a service-role or secret key to the browser app or Git repository.
+The app has no login in this preview. After all migrations are applied, anonymous visitors can access the farm tables using the browser publishable key. The owner UID and Supabase Authentication settings are not needed for this preview. Before using real client data, replace the public preview policy with restricted access. Do not add a service-role or secret key to the browser app or Git repository.

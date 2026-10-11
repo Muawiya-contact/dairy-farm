@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import AppShell from "@/components/AppShell";
-import AuthGate from "@/components/AuthGate";
 import QueryProvider from "@/components/QueryProvider";
 import { FARM_NAME } from "@/lib/mock-data";
 
@@ -29,7 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="antialiased">
         <QueryProvider>
-          <AuthGate><AppShell>{children}</AppShell></AuthGate>
+          <AppShell>{children}</AppShell>
         </QueryProvider>
       </body>
     </html>

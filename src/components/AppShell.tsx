@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { BookIcon, CanIcon, HomeIcon, TagIcon, WalletIcon } from "./icons";
-import { getSupabase } from "@/lib/supabase";
 import { useQuery } from "@tanstack/react-query";
 import { getSettings } from "@/lib/settings";
 
@@ -20,12 +19,7 @@ const isActive = (path: string, href: string) => (href === "/" ? path === "/" : 
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname() || "/";
-  const settings = useQuery({ queryKey: ["settings"], queryFn: getSettings, enabled: path !== "/login" });
-  if (path === "/login") return <>{children}</>;
-
-  const logout = async () => {
-    await getSupabase().auth.signOut();
-  };
+  const settings = useQuery({ queryKey: ["settings"], queryFn: getSettings });
 
   return (
     <div className="min-h-dvh lg:flex">
@@ -53,13 +47,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="mt-auto px-3">
           <Link href="/settings/" className="mb-3 block text-sm font-semibold text-berseem underline">Settings</Link>
-          <button onClick={logout} className="mb-3 text-sm font-semibold text-berseem underline">Logout</button>
           <p className="text-xs text-muted">Preview version. Zyada figures abhi dummy hain.</p>
         </div>
       </aside>
 
       <main className="flex-1 pb-28 lg:pb-12">
-        <div className="flex justify-end gap-4 px-4 pt-2 lg:hidden"><Link href="/settings/" className="text-sm font-semibold text-berseem underline">Settings</Link><button onClick={logout} className="text-sm font-semibold text-berseem underline">Logout</button></div>
+        <div className="flex justify-end gap-4 px-4 pt-2 lg:hidden"><Link href="/settings/" className="text-sm font-semibold text-berseem underline">Settings</Link></div>
         <div className="mx-auto w-full max-w-5xl">{children}</div>
       </main>
 

@@ -1,0 +1,2 @@
+-- Reserved migration number. The browser preview uses local demo data; the
+-- database keeps the owner-only policy from migration 000003 until launch.

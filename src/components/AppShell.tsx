@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { BookIcon, CanIcon, HomeIcon, TagIcon, WalletIcon } from "./icons";
-import { FARM_NAME } from "@/lib/mock-data";
+import { useQuery } from "@tanstack/react-query";
+import { getSettings } from "@/lib/settings";
 
 const NAV = [
   { href: "/", label: "Home", Icon: HomeIcon },
@@ -18,13 +19,14 @@ const isActive = (path: string, href: string) => (href === "/" ? path === "/" : 
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname() || "/";
+  const settings = useQuery({ queryKey: ["settings"], queryFn: getSettings });
 
   return (
     <div className="min-h-dvh lg:flex">
       {/* Laptop: side menu */}
       <aside className="hidden lg:flex lg:w-60 lg:shrink-0 lg:flex-col lg:border-r lg:border-line lg:bg-paper lg:px-4 lg:py-6 lg:sticky lg:top-0 lg:h-dvh">
         <div className="px-3 pb-6">
-          <div className="font-display text-xl font-bold leading-tight">{FARM_NAME}</div>
+          <div className="font-display text-xl font-bold leading-tight">{settings.data?.farm_name || "Dairy Farm"}</div>
           <div className="text-sm text-muted">Hisaab kitaab</div>
         </div>
         <nav aria-label="Main" className="flex flex-col gap-1">
@@ -43,10 +45,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
-        <p className="mt-auto px-3 text-xs text-muted">Preview version. Sab figures dummy hain.</p>
+        <div className="mt-auto px-3">
+          <Link href="/settings/" className="mb-3 block text-sm font-semibold text-berseem underline">Settings</Link>
+          <p className="text-xs text-muted">Preview version. Zyada figures abhi dummy hain.</p>
+        </div>
       </aside>
 
       <main className="flex-1 pb-28 lg:pb-12">
+        <div className="flex justify-end gap-4 px-4 pt-2 lg:hidden"><Link href="/settings/" className="text-sm font-semibold text-berseem underline">Settings</Link></div>
         <div className="mx-auto w-full max-w-5xl">{children}</div>
       </main>
 

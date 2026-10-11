@@ -1,7 +1,9 @@
 # Dairy Farm App (preview)
 
-Frontend-only preview of the dairy farm management app. All numbers are dummy data.
+The app opens without login. Settings are saved only in the current browser. The dashboard, animals, milk, customer ledger, and expenses are preview screens with dummy records; their save buttons do not persist data yet.
 Language: Roman Urdu. Works on phone and laptop.
+
+Anyone with the link can test the interface. Settings saved by one tester do not appear on another device.
 
 ## Screens
 
@@ -15,11 +17,13 @@ Language: Roman Urdu. Works on phone and laptop.
 | `/khata/[id]/` | Customer bill, register (bahi khata), wusooli, WhatsApp bill |
 | `/kharcha/` | Naya kharcha, category breakdown, har janwar ki bachat |
 
-Forms work in the browser for the demo, but nothing is saved (no backend yet).
+Only the Settings form saves, and it saves to that browser's local storage. The other forms remain demo interactions.
 
 ## Where things are
 
-- `src/lib/mock-data.ts`: **all dummy data**. Replace this with Supabase queries later.
+- `src/lib/mock-data.ts`: dummy data for the preview screens.
+- `supabase/migrations/`: database schema, reports, owner-only access rules, and generic defaults for later integration.
+- `src/lib/supabase.ts`: browser client prepared for later authenticated use; the preview does not call it.
 - `src/lib/calc.ts`: all calculations (balances, sale, profit, delivery date, formatting).
 - `src/components/`: shared UI and the interactive parts.
 - Colors and fonts: `src/app/globals.css`.
@@ -41,12 +45,14 @@ The app is a static export (`out/` folder). `netlify.toml` is already set up.
 1. Push this folder to a GitHub repo.
 2. Netlify → Add new site → Import from Git → pick the repo.
 3. Build settings fill in automatically from `netlify.toml` (command `npm run build`, publish `out`).
-4. Deploy. Change the site name in Site settings to get a nicer link, e.g. `demo-dairy.netlify.app`.
+4. Deploy. Supabase environment variables are not needed for this no-login preview.
 
 **Option B, drag and drop:**
 1. `npm run build`
 2. Drag the `out` folder onto https://app.netlify.com/drop
 
-## Change the farm name
+## Database setup
 
-Edit `FARM_NAME` and `OWNER_NAME` at the top of `src/lib/mock-data.ts`.
+The preview does not use Supabase. The six migration files in `supabase/migrations/` prepare the database for later integration and preserve owner-only access. They can be applied in filename order through the Supabase CLI or GitHub integration when the authenticated app is ready. Do not paste the schema into the production SQL Editor, because that bypasses migration history.
+
+Anonymous visitors cannot access the farm tables. Do not add a service-role or secret key to the browser app or Git repository.

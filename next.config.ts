@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
-// Static export so the preview can be hosted free on Netlify (publish folder: "out").
-// When we add Supabase later, this can stay static (client-side calls) or move to a server build.
+// Static export for Netlify (publish folder: "out"); Supabase calls run in the browser.
 const nextConfig: NextConfig = {
   output: "export",
   trailingSlash: true,

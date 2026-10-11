@@ -1,9 +1,9 @@
 # Dairy Farm App (preview)
 
-Farm settings use Supabase without a login. The dashboard, animals, milk, customer ledger, and expenses are still preview screens with dummy records; their save buttons do not persist data yet.
+The app opens without login. Settings are saved only in the current browser. The dashboard, animals, milk, customer ledger, and expenses are preview screens with dummy records; their save buttons do not persist data yet.
 Language: Roman Urdu. Works on phone and laptop.
 
-This is an open, shared testing preview: anyone with the link can view and change the same farm data. Use test data only until access is restricted for the client launch.
+Anyone with the link can test the interface. Settings saved by one tester do not appear on another device.
 
 ## Screens
 
@@ -17,13 +17,13 @@ This is an open, shared testing preview: anyone with the link can view and chang
 | `/khata/[id]/` | Customer bill, register (bahi khata), wusooli, WhatsApp bill |
 | `/kharcha/` | Naya kharcha, category breakdown, har janwar ki bachat |
 
-Only the Settings form saves to the database. The other forms remain demo interactions.
+Only the Settings form saves, and it saves to that browser's local storage. The other forms remain demo interactions.
 
 ## Where things are
 
 - `src/lib/mock-data.ts`: dummy data for the preview screens.
-- `supabase/migrations/`: database schema, reports, preview access rules, and generic defaults.
-- `src/lib/supabase.ts`: browser client using a publishable key.
+- `supabase/migrations/`: database schema, reports, owner-only access rules, and generic defaults for later integration.
+- `src/lib/supabase.ts`: browser client prepared for later authenticated use; the preview does not call it.
 - `src/lib/calc.ts`: all calculations (balances, sale, profit, delivery date, formatting).
 - `src/components/`: shared UI and the interactive parts.
 - Colors and fonts: `src/app/globals.css`.
@@ -32,8 +32,6 @@ Only the Settings form saves to the database. The other forms remain demo intera
 
 ```bash
 npm install
-cp .env.example .env.local
-# Add your Supabase project URL and publishable key to .env.local.
 npm run dev
 ```
 
@@ -47,8 +45,7 @@ The app is a static export (`out/` folder). `netlify.toml` is already set up.
 1. Push this folder to a GitHub repo.
 2. Netlify → Add new site → Import from Git → pick the repo.
 3. Build settings fill in automatically from `netlify.toml` (command `npm run build`, publish `out`).
-4. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in Netlify's environment variables before deploying. These are embedded at build time, so redeploy after changing them.
-5. Deploy.
+4. Deploy. Supabase environment variables are not needed for this no-login preview.
 
 **Option B, drag and drop:**
 1. `npm run build`
@@ -56,6 +53,6 @@ The app is a static export (`out/` folder). `netlify.toml` is already set up.
 
 ## Database setup
 
-Apply the six migration files in `supabase/migrations/` in filename order through the Supabase CLI or GitHub integration. Do not paste the schema into the production SQL Editor, because that bypasses migration history.
+The preview does not use Supabase. The six migration files in `supabase/migrations/` prepare the database for later integration and preserve owner-only access. They can be applied in filename order through the Supabase CLI or GitHub integration when the authenticated app is ready. Do not paste the schema into the production SQL Editor, because that bypasses migration history.
 
-The app has no login in this preview. After all migrations are applied, anonymous visitors can access the farm tables using the browser publishable key. The owner UID and Supabase Authentication settings are not needed for this preview. Before using real client data, replace the public preview policy with restricted access. Do not add a service-role or secret key to the browser app or Git repository.
+Anonymous visitors cannot access the farm tables. Do not add a service-role or secret key to the browser app or Git repository.

@@ -27,6 +27,7 @@ beforeAll(async () => {
     "20261012000008_live_app_data.sql",
     "20261012000009_create_customer.sql",
     "20261012000010_customer_opening_balance.sql",
+    "20261012000011_health_event_expense.sql",
   ]) {
     await db.exec(readFileSync(resolve("supabase/migrations", name), "utf8"));
   }

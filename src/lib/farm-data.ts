@@ -125,3 +125,15 @@ export async function saveCustomerRate(customerId: string, rate: number, effecti
   );
   if (error) throw error;
 }
+
+export async function recordHealthEvent(input: {
+  animalId: string; date: string; kind: string; title: string;
+  cost: number; nextDueDate: string | null; categoryId: string | null; accountId: string | null;
+}) {
+  const { error } = await getSupabase().rpc("record_health_event", {
+    p_animal_id: input.animalId, p_event_date: input.date, p_kind: input.kind,
+    p_title: input.title, p_cost: input.cost, p_next_due_date: input.nextDueDate,
+    p_category_id: input.categoryId, p_account_id: input.accountId,
+  });
+  if (error) throw error;
+}

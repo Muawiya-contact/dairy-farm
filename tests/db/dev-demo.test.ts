@@ -24,6 +24,7 @@ beforeAll(async () => {
     "20261011000005_open_preview.sql",
     "20261011000006_restore_owner_policy.sql",
     "20261012000007_demo_settings.sql",
+    "20261012000008_live_app_data.sql",
   ]) {
     await db.exec(readFileSync(resolve("supabase/migrations", name), "utf8"));
   }
@@ -66,10 +67,10 @@ describe("staging demo seed", () => {
     expect(Number(rows[0].balance)).toBe(23000);
   });
 
-  it("does not expose demo customers to anonymous visitors", async () => {
+  it("keeps demo customers private until staging access is enabled", async () => {
     await db.exec("set role anon");
     try {
-      await expect(db.query("select name from customers")).rejects.toThrow();
+      expect((await db.query("select name from customers")).rows).toEqual([]);
     } finally {
       await db.exec("reset role");
     }

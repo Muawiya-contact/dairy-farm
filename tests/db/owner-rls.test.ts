@@ -34,6 +34,7 @@ test("only the designated owner can read or write farm data", async () => {
     `);
     await db.exec(readFileSync(resolve(migrationDir, "20261011000006_restore_owner_policy.sql"), "utf8"));
     await db.exec(readFileSync(resolve(migrationDir, "20261012000007_demo_settings.sql"), "utf8"));
+    await db.exec(readFileSync(resolve(migrationDir, "20261012000008_live_app_data.sql"), "utf8"));
     await db.exec(`
       insert into auth.users (id) values ('${owner}'), ('${stranger}');
       insert into private.app_owner (user_id) values ('${owner}');
@@ -54,17 +55,23 @@ test("only the designated owner can read or write farm data", async () => {
     await db.exec("set role anon");
     expect((await db.query("select id from settings")).rows).toEqual([]);
     expect((await db.query("update settings set farm_name = 'Blocked' where id = 1 returning id")).rows).toEqual([]);
-    await expect(db.query("select tag from animals")).rejects.toThrow();
+    expect((await db.query("select tag from animals")).rows).toEqual([]);
+    await expect(db.exec("insert into animals (tag) values ('B-002')")).rejects.toThrow();
 
     await db.exec("reset role; update private.demo_access set enabled = true where id = 1; set role anon");
     expect((await db.query("select id from settings")).rows).toEqual([{ id: 1 }]);
     await db.exec("update settings set farm_name = 'Shared Demo' where id = 1");
     expect((await db.query("select farm_name from settings")).rows).toEqual([{ farm_name: "Shared Demo" }]);
-    await expect(db.query("select tag from animals")).rejects.toThrow();
+    expect((await db.query("select tag from animals")).rows).toEqual([{ tag: "B-001" }]);
+    await db.exec("insert into animals (tag) values ('B-002')");
+    expect((await db.query("select tag from animals order by tag")).rows).toEqual([{ tag: "B-001" }, { tag: "B-002" }]);
+    await db.exec("select public.save_milk_entry(public.farm_today(), 'morning', 10, 'total', '[]'::jsonb, '[]'::jsonb)");
+    expect((await db.query("select total_litres from milk_shifts")).rows).toEqual([{ total_litres: "10.00" }]);
 
     await db.exec("reset role; update private.demo_access set enabled = false where id = 1; set role anon");
     expect((await db.query("select id from settings")).rows).toEqual([]);
     expect((await db.query("update settings set farm_name = 'Blocked' where id = 1 returning id")).rows).toEqual([]);
+    expect((await db.query("select tag from animals")).rows).toEqual([]);
   } finally {
     await db.close();
   }

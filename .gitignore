@@ -34,6 +34,9 @@ yarn-error.log*
 .env*
 !.env.example
 
+# local Supabase CLI state
+/supabase/.temp/
+
 # vercel
 .vercel
 

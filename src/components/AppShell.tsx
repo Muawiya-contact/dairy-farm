@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { BookIcon, CanIcon, HomeIcon, TagIcon, WalletIcon } from "./icons";
+import { BookIcon, CanIcon, CowIcon, HomeIcon, WalletIcon } from "./icons";
 import { useQuery } from "@tanstack/react-query";
 import { getSettings } from "@/lib/settings";
 
 const NAV = [
   { href: "/", label: "Home", Icon: HomeIcon },
-  { href: "/janwar/", label: "Janwar", Icon: TagIcon },
+  { href: "/janwar/", label: "Janwar", Icon: CowIcon },
   { href: "/doodh/", label: "Doodh", Icon: CanIcon },
   { href: "/khata/", label: "Khata", Icon: BookIcon },
   { href: "/kharcha/", label: "Kharcha", Icon: WalletIcon },
@@ -39,7 +39,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 aria-current={on ? "page" : undefined}
                 className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-semibold ${on ? "bg-berseem-soft text-berseem-deep" : "text-muted hover:bg-ground hover:text-ink"}`}
               >
-                <Icon />
+                <Icon className="nav-icon" />
                 {label}
               </Link>
             );
@@ -71,7 +71,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               className={`flex min-h-[54px] flex-col items-center justify-center gap-0.5 text-[12px] font-semibold ${on ? "text-berseem" : "text-muted"}`}
             >
               <span className={`flex h-7 w-12 items-center justify-center rounded-full ${on ? "bg-berseem-soft" : ""}`}>
-                <Icon width={21} height={21} />
+                <Icon className="nav-icon" width={21} height={21} />
               </span>
               {label}
             </Link>

@@ -8,8 +8,13 @@ const base = (props: P) => ({
 });
 
 export const HomeIcon = (p: P) => <svg {...base(p)}><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" /></svg>;
-// Ear tag — how farms number their animals
-export const TagIcon = (p: P) => <svg {...base(p)}><path d="M12 3c3 0 7 2 7 6 0 5-4 9-7 12-3-3-7-7-7-12 0-4 4-6 7-6z" /><circle cx="12" cy="9" r="2" /></svg>;
+export const CowIcon = (p: P) => <svg {...base(p)}>
+  <path d="M7 7 4 5 2.5 7l2.8 3M17 7l3-2 1.5 2-2.8 3" />
+  <path d="M8 6 7.5 3.5 10 5M16 6l.5-2.5L14 5" />
+  <path d="M6 10c0-3 2.5-5 6-5s6 2 6 5v4c0 4.3-2.5 7-6 7s-6-2.7-6-7z" />
+  <path d="M8 15.5c0-1.5 1.7-2.3 4-2.3s4 .8 4 2.3v1c0 1.8-1.7 3-4 3s-4-1.2-4-3z" />
+  <path d="M9 10.5h.01M15 10.5h.01M10.5 16.2h.01M13.5 16.2h.01" strokeWidth="2.8" />
+</svg>;
 // Milk can (gaagar)
 export const CanIcon = (p: P) => <svg {...base(p)}><path d="M9 3h6" /><path d="M10 3v3l-3 3v11a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V9l-3-3V3" /><path d="M7 13h10" /></svg>;
 export const BookIcon = (p: P) => <svg {...base(p)}><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z" /><path d="M5 17a3 3 0 0 1 3-3h11" /></svg>;

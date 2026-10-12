@@ -28,8 +28,8 @@ export default function Dashboard() {
           <p className="text-[15px] text-muted">{dayName(TODAY)}, {longDate(TODAY)}</p>
           <h1 className="font-display text-[24px] font-bold leading-tight lg:text-[30px]">Assalam o Alaikum, <DashboardGreeting /></h1>
         </div>
-        <a href="#alerts" aria-label={`${alerts().length} alerts`} className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-paper">
-          <BellIcon />
+        <a href="#alerts" aria-label={`${alerts().length} alerts`} className="alerts-trigger relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-paper">
+          <BellIcon className="bell-icon" />
           <span className="absolute -top-0.5 -right-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-udhaar px-1 text-[11px] font-bold text-white">{alerts().length}</span>
         </a>
       </header>
@@ -69,8 +69,8 @@ export default function Dashboard() {
             <div className="flex items-baseline justify-between py-2.5"><dt className="font-semibold">Munafa</dt><dd className={`font-display text-[26px] font-extrabold tnum ${sales - spend < 0 ? "text-udhaar" : "text-berseem"}`}>{rs(sales - spend)}</dd></div>
           </dl>
           <div className="mt-3 grid grid-cols-2 gap-2">
-            <Link href="/doodh/" className="flex min-h-[48px] items-center justify-center gap-1.5 rounded-xl bg-berseem font-semibold text-white hover:bg-berseem-deep"><PlusIcon width={18} height={18} />Doodh</Link>
-            <Link href="/kharcha/" className="flex min-h-[48px] items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-berseem font-semibold text-berseem hover:bg-berseem-soft"><PlusIcon width={18} height={18} />Kharcha</Link>
+            <Link href="/doodh/" className="action-link flex min-h-[48px] items-center justify-center gap-1.5 rounded-xl bg-berseem font-semibold text-white hover:bg-berseem-deep"><PlusIcon className="action-icon" width={18} height={18} />Doodh</Link>
+            <Link href="/kharcha/" className="action-link flex min-h-[48px] items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-berseem font-semibold text-berseem hover:bg-berseem-soft"><PlusIcon className="action-icon" width={18} height={18} />Kharcha</Link>
           </div>
         </Panel>
 

@@ -57,4 +57,19 @@ body {
 @media (prefers-reduced-motion: no-preference) {
   .fill-rise { animation: fill-rise 700ms cubic-bezier(.2,.7,.2,1) both; }
   @keyframes fill-rise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+  .nav-icon, .action-icon { transition: transform 220ms cubic-bezier(.2, .8, .2, 1); }
+  a:hover .nav-icon, a:focus-visible .nav-icon { transform: translateY(-2px) scale(1.08); }
+  a:active .nav-icon { transform: scale(.92); }
+  .action-link:hover .action-icon, .action-link:focus-visible .action-icon { transform: rotate(90deg); }
+  .alerts-trigger:hover .bell-icon, .alerts-trigger:focus-visible .bell-icon {
+    transform-origin: center 20%;
+    animation: bell-ring 600ms ease-in-out;
+  }
+  @keyframes bell-ring {
+    0%, 100% { transform: rotate(0); }
+    25% { transform: rotate(16deg); }
+    60% { transform: rotate(-12deg); }
+    80% { transform: rotate(6deg); }
+  }
 }

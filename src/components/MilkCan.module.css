@@ -1,0 +1,12 @@
+@media (prefers-reduced-motion: no-preference) {
+  .fill {
+    transform-origin: center bottom;
+    animation: rise 900ms cubic-bezier(.22, 1, .36, 1) both;
+  }
+
+  @keyframes rise {
+    from { transform: scaleY(0); }
+    85% { transform: scaleY(1.02); }
+    to { transform: scaleY(1); }
+  }
+}

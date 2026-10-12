@@ -7,6 +7,7 @@ import ProfitChart from "@/components/ProfitChart";
 import { Body, Demo, Panel } from "@/components/ui";
 import { BellIcon, PlusIcon } from "@/components/icons";
 import DashboardGreeting from "@/components/DashboardGreeting";
+import MilkCan from "@/components/MilkCan";
 
 export default function Dashboard() {
   const m = shiftSummary(TODAY, "morning");
@@ -19,11 +20,6 @@ export default function Dashboard() {
   const herd = herdCounts();
   const series = yearSeries();
   const tones = { haldi: "bg-haldi", udhaar: "bg-udhaar", neel: "bg-neel" } as const;
-
-  // Can fill: morning at the bottom, evening on top
-  const CAN_MAX = 100;
-  const mPct = (m.total / CAN_MAX) * 100;
-  const ePct = (e.total / CAN_MAX) * 100;
 
   return (
     <>
@@ -62,13 +58,7 @@ export default function Dashboard() {
                 </div>
               </dl>
             </div>
-            <div aria-hidden="true" className="flex shrink-0 flex-col items-center">
-              <div className="h-3 w-10 rounded-t-md bg-[#3c7a48]" />
-              <div className="relative flex h-40 w-20 flex-col justify-end overflow-hidden rounded-b-2xl rounded-t-[28px] bg-[#2a5c33] lg:h-52 lg:w-28">
-                <div className="fill-rise origin-bottom bg-haldi" style={{ height: `${ePct}%` }} />
-                <div className="fill-rise origin-bottom bg-[#f4f1e6]" style={{ height: `${mPct}%` }} />
-              </div>
-            </div>
+            <MilkCan morning={m.total} evening={e.total} />
           </div>
         </section>
 

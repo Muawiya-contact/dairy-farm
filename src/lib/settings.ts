@@ -1,3 +1,5 @@
+import { getSupabase } from "./supabase";
+
 export type FarmSettings = {
   id: 1;
   farm_name: string;
@@ -12,6 +14,8 @@ export type FarmSettings = {
 };
 
 const storageKey = "dairy-farm-preview-settings";
+export const sharedSettings = process.env.NEXT_PUBLIC_SETTINGS_BACKEND === "supabase";
+const columns = "id,farm_name,owner_name,default_milk_rate,ultrasound_days,checkup_days,dry_off_days,calving_days,fresh_days,whatsapp_footer";
 
 const defaultSettings: FarmSettings = {
   id: 1,
@@ -27,6 +31,11 @@ const defaultSettings: FarmSettings = {
 };
 
 export async function getSettings(): Promise<FarmSettings> {
+  if (sharedSettings) {
+    const { data, error } = await getSupabase().from("settings").select(columns).eq("id", 1).single();
+    if (error) throw error;
+    return { ...data, id: 1, default_milk_rate: Number(data.default_milk_rate) } as FarmSettings;
+  }
   try {
     const saved = window.localStorage.getItem(storageKey);
     if (saved) return { ...defaultSettings, ...JSON.parse(saved), id: 1 };
@@ -37,6 +46,12 @@ export async function getSettings(): Promise<FarmSettings> {
 }
 
 export async function updateSettings(settings: Omit<FarmSettings, "id">): Promise<FarmSettings> {
+  if (sharedSettings) {
+    const { data, error } = await getSupabase().from("settings")
+      .update(settings).eq("id", 1).select(columns).single();
+    if (error) throw error;
+    return { ...data, id: 1, default_milk_rate: Number(data.default_milk_rate) } as FarmSettings;
+  }
   const value = { ...settings, id: 1 as const };
   window.localStorage.setItem(storageKey, JSON.stringify(value));
   return value;

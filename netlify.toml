@@ -10,10 +10,12 @@
 [context.deploy-preview.environment]
   NEXT_PUBLIC_SUPABASE_URL = "https://dlirssfoazlxzyamsltv.supabase.co"
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Ii2xBLdDyY9CPlcVHNBdkg_WSaiGFNU"
+  NEXT_PUBLIC_SETTINGS_BACKEND = "supabase"
 
 [context.branch-deploy.environment]
   NEXT_PUBLIC_SUPABASE_URL = "https://dlirssfoazlxzyamsltv.supabase.co"
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Ii2xBLdDyY9CPlcVHNBdkg_WSaiGFNU"
+  NEXT_PUBLIC_SETTINGS_BACKEND = "supabase"
 
 [context.production.environment]
   NEXT_PUBLIC_SUPABASE_URL = "https://ylipnghdygpyqlptqazx.supabase.co"

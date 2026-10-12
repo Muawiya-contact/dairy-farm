@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { Body, PageHeader } from "@/components/ui";
-import { getSettings, updateSettings, type FarmSettings } from "@/lib/settings";
+import { getSettings, sharedSettings, updateSettings, type FarmSettings } from "@/lib/settings";
 
 const inputClass = "mt-1 min-h-12 w-full rounded-xl border border-line bg-paper px-3 outline-none focus:border-berseem";
 
@@ -39,7 +39,7 @@ function SettingsForm({ initial }: { initial: FarmSettings }) {
         <label className="font-semibold">WhatsApp bill ka paigham<input value={footer} onChange={(event) => setFooter(event.target.value)} className={inputClass} /></label>
       </div>
       <button disabled={mutation.isPending || !farm.trim() || Number(rate) <= 0} className="mt-5 min-h-12 rounded-xl bg-berseem px-5 font-bold text-white disabled:opacity-50">{mutation.isPending ? "Save ho raha hai…" : "Save karein"}</button>
-      {mutation.isSuccess && <p role="status" className="mt-3 text-berseem-deep">Settings is browser mein save ho gayi.</p>}
+      {mutation.isSuccess && <p role="status" className="mt-3 text-berseem-deep">{sharedSettings ? "Settings staging database mein save ho gayi." : "Settings is browser mein save ho gayi."}</p>}
       {mutation.isError && <p role="alert" className="mt-3 text-udhaar">Save nahi hua: {mutation.error.message}</p>}
     </form>
   );
@@ -49,7 +49,7 @@ export default function SettingsPage() {
   const query = useQuery({ queryKey: ["settings"], queryFn: getSettings });
   return (
     <>
-      <PageHeader title="Settings" sub="Preview: sirf is browser mein save hoti hain" />
+      <PageHeader title="Settings" sub={sharedSettings ? "Staging demo: sab testers ko yahi settings nazar aati hain" : "Preview: sirf is browser mein save hoti hain"} />
       <Body>
         {query.isPending && <p role="status" className="text-muted">Settings load ho rahi hain…</p>}
         {query.isError && <p role="alert" className="text-udhaar">Settings load nahi huin: {query.error.message} <button onClick={() => void query.refetch()} className="underline">Dobara koshish</button></p>}

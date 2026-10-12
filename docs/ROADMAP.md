@@ -1,11 +1,10 @@
 # Dairy Farm roadmap
 
-This adapts the supplied `ROADMAP.md` to the current repository. The app is
-currently a no-login preview with mostly local demo data. Its Supabase schema and
-owner-only policies are in this PR; all seven migrations were applied to
-staging and production on 2026-10-12. Staging has invented demo records and a
-shared database-backed Settings screen; production has only schema and generic
-defaults, and its website still uses local Settings.
+This adapts the supplied `ROADMAP.md` to the current repository. The app
+now reads and saves farm records through Supabase. Nine migrations were applied
+to staging and production on 2026-10-12. Staging has invented demo records;
+production has schema and generic defaults and requires the owner login.
+The table below remains a plan for fuller workflows and launch readiness.
 
 | Step | Work | Depends on |
 |---|---|---|
@@ -27,9 +26,8 @@ client sheets, and the claimed larger test suite were not included. See
 Use **two Supabase projects** for this farm: a staging project with invented
 records and a separate project reserved for real client data. Keep schema
 changes in versioned migrations and apply the same migrations to both projects
-at their appropriate release stages. The existing no-login Netlify preview
-uses staging for Settings and local demo data for the other screens until their
-database flows are built.
+at their appropriate release stages. Netlify Deploy Previews use staging for
+every screen, while the production build uses the owner-restricted project.
 
 Staging is disposable; production is not. Do not copy real customer, animal,
 or financial records into staging. Never put a secret/service-role key in the

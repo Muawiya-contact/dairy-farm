@@ -3,7 +3,7 @@
 This adapts the supplied `step-1-foundation.md`. It records the original
 foundation plan and the current database setup.
 
-Database status on 2026-10-12: nine migrations are recorded in both hosted
+Database status on 2026-10-12: eleven migrations are recorded in both hosted
 projects. The staging seed contains invented records. Staging preview visitors
 can read and edit shared demo records; production remains owner restricted.
 All current app screens use Supabase.

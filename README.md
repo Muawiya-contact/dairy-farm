@@ -38,6 +38,6 @@ Import `Muawiya-contact/dairy-farm` from Git. Leave Base directory and Functions
 
 ## Database
 
-Nine migrations in `supabase/migrations/` are recorded on both projects as of 2026-10-12. Apply future schema changes with the Supabase CLI so migration history stays in sync. Staging alone contains the invented records from `supabase/seed/dev-demo.sql`; production has no demo customers or animals. Database triggers and report functions calculate delivery amounts, customer balances and profit. The staging access switch is `private.demo_access.enabled = true`; production keeps it `false`.
+Eleven migrations in `supabase/migrations/` are recorded on both projects as of 2026-10-12. Apply future schema changes with the Supabase CLI so migration history stays in sync. Staging alone contains the invented records from `supabase/seed/dev-demo.sql`; production has no demo customers or animals. Database triggers and report functions calculate delivery amounts, customer balances and profit. The staging access switch is `private.demo_access.enabled = true`; production keeps it `false`.
 
 Run `npm run check` before pushing. The database tests use PGlite and cover owner access, staging preview access and demo data. The current project plan is in [docs/ROADMAP.md](docs/ROADMAP.md).

@@ -34,7 +34,9 @@ test("only the designated owner can read or write farm data", async () => {
     `);
     await db.exec(readFileSync(resolve(migrationDir, "20261011000006_restore_owner_policy.sql"), "utf8"));
     await db.exec(readFileSync(resolve(migrationDir, "20261012000007_demo_settings.sql"), "utf8"));
+    await db.exec("update private.demo_access set enabled = true where id = 1");
     await db.exec(readFileSync(resolve(migrationDir, "20261012000008_live_app_data.sql"), "utf8"));
+    await db.exec("update private.demo_access set enabled = false where id = 1");
     await db.exec(`
       insert into auth.users (id) values ('${owner}'), ('${stranger}');
       insert into private.app_owner (user_id) values ('${owner}');

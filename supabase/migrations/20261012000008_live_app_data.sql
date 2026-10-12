@@ -3,6 +3,9 @@
 do $$
 declare t text;
 begin
+  if not (select enabled from private.demo_access where id = 1) then
+    return; -- Production never receives anonymous table or report grants.
+  end if;
   foreach t in array array[
     'accounts','animals','inseminations','calvings','health_events',
     'customers','customer_rates','milk_shifts','animal_milk','milk_deliveries',
@@ -12,13 +15,12 @@ begin
     execute format('grant select, insert, update, delete on public.%I to anon', t);
     execute format('create policy demo_all on public.%I for all to anon using ((select private.demo_access_enabled())) with check ((select private.demo_access_enabled()))', t);
   end loop;
+  grant select on public.customer_balances, public.animal_status to anon;
+  grant execute on function public.customer_month_report(date), public.milk_month_summary(date),
+    public.expense_month_report(date), public.pnl_month(date), public.account_entries(uuid),
+    public.account_month_summary(date), public.herd_alerts(date), public.rate_on(uuid, date),
+    public.farm_today() to anon;
 end $$;
-
-grant select on public.customer_balances, public.animal_status to anon;
-grant execute on function public.customer_month_report(date), public.milk_month_summary(date),
-  public.expense_month_report(date), public.pnl_month(date), public.account_entries(uuid),
-  public.account_month_summary(date), public.herd_alerts(date), public.rate_on(uuid, date),
-  public.farm_today() to anon;
 
 -- One milk entry can touch production, animals and customer deliveries. Keep
 -- the save atomic so a network error cannot leave a partially updated shift.
@@ -61,4 +63,9 @@ begin
   return v_id;
 end $$;
 revoke all on function public.save_milk_entry(date,text,numeric,text,jsonb,jsonb) from public;
-grant execute on function public.save_milk_entry(date,text,numeric,text,jsonb,jsonb) to anon, authenticated;
+grant execute on function public.save_milk_entry(date,text,numeric,text,jsonb,jsonb) to authenticated;
+do $$ begin
+  if (select enabled from private.demo_access where id = 1) then
+    grant execute on function public.save_milk_entry(date,text,numeric,text,jsonb,jsonb) to anon;
+  end if;
+end $$;

@@ -70,7 +70,7 @@ describe("staging demo seed", () => {
   it("keeps demo customers private until staging access is enabled", async () => {
     await db.exec("set role anon");
     try {
-      expect((await db.query("select name from customers")).rows).toEqual([]);
+      await expect(db.query("select name from customers")).rejects.toThrow();
     } finally {
       await db.exec("reset role");
     }

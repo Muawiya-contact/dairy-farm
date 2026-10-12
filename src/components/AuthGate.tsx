@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import type { Session } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase";
 
 const requireAuth = process.env.NEXT_PUBLIC_REQUIRE_AUTH === "true";
 
 export default function AuthGate({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
+  const previousUser = useRef<string | null>(null);
   const [ready, setReady] = useState(!requireAuth);
   const [signedIn, setSignedIn] = useState(!requireAuth);
   const [email, setEmail] = useState("");
@@ -16,24 +20,39 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!requireAuth) return;
     const client = getSupabase();
-    void client.auth.getSession().then(({ data }) => {
-      setSignedIn(Boolean(data.session));
-      setReady(true);
-    });
-    const { data: listener } = client.auth.onAuthStateChange((_event, session) => {
+    const applySession = (session: Session | null) => {
+      const userId = session?.user.id ?? null;
+      if (previousUser.current !== userId) queryClient.clear();
+      previousUser.current = userId;
       setSignedIn(Boolean(session));
       setReady(true);
+    };
+    void client.auth.getSession().then(({ data, error: sessionError }) => {
+      if (sessionError) throw sessionError;
+      applySession(data.session);
+    }).catch((sessionError: Error) => {
+      setError(sessionError.message);
+      applySession(null);
+    });
+    const { data: listener } = client.auth.onAuthStateChange((_event, session) => {
+      applySession(session);
     });
     return () => listener.subscription.unsubscribe();
-  }, []);
+  }, [queryClient]);
 
   const signIn = async (event: FormEvent) => {
     event.preventDefault();
     setBusy(true);
     setError("");
-    const result = await getSupabase().auth.signInWithPassword({ email, password });
-    if (result.error) setError(result.error.message);
-    setBusy(false);
+    try {
+      const result = await getSupabase().auth.signInWithPassword({ email, password });
+      if (result.error) setError(result.error.message);
+    } catch (signInError) {
+      setError(signInError instanceof Error ? signInError.message : String(signInError));
+    } finally {
+      setPassword("");
+      setBusy(false);
+    }
   };
 
   if (!ready) return <main className="mx-auto max-w-sm p-8 text-muted">Account check ho raha hai…</main>;

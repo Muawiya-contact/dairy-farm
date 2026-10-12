@@ -2,8 +2,9 @@
 
 This adapts the supplied `ROADMAP.md` to the current repository. The app is
 currently a no-login preview with local demo data. Its Supabase schema and
-owner-only policies are already in `main`; no live database migration has been
-applied by this repository.
+owner-only policies are already in `main`; all six migrations were applied to
+staging and production on 2026-10-12. Staging has invented demo records, while
+production has only schema and generic defaults.
 
 | Step | Work | Depends on |
 |---|---|---|

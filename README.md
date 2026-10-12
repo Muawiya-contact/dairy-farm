@@ -45,7 +45,7 @@ The app is a static export (`out/` folder). `netlify.toml` is already set up.
 1. Push this folder to a GitHub repo.
 2. Netlify → Add new site → Import from Git → pick the repo.
 3. Build settings fill in automatically from `netlify.toml` (command `npm run build`, publish `out`).
-4. Deploy. Supabase environment variables are not needed for this no-login preview.
+4. Deploy. `netlify.toml` selects staging Supabase for Deploy Previews and branch deploys, and the client project for production. These public variables are ready for later data access; the current screens still use local mock data.
 
 **Option B, drag and drop:**
 1. `npm run build`
@@ -53,7 +53,7 @@ The app is a static export (`out/` folder). `netlify.toml` is already set up.
 
 ## Database setup
 
-The preview does not use Supabase. The six migration files in `supabase/migrations/` prepare the database for later integration and preserve owner-only access. They can be applied in filename order through the Supabase CLI or GitHub integration when the authenticated app is ready. Do not paste the schema into the production SQL Editor, because that bypasses migration history.
+The preview does not use Supabase yet. All six migration files in `supabase/migrations/` were applied through the Supabase CLI to both staging and production on 2026-10-12, with migration history recorded. Only staging was loaded with the invented `supabase/seed/dev-demo.sql` data; production has no demo customers or animals. Apply future schema changes through migrations so history stays in sync.
 
 Anonymous visitors cannot access the farm tables. Do not add a service-role or secret key to the browser app or Git repository.
 

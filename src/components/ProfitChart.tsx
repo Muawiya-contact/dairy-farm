@@ -7,6 +7,8 @@ type Props = {
   daily: Bar[];
   monthly: Bar[];
   year: { sales: number; expenses: number; label: string };
+  dailyLabel: string;
+  monthlyLabel: string;
 };
 
 const fmt = (n: number) => `${n < 0 ? "− " : "+ "}Rs ${Math.abs(Math.round(n)).toLocaleString("en-IN")}`;
@@ -22,7 +24,7 @@ const TABS = [
   { key: "year", label: "Saalana" },
 ] as const;
 
-export default function ProfitChart({ daily, monthly, year }: Props) {
+export default function ProfitChart({ daily, monthly, year, dailyLabel, monthlyLabel }: Props) {
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("monthly");
   const bars = tab === "daily" ? daily : monthly;
   const max = Math.max(...bars.map((b) => Math.abs(b.value)), 1);
@@ -60,7 +62,7 @@ export default function ProfitChart({ daily, monthly, year }: Props) {
       ) : (
         <>
           <div className="mt-4 flex items-baseline justify-between">
-            <span className="text-[14px] text-muted">{tab === "daily" ? "October, 1 se 10 tareekh" : "2026, January se ab tak"}</span>
+            <span className="text-[14px] text-muted">{tab === "daily" ? dailyLabel : monthlyLabel}</span>
             <span className={`font-bold tnum ${total < 0 ? "text-udhaar" : "text-berseem"}`}>{fmt(total)}</span>
           </div>
           <div className="relative mt-3 flex h-40 items-stretch gap-[6px]" aria-label="Profit chart">
@@ -88,9 +90,9 @@ export default function ProfitChart({ daily, monthly, year }: Props) {
             ))}
           </div>
           <p className="mt-3 text-[13px] text-muted">
-            {tab === "daily"
-              ? "Laal bar = us din kharcha zyada hua (jaise tankhwah ya bori ki kharidari)."
-              : `Sab se acha maheena: ${[...bars].sort((a, b) => b.value - a.value)[0].label}, ${short([...bars].sort((a, b) => b.value - a.value)[0].value)} munafa. October abhi jaari hai.`}
+            {bars.length === 0 ? "Abhi koi entry nahi." : tab === "daily"
+              ? "Laal bar = us din kharcha zyada hua."
+              : `Sab se acha maheena: ${[...bars].sort((a, b) => b.value - a.value)[0].label}, ${short([...bars].sort((a, b) => b.value - a.value)[0].value)} munafa.`}
           </p>
         </>
       )}

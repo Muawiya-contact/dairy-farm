@@ -1,11 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import AppShell from "@/components/AppShell";
+import AuthGate from "@/components/AuthGate";
 import QueryProvider from "@/components/QueryProvider";
-import { FARM_NAME } from "@/lib/mock-data";
 
 export const metadata: Metadata = {
-  title: { default: FARM_NAME, template: `%s | ${FARM_NAME}` },
+  title: { default: "Dairy Farm", template: "%s | Dairy Farm" },
   description: "Dairy farm ka hisaab: janwar, doodh, khata aur kharcha",
 };
 
@@ -28,7 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="antialiased">
         <QueryProvider>
-          <AppShell>{children}</AppShell>
+          <AuthGate><AppShell>{children}</AppShell></AuthGate>
         </QueryProvider>
       </body>
     </html>

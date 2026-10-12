@@ -4,3 +4,18 @@
 
 [build.environment]
   NODE_VERSION = "22"
+
+# Publishable browser credentials only. Keep database passwords and secret keys
+# in Supabase/Netlify's private settings, never in this file.
+[context.deploy-preview.environment]
+  NEXT_PUBLIC_SUPABASE_URL = "https://dlirssfoazlxzyamsltv.supabase.co"
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Ii2xBLdDyY9CPlcVHNBdkg_WSaiGFNU"
+
+[context.branch-deploy.environment]
+  NEXT_PUBLIC_SUPABASE_URL = "https://dlirssfoazlxzyamsltv.supabase.co"
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Ii2xBLdDyY9CPlcVHNBdkg_WSaiGFNU"
+
+[context.production.environment]
+  NEXT_PUBLIC_SUPABASE_URL = "https://ylipnghdygpyqlptqazx.supabase.co"
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_QVLMWEGdg62BMp3ZVmPhuQ_yH6KAMoP"
+  NEXT_PUBLIC_REQUIRE_AUTH = "true"

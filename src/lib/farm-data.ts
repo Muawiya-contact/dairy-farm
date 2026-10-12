@@ -91,8 +91,8 @@ export function useFarmData() {
   return useQuery({ queryKey: ["farm-data"], queryFn: loadFarmData, staleTime: 15_000 });
 }
 
-export function customerRate(data: FarmData, id: string): number {
-  return amount(data.rates.filter((r) => r.customer_id === id && r.effective_from <= data.today)
+export function customerRate(data: Pick<FarmData, "rates" | "today">, id: string, onDate = data.today): number {
+  return amount(data.rates.filter((r) => r.customer_id === id && r.effective_from <= onDate)
     .sort((a, b) => b.effective_from.localeCompare(a.effective_from))[0]?.rate);
 }
 
@@ -109,10 +109,19 @@ export async function insertRow(table: string, value: Record<string, unknown>) {
   if (error) throw error;
 }
 
-export async function createCustomer(input: { name: string; kind: string; phone: string; morning: number; evening: number; rate: number }) {
+export async function createCustomer(input: { name: string; kind: string; phone: string; morning: number; evening: number; rate: number; openingBalance: number; openingDate: string }) {
   const { error } = await getSupabase().rpc("create_customer", {
     p_name: input.name, p_kind: input.kind, p_phone: input.phone,
     p_morning: input.morning, p_evening: input.evening, p_rate: input.rate,
+    p_opening_balance: input.openingBalance, p_opening_date: input.openingDate,
   });
+  if (error) throw error;
+}
+
+export async function saveCustomerRate(customerId: string, rate: number, effectiveFrom: string) {
+  const { error } = await getSupabase().from("customer_rates").upsert(
+    { customer_id: customerId, rate, effective_from: effectiveFrom },
+    { onConflict: "customer_id,effective_from" },
+  );
   if (error) throw error;
 }

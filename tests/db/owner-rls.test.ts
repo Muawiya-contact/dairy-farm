@@ -37,6 +37,7 @@ test("only the designated owner can read or write farm data", async () => {
     await db.exec("update private.demo_access set enabled = true where id = 1");
     await db.exec(readFileSync(resolve(migrationDir, "20261012000008_live_app_data.sql"), "utf8"));
     await db.exec(readFileSync(resolve(migrationDir, "20261012000009_create_customer.sql"), "utf8"));
+    await db.exec(readFileSync(resolve(migrationDir, "20261012000010_customer_opening_balance.sql"), "utf8"));
     await db.exec("update private.demo_access set enabled = false where id = 1");
     await db.exec(`
       insert into auth.users (id) values ('${owner}'), ('${stranger}');
@@ -60,6 +61,7 @@ test("only the designated owner can read or write farm data", async () => {
     expect((await db.query("update settings set farm_name = 'Blocked' where id = 1 returning id")).rows).toEqual([]);
     expect((await db.query("select tag from animals")).rows).toEqual([]);
     await expect(db.exec("insert into animals (tag) values ('B-002')")).rejects.toThrow();
+    await expect(db.query("select public.create_customer('Blocked', 'regular', '', 0, 0, 150, 0, public.farm_today())")).rejects.toThrow();
 
     await db.exec("reset role; update private.demo_access set enabled = true where id = 1; set role anon");
     expect((await db.query("select id from settings")).rows).toEqual([{ id: 1 }]);
@@ -70,8 +72,10 @@ test("only the designated owner can read or write farm data", async () => {
     expect((await db.query("select tag from animals order by tag")).rows).toEqual([{ tag: "B-001" }, { tag: "B-002" }]);
     await db.exec("select public.save_milk_entry(public.farm_today(), 'morning', 10, 'total', '[]'::jsonb, '[]'::jsonb)");
     expect((await db.query("select total_litres from milk_shifts")).rows).toEqual([{ total_litres: "10.00" }]);
-    await db.exec("select public.create_customer('Test customer', 'regular', '', 1, 1, 150)");
-    expect((await db.query("select name from customers")).rows).toEqual([{ name: "Test customer" }]);
+    await db.exec("select public.create_customer('Test customer', 'regular', '', 1, 1, 150, 1250, public.farm_today() - 7)");
+    expect((await db.query("select name, opening_balance from customers")).rows).toEqual([{ name: "Test customer", opening_balance: "1250.00" }]);
+    const openingDay = (await db.query<{ day: string }>("select public.farm_today() - 7 as day")).rows[0].day;
+    expect((await db.query("select effective_from from customer_rates")).rows).toEqual([{ effective_from: openingDay }]);
 
     await db.exec("reset role; update private.demo_access set enabled = false where id = 1; set role anon");
     expect((await db.query("select id from settings")).rows).toEqual([]);

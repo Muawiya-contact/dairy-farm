@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { BookIcon, CanIcon, CowIcon, HomeIcon, WalletIcon } from "./icons";
 import { useQuery } from "@tanstack/react-query";
 import { getSettings } from "@/lib/settings";
+import { getSupabase } from "@/lib/supabase";
 
 const NAV = [
   { href: "/", label: "Home", Icon: HomeIcon },
@@ -47,12 +48,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="mt-auto px-3">
           <Link href="/settings/" className="mb-3 block text-sm font-semibold text-berseem underline">Settings</Link>
-          <p className="text-xs text-muted">Preview version. Zyada figures abhi dummy hain.</p>
+          {process.env.NEXT_PUBLIC_REQUIRE_AUTH === "true" && <button onClick={() => void getSupabase().auth.signOut()} className="mb-3 block text-sm font-semibold text-berseem underline">Sign out</button>}
+          <p className="text-xs text-muted">Data Supabase se aa raha hai.</p>
         </div>
       </aside>
 
       <main className="flex-1 pb-28 lg:pb-12">
-        <div className="flex justify-end gap-4 px-4 pt-2 lg:hidden"><Link href="/settings/" className="text-sm font-semibold text-berseem underline">Settings</Link></div>
+        <div className="flex justify-end gap-4 px-4 pt-2 lg:hidden"><Link href="/settings/" className="text-sm font-semibold text-berseem underline">Settings</Link>{process.env.NEXT_PUBLIC_REQUIRE_AUTH === "true" && <button onClick={() => void getSupabase().auth.signOut()} className="text-sm font-semibold text-berseem underline">Sign out</button>}</div>
         <div className="mx-auto w-full max-w-5xl">{children}</div>
       </main>
 

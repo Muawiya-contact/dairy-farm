@@ -49,6 +49,3 @@ export const StatusTag = ({ status }: { status: string }) => (
     {statusLabel[status] ?? status}
   </span>
 );
-
-// Kept while older preview screens are replaced in focused commits.
-export const Demo = () => <p className="px-4 pt-6 text-center text-xs text-muted sm:px-6 lg:hidden">Preview version. Sab figures dummy hain.</p>;

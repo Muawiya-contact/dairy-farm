@@ -56,3 +56,5 @@ The app is a static export (`out/` folder). `netlify.toml` is already set up.
 The preview does not use Supabase. The six migration files in `supabase/migrations/` prepare the database for later integration and preserve owner-only access. They can be applied in filename order through the Supabase CLI or GitHub integration when the authenticated app is ready. Do not paste the schema into the production SQL Editor, because that bypasses migration history.
 
 Anonymous visitors cannot access the farm tables. Do not add a service-role or secret key to the browser app or Git repository.
+
+For future work, see the [roadmap](docs/ROADMAP.md), [build guide](docs/BUILD-GUIDE.md), and [Step 1 foundation plan](docs/steps/step-1-foundation.md). The staging-only sample data is in `supabase/seed/dev-demo.sql`.

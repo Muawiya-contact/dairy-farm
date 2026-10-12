@@ -1,62 +1,43 @@
-# Dairy Farm App (preview)
+# Dairy Farm App
 
-The app opens without login. On Netlify Deploy Previews and branch deploys, Settings load from and save to the shared staging Supabase project. The dashboard, animals, milk, customer ledger, and expenses still show dummy records; their save buttons do not persist data yet. On the production site, Settings still use this browser's local storage until the owner-only live data flow is built.
-Language: Roman Urdu. Works on phone and laptop.
+A Roman Urdu dairy farm web app for phone and laptop. The dashboard, animals, milk shifts, customer accounts, expenses, and Settings read from Supabase. Entries save to Supabase and refresh the affected screens. The app contains no hardcoded farm dataset.
 
-Anyone with a staging preview link can edit its shared demo Settings without signing in. Use invented data there; production stays owner restricted.
+## Environments
+
+| Site | Supabase project | Access | Data |
+|---|---|---|---|
+| Netlify Deploy Preview / branch deploy | `dlirssfoazlxzyamsltv` | Shared preview link | Invented demo records |
+| Netlify production | `ylipnghdygpyqlptqazx` | Owner sign-in and row level security | Live records only |
+
+The preview and production databases are separate projects. There is no toggle in the browser for switching databases; Netlify selects the project at build time using `netlify.toml`. Anyone who has a preview link can change staging demo data, so never enter real client information there. Production requires the Supabase owner account and keeps anonymous table access disabled. The browser uses only publishable keys; do not put secret keys or database passwords in the app.
 
 ## Screens
 
-| Route | Screen |
-|---|---|
-| `/` | Dashboard: aaj ka doodh, aaj ka hisaab, munafa/nuqsaan (roz, mahana, saalana), janwar summary, alerts |
-| `/janwar/` | Janwar list with search and filters |
-| `/janwar/[id]/` | Janwar detail: info, 7 din ka doodh, mahana andaza, nasl kashi (auto delivery date), sehat ka record |
-| `/doodh/` | Doodh entry: subah/shaam, kul ya har janwar, customers ko diya, "sab roz jaisa", collection center |
-| `/khata/` | Customers with udhaar |
-| `/khata/[id]/` | Customer bill, register (bahi khata), wusooli, WhatsApp bill |
-| `/kharcha/` | Naya kharcha, category breakdown, har janwar ki bachat |
+- `/`: database backed milk, finance, herd and alert dashboard
+- `/janwar/`: search, add animal, details, health and breeding entries (`?id=<uuid>`)
+- `/doodh/`: morning and evening milk production, animal quantities and customer deliveries
+- `/khata/`: add customers, view database balances and bills, record payments, company bills, WhatsApp bill (`?id=<uuid>`)
+- `/kharcha/`: expense and profit report, categories, accounts and entries
+- `/settings/`: shared farm settings
 
-Only the Settings form saves. Its staging version writes to Supabase, while its production version uses local storage. The other forms remain demo interactions.
-
-## Where things are
-
-- `src/lib/mock-data.ts`: dummy data for the preview screens.
-- `supabase/migrations/`: database schema, reports, owner-only access rules, generic defaults, and the staging Settings demo switch.
-- `src/lib/supabase.ts`: browser client used by the staging Settings screen.
-- `src/lib/calc.ts`: all calculations (balances, sale, profit, delivery date, formatting).
-- `src/components/`: shared UI and the interactive parts.
-- Colors and fonts: `src/app/globals.css`.
+Animal and customer detail links use query parameters because Next.js static export cannot build pages for database IDs that do not exist at build time.
 
 ## Run locally
 
 ```bash
 npm install
+cp .env.example .env.local
 npm run dev
 ```
 
-Open http://localhost:3000
+Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `.env.local` to the staging project values from `netlify.toml`. Keep `.env.local` ignored. Open http://localhost:3000. To test the production project locally, also set `NEXT_PUBLIC_REQUIRE_AUTH=true` and use the production URL and publishable key.
 
 ## Deploy to Netlify
 
-The app is a static export (`out/` folder). `netlify.toml` is already set up.
+Import `Muawiya-contact/dairy-farm` from Git. Leave Base directory and Functions directory empty. The build command is `npm run build`; Publish directory is `out`. Netlify reads these values and the environment mapping from `netlify.toml`. The `out` folder is generated during the build and is intentionally absent from GitHub.
 
-**Option A, from GitHub (recommended):**
-1. Push this folder to a GitHub repo.
-2. Netlify → Add new site → Import from Git → pick the repo.
-3. Build settings fill in automatically from `netlify.toml` (command `npm run build`, publish `out`).
-4. Deploy. `netlify.toml` selects staging Supabase for Deploy Previews and branch deploys, and the client project for production. Only staging Settings currently use that database connection. The other screens still use mock data.
+## Database
 
-**Option B, drag and drop:**
-1. `npm run build`
-2. Drag the `out` folder onto https://app.netlify.com/drop
+Nine migrations in `supabase/migrations/` are recorded on both projects as of 2026-10-12. Apply future schema changes with the Supabase CLI so migration history stays in sync. Staging alone contains the invented records from `supabase/seed/dev-demo.sql`; production has no demo customers or animals. Database triggers and report functions calculate delivery amounts, customer balances and profit. The staging access switch is `private.demo_access.enabled = true`; production keeps it `false`.
 
-## Database setup
-
-All seven migration files in `supabase/migrations/` were applied through the Supabase CLI to both staging and production on 2026-10-12, with migration history recorded. Only staging was loaded with the invented `supabase/seed/dev-demo.sql` data; production has no demo customers or animals. Staging has `private.demo_access.enabled = true`, allowing anonymous read/update of its Settings row; production has the default `false`. Apply future schema changes through migrations so history stays in sync.
-
-Anonymous visitors cannot access the farm tables other than staging Settings. The staging preview is shared, so anyone with its link can change those demo settings. Do not add a service-role or secret key to the browser app or Git repository.
-
-For local staging Settings testing, set `NEXT_PUBLIC_SETTINGS_BACKEND=supabase` and the staging `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in an ignored `.env.local`. Without this flag, Settings use local storage.
-
-For future work, see the [roadmap](docs/ROADMAP.md), [build guide](docs/BUILD-GUIDE.md), and [Step 1 foundation plan](docs/steps/step-1-foundation.md). The staging-only sample data is in `supabase/seed/dev-demo.sql`.
+Run `npm run check` before pushing. The database tests use PGlite and cover owner access, staging preview access and demo data. The current project plan is in [docs/ROADMAP.md](docs/ROADMAP.md).

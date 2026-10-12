@@ -33,6 +33,7 @@ test("only the designated owner can read or write farm data", async () => {
       grant select, update on settings to anon;
     `);
     await db.exec(readFileSync(resolve(migrationDir, "20261011000006_restore_owner_policy.sql"), "utf8"));
+    await db.exec(readFileSync(resolve(migrationDir, "20261012000007_demo_settings.sql"), "utf8"));
     await db.exec(`
       insert into auth.users (id) values ('${owner}'), ('${stranger}');
       insert into private.app_owner (user_id) values ('${owner}');
@@ -51,7 +52,19 @@ test("only the designated owner can read or write farm data", async () => {
     await expect(db.query("select user_id from private.app_owner")).rejects.toThrow();
 
     await db.exec("set role anon");
-    await expect(db.query("select id from settings")).rejects.toThrow();
+    expect((await db.query("select id from settings")).rows).toEqual([]);
+    expect((await db.query("update settings set farm_name = 'Blocked' where id = 1 returning id")).rows).toEqual([]);
+    await expect(db.query("select tag from animals")).rejects.toThrow();
+
+    await db.exec("reset role; update private.demo_access set enabled = true where id = 1; set role anon");
+    expect((await db.query("select id from settings")).rows).toEqual([{ id: 1 }]);
+    await db.exec("update settings set farm_name = 'Shared Demo' where id = 1");
+    expect((await db.query("select farm_name from settings")).rows).toEqual([{ farm_name: "Shared Demo" }]);
+    await expect(db.query("select tag from animals")).rejects.toThrow();
+
+    await db.exec("reset role; update private.demo_access set enabled = false where id = 1; set role anon");
+    expect((await db.query("select id from settings")).rows).toEqual([]);
+    expect((await db.query("update settings set farm_name = 'Blocked' where id = 1 returning id")).rows).toEqual([]);
   } finally {
     await db.close();
   }

@@ -9,7 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "check": "npm test && npm run lint && tsc --noEmit && npm run build",
-    "db:types": "npx --yes supabase@2.120.0 gen types typescript --project-id dlirssfoazlxzyamsltv > src/lib/database.types.ts"
+    "db:types": "node scripts/generate-db-types.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",

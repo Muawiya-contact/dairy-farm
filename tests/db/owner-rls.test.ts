@@ -40,6 +40,12 @@ test("only the designated owner can read or write farm data", async () => {
     await db.exec(readFileSync(resolve(migrationDir, "20261012000010_customer_opening_balance.sql"), "utf8"));
     await db.exec(readFileSync(resolve(migrationDir, "20261012000011_health_event_expense.sql"), "utf8"));
     await db.exec(readFileSync(resolve(migrationDir, "20261013000012_farm_cash_active.sql"), "utf8"));
+    await db.exec(readFileSync(resolve(migrationDir, "20261013000013_close_animal.sql"), "utf8"));
+    await db.exec(readFileSync(resolve(migrationDir, "20261013000014_animal_exit_activity.sql"), "utf8"));
+    await db.exec(readFileSync(resolve(migrationDir, "20261013000015_guard_animal_history_edits.sql"), "utf8"));
+    await db.exec(readFileSync(resolve(migrationDir, "20261013000016_breeding_records.sql"), "utf8"));
+    await db.exec(readFileSync(resolve(migrationDir, "20261013000017_insemination_dry_date.sql"), "utf8"));
+    await db.exec(readFileSync(resolve(migrationDir, "20261013000018_guard_breeding_subjects.sql"), "utf8"));
     await db.exec("update private.demo_access set enabled = false where id = 1");
     await db.exec(`
       insert into auth.users (id) values ('${owner}'), ('${stranger}');
@@ -83,11 +89,49 @@ test("only the designated owner can read or write farm data", async () => {
     const category = (await db.query<{ id: string }>("select id from expense_categories where name = 'Dawai / vet'")).rows[0].id;
     const account = (await db.query<{ id: string }>("select id from accounts where is_farm_cash")).rows[0].id;
     const animal = (await db.query<{ id: string }>("select id from animals where tag = 'B-001'")).rows[0].id;
+    const breedingAnimal = (await db.query<{ id: string }>("insert into animals (tag) values ('B-003') returning id")).rows[0].id;
+    const breeding = (await db.query<{ id: string }>("insert into inseminations (animal_id, service_date, semen_name) values ($1, public.farm_today() - 270, 'Test bull') returning id", [breedingAnimal])).rows[0].id;
+    const male = (await db.query<{ id: string }>("insert into animals (tag, sex, category) values ('B-MALE', 'male', 'bull') returning id")).rows[0].id;
+    await expect(db.query("insert into inseminations (animal_id, service_date) values ($1, public.farm_today())", [male])).rejects.toThrow(/BREEDING_REQUIRES_FEMALE/);
+    await expect(db.query("insert into calvings (animal_id, calving_date) values ($1, public.farm_today())", [male])).rejects.toThrow(/BREEDING_REQUIRES_FEMALE/);
+    await expect(db.query("insert into inseminations (animal_id, service_date) values ($1, public.farm_today() + 1)", [breedingAnimal])).rejects.toThrow(/BREEDING_FUTURE_DATE/);
+    const otherFemale = (await db.query<{ id: string }>("insert into animals (tag) values ('B-004') returning id")).rows[0].id;
+    await expect(db.query("insert into calvings (animal_id, calving_date, insemination_id) values ($1, public.farm_today(), $2)", [otherFemale, breeding])).rejects.toThrow(/CALVING_INSEMINATION_MISMATCH/);
+    expect((await db.query("select semen_name, status, updated_at is not null as versioned from inseminations where id = $1", [breeding])).rows).toEqual([{ semen_name: "Test bull", status: "pending", versioned: true }]);
+    await expect(db.query("update inseminations set dry_off_date = public.farm_today() - 271 where id = $1", [breeding])).rejects.toThrow(/insem_dry_after_service/);
+    await db.query("update inseminations set dry_off_date = public.farm_today() - 10 where id = $1", [breeding]);
+    await expect(db.query("select public.record_calving($1, public.farm_today() - 271, 'alive')", [breeding])).rejects.toThrow(/CALVING_BEFORE_SERVICE/);
+    await expect(db.query("select public.record_calving($1, public.farm_today() + 1, 'alive')", [breeding])).rejects.toThrow(/CALVING_FUTURE_DATE/);
+    expect((await db.query("select count(*)::int as count from calvings")).rows).toEqual([{ count: 0 }]);
+    await db.query("select public.record_calving($1, public.farm_today(), 'alive')", [breeding]);
+    expect((await db.query("select c.outcome, i.status from calvings c join inseminations i on i.id = c.insemination_id where i.id = $1", [breeding])).rows).toEqual([{ outcome: "alive", status: "calved" }]);
+    await expect(db.query("select public.record_calving($1, public.farm_today(), 'alive')", [breeding])).rejects.toThrow(/BREEDING_NOT_OPEN/);
     await db.query("select public.record_health_event($1, public.farm_today(), 'treatment', 'Vet visit', 250, null, $2, $3)", [animal, category, account]);
     expect((await db.query("select h.cost, e.amount, h.expense_id = e.id as linked from health_events h join expenses e on e.id = h.expense_id")).rows).toEqual([{ cost: "250.00", amount: "250.00", linked: true }]);
     expect((await db.query("select farm_expenses, profit from public.pnl_month(public.farm_today())")).rows).toEqual([{ farm_expenses: "250.00", profit: "-250.00" }]);
     await expect(db.query("select public.record_health_event($1, public.farm_today(), 'treatment', 'Incomplete', 250, null, null, null)", [animal])).rejects.toThrow();
     expect((await db.query("select count(*)::int as count from health_events")).rows).toEqual([{ count: 1 }]);
+
+    await db.query("insert into health_events (animal_id, event_date, kind, title) values ($1, public.farm_today() - 1, 'checkup', 'Earlier checkup')", [animal]);
+    await expect(db.query("update animals set birth_date = public.farm_today() where id = $1", [animal])).rejects.toThrow(/ANIMAL_BIRTH_AFTER_ACTIVITY/);
+    const eveningShift = (await db.query<{ id: string }>("insert into milk_shifts (milk_date, shift, total_litres, mode) values (public.farm_today(), 'evening', 5, 'per_animal') returning id")).rows[0].id;
+    await db.query("insert into animal_milk (shift_id, animal_id, litres) values ($1, $2, 5)", [eveningShift, animal]);
+    await expect(db.query("update animals set sex = 'male', milking_status = 'none' where id = $1", [animal])).rejects.toThrow(/ANIMAL_HISTORY_SEX/);
+    expect((await db.query("select sex from animals where id = $1", [animal])).rows).toEqual([{ sex: "female" }]);
+
+    const invalidAccount = "33333333-3333-4333-8333-333333333333";
+    await expect(db.query("select public.close_animal($1, 'sold', public.farm_today() - 1, 'Too early', 12000, $2)", [animal, account])).rejects.toThrow(/EXIT_BEFORE_ACTIVITY/);
+    await expect(db.query("select public.close_animal($1, 'sold', public.farm_today(), 'Test sale', 12000, $2)", [animal, invalidAccount])).rejects.toThrow();
+    expect((await db.query("select life_status from animals where id = $1", [animal])).rows).toEqual([{ life_status: "active" }]);
+    await db.query("select public.close_animal($1, 'sold', public.farm_today(), 'Test sale', 12000, $2)", [animal, account]);
+    expect((await db.query("select life_status, sale_price, milking_status from animals where id = $1", [animal])).rows).toEqual([{ life_status: "sold", sale_price: "12000.00", milking_status: "none" }]);
+    expect((await db.query("select kind, amount, animal_id from other_income where animal_id = $1", [animal])).rows).toEqual([{ kind: "animal_sale", amount: "12000.00", animal_id: animal }]);
+    expect((await db.query("select other_income from public.pnl_month(public.farm_today())")).rows).toEqual([{ other_income: "12000.00" }]);
+    await expect(db.query("select public.close_animal($1, 'sold', public.farm_today(), null, 12000, $2)", [animal, account])).rejects.toThrow();
+    expect((await db.query("select count(*)::int as count from other_income where animal_id = $1", [animal])).rows).toEqual([{ count: 1 }]);
+    const otherAnimal = (await db.query<{ id: string }>("select id from animals where tag = 'B-002'")).rows[0].id;
+    await db.query("select public.close_animal($1, 'dead', public.farm_today(), 'Illness', null, null)", [otherAnimal]);
+    expect((await db.query("select life_status, exit_reason from animals where id = $1", [otherAnimal])).rows).toEqual([{ life_status: "dead", exit_reason: "Illness" }]);
 
     await db.exec("reset role; update private.demo_access set enabled = false where id = 1; set role anon");
     expect((await db.query("select id from settings")).rows).toEqual([]);

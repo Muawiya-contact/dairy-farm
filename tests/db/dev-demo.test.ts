@@ -2,6 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
+import { DATASETS } from "../../src/lib/export-data";
 
 let db: PGlite;
 
@@ -29,6 +30,12 @@ beforeAll(async () => {
     "20261012000010_customer_opening_balance.sql",
     "20261012000011_health_event_expense.sql",
     "20261013000012_farm_cash_active.sql",
+    "20261013000013_close_animal.sql",
+    "20261013000014_animal_exit_activity.sql",
+    "20261013000015_guard_animal_history_edits.sql",
+    "20261013000016_breeding_records.sql",
+    "20261013000017_insemination_dry_date.sql",
+    "20261013000018_guard_breeding_subjects.sql",
   ]) {
     await db.exec(readFileSync(resolve("supabase/migrations", name), "utf8"));
   }
@@ -38,6 +45,19 @@ beforeAll(async () => {
 afterAll(async () => { await db?.close(); });
 
 describe("staging demo seed", () => {
+  it("exports only real columns from every public data table", async () => {
+    const result = await db.query<{ table_name: string; column_name: string }>(`
+      select table_name, column_name from information_schema.columns
+      where table_schema = 'public'
+    `);
+    const actual = new Set(result.rows.map((row) => `${row.table_name}.${row.column_name}`));
+    for (const dataset of DATASETS) {
+      expect(actual.has(`${dataset.table}.${dataset.key}`), `${dataset.table} sort key`).toBe(true);
+      for (const column of dataset.columns) {
+        expect(actual.has(`${dataset.table}.${column}`), `${dataset.table}.${column}`).toBe(true);
+      }
+    }
+  });
   it("balances all 14 days of milk production and delivery", async () => {
     const { rows } = await db.query<{ produced: number; delivered: number }>(`
       select sum(total_litres) produced,

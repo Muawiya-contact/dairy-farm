@@ -46,6 +46,19 @@ body {
   border-radius: 6px;
 }
 
+@media print {
+  @page { size: A4 landscape; margin: 12mm; }
+  body { background: white; color: black; font-size: 11px; }
+  body:has(.print-report) aside,
+  body:has(.print-report) nav[aria-label="Main"],
+  body:has(.print-report) main > div:first-child,
+  body:has(.print-report) .no-print { display: none !important; }
+  body:has(.print-report) main { padding: 0 !important; }
+  body:has(.print-report) .print-report { max-width: none; padding: 0; }
+  .print-report .overflow-x-auto { overflow: visible !important; }
+  .print-report tr { break-inside: avoid; }
+}
+
 /* Bahi-khata page: blue rules + red margin line, like a real register */
 .ledger-page {
   background-color: #fff;

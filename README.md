@@ -38,7 +38,7 @@ Import `Muawiya-contact/dairy-farm` from Git. Leave Base directory and Functions
 
 ## Database
 
-Seventeen migrations in `supabase/migrations/` are recorded on both projects as of 2026-10-13. Apply future schema changes with the Supabase CLI so migration history stays in sync. Staging alone contains the invented records from `supabase/seed/dev-demo.sql`; no demo seed was applied to production. Database triggers and report functions calculate delivery amounts, customer balances and profit. The staging access switch is `private.demo_access.enabled = true`; production keeps it `false`.
+Eighteen migrations in `supabase/migrations/` are recorded on both projects as of 2026-10-13. Apply future schema changes with the Supabase CLI so migration history stays in sync. Staging alone contains the invented records from `supabase/seed/dev-demo.sql`; no demo seed was applied to production. Database triggers and report functions calculate delivery amounts, customer balances and profit. The staging access switch is `private.demo_access.enabled = true`; production keeps it `false`.
 
 The animal page records semen details, checkups and calving against existing Supabase tables. Settings offers CSV, Excel and PDF exports for all 19 public tables, a joined breeding register, and monthly customer, expense, milk and profit reports. It also offers an all-table JSON snapshot. The `/reports/` page displays a printable monthly report; browser print can save it as PDF. Export files are generated in the browser from the currently connected project and are not backups of Supabase users, storage or Auth configuration.
 

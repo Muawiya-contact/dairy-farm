@@ -35,6 +35,7 @@ beforeAll(async () => {
     "20261013000015_guard_animal_history_edits.sql",
     "20261013000016_breeding_records.sql",
     "20261013000017_insemination_dry_date.sql",
+    "20261013000018_guard_breeding_subjects.sql",
   ]) {
     await db.exec(readFileSync(resolve("supabase/migrations", name), "utf8"));
   }

@@ -55,6 +55,7 @@ body {
   body:has(.print-report) .no-print { display: none !important; }
   body:has(.print-report) main { padding: 0 !important; }
   body:has(.print-report) .print-report { max-width: none; padding: 0; }
+  .print-report .overflow-x-auto { overflow: visible !important; }
   .print-report tr { break-inside: avoid; }
 }
 

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "check": "npm test && npm run lint && tsc --noEmit && npm run build"
+    "check": "npm test && npm run lint && tsc --noEmit && npm run build",
+    "db:types": "node scripts/generate-db-types.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",

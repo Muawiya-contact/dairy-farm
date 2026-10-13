@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { friendlyError } from "@/lib/errors";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -195,7 +196,7 @@ export default function FarmCustomers() {
       setSuccess(message);
       return true;
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : String(saveError));
+      setError(friendlyError(saveError));
       return false;
     } finally {
       setBusy(false);

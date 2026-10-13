@@ -3,7 +3,7 @@
 This adapts the supplied `step-1-foundation.md`. It records the original
 foundation plan and the current database setup.
 
-Database status on 2026-10-12: eleven migrations are recorded in both hosted
+Database status on 2026-10-13: twelve migrations are recorded in both hosted
 projects. The staging seed contains invented records. Staging preview visitors
 can read and edit shared demo records; production remains owner restricted.
 All current app screens use Supabase.
@@ -14,7 +14,7 @@ All current app screens use Supabase.
    account. Keep the existing `dairy` project reserved for real client data.
 2. Dry-run and apply the files in `supabase/migrations/` to staging first, then
    production, using the Supabase CLI so migration history is recorded. The
-   current sequence is `20261011000001` through `20261012000011`; the defaults
+   current sequence is `20261011000001` through `20261013000012`; the defaults
    are already in migration `000004`. There is no `base.sql` in this repository.
 3. On the fresh staging project, run `supabase/seed/dev-demo.sql` once with
    `supabase db query --linked --project-ref dlirssfoazlxzyamsltv --file supabase/seed/dev-demo.sql`.
@@ -35,15 +35,30 @@ leave migration history out of sync.
   error messages with unit tests.
 - Centralize visible UI text and add typed data-access functions. Keep money
   balances and reports in Postgres rather than recomputing them in screens.
-- The owner approved a no-login, shared staging demo. Only staging Settings have
-  anonymous read/update access; decide production authentication before wiring
-  live client data.
+- The owner approved a no-login, shared staging demo. Staging screens have
+  anonymous access to invented data; decide production authentication before
+  wiring live client data.
 - Settings are connected in staging. Replace mock data one screen at a time.
   Keep the static export and its Netlify preview working throughout.
 - For database-backed detail pages, use query parameters instead of dynamic
   path segments that static export cannot enumerate.
 
-Current verification: `npm run check` passes, staging screens load shared demo
-records, and browser milk entries save to staging. Anonymous production access
-is denied. Owner login has not been exercised end-to-end because the owner
-password is not available to this task.
+Current verification: 26 tests, lint and typecheck pass. The static build passes
+with normal process access. Staging reads shared demo records; anonymous
+production access is denied. Owner login has not been exercised end-to-end
+because the owner password is not available to this task.
+
+## Foundation implementation
+
+- `src/lib/dates.ts`, `format.ts` and `errors.ts` provide tested Pakistan dates,
+  number parsing, and readable save/load errors.
+- `src/lib/database.types.ts` is generated from staging. The Supabase client,
+  Settings and Accounts data functions use it. Refresh with `npm run db:types`.
+- Settings can edit breeding offsets and account names, opening balances/dates,
+  and active status. `20261013000012_farm_cash_active.sql` prevents turning off
+  Farm galla in either database; it is recorded on both projects.
+- `.github/workflows/check.yml` runs tests, lint, typecheck and static build.
+- The original login tasks are deferred by the owner's later shared-staging
+  decision. The broad UI-text extraction and shared dialog/toast components
+  remain future cleanup; current screens have their own status and error
+  elements.

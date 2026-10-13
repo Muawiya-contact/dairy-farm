@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { amount, insertRow, longDate, money, shortDate, useFarmData } from "@/lib/farm-data";
+import { friendlyError } from "@/lib/errors";
 import { Body, PageHeader, Panel } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
 
@@ -19,7 +20,7 @@ export default function FarmExpenses() {
   const run = async (fn: () => Promise<void>, label: string) => {
     setBusy(true); setError(""); setSuccess("");
     try { await fn(); await qc.invalidateQueries({ queryKey: ["farm-data"] }); setSuccess(`${label} Supabase mein save ho gaya.`); }
-    catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    catch (e) { setError(friendlyError(e)); }
     finally { setBusy(false); }
   };
   const month = d.today.slice(0,7);

@@ -1054,6 +1054,17 @@ export type Database = {
           opening: number
         }[]
       }
+      close_animal: {
+        Args: {
+          p_account_id: string
+          p_animal_id: string
+          p_exit_date: string
+          p_reason: string
+          p_sale_price: number
+          p_status: string
+        }
+        Returns: string
+      }
       create_customer: {
         Args: {
           p_evening: number

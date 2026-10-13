@@ -40,6 +40,8 @@ test("only the designated owner can read or write farm data", async () => {
     await db.exec(readFileSync(resolve(migrationDir, "20261012000010_customer_opening_balance.sql"), "utf8"));
     await db.exec(readFileSync(resolve(migrationDir, "20261012000011_health_event_expense.sql"), "utf8"));
     await db.exec(readFileSync(resolve(migrationDir, "20261013000012_farm_cash_active.sql"), "utf8"));
+    await db.exec(readFileSync(resolve(migrationDir, "20261013000013_close_animal.sql"), "utf8"));
+    await db.exec(readFileSync(resolve(migrationDir, "20261013000014_animal_exit_activity.sql"), "utf8"));
     await db.exec("update private.demo_access set enabled = false where id = 1");
     await db.exec(`
       insert into auth.users (id) values ('${owner}'), ('${stranger}');
@@ -88,6 +90,20 @@ test("only the designated owner can read or write farm data", async () => {
     expect((await db.query("select farm_expenses, profit from public.pnl_month(public.farm_today())")).rows).toEqual([{ farm_expenses: "250.00", profit: "-250.00" }]);
     await expect(db.query("select public.record_health_event($1, public.farm_today(), 'treatment', 'Incomplete', 250, null, null, null)", [animal])).rejects.toThrow();
     expect((await db.query("select count(*)::int as count from health_events")).rows).toEqual([{ count: 1 }]);
+
+    const invalidAccount = "33333333-3333-4333-8333-333333333333";
+    await expect(db.query("select public.close_animal($1, 'sold', public.farm_today() - 1, 'Too early', 12000, $2)", [animal, account])).rejects.toThrow(/EXIT_BEFORE_ACTIVITY/);
+    await expect(db.query("select public.close_animal($1, 'sold', public.farm_today(), 'Test sale', 12000, $2)", [animal, invalidAccount])).rejects.toThrow();
+    expect((await db.query("select life_status from animals where id = $1", [animal])).rows).toEqual([{ life_status: "active" }]);
+    await db.query("select public.close_animal($1, 'sold', public.farm_today(), 'Test sale', 12000, $2)", [animal, account]);
+    expect((await db.query("select life_status, sale_price, milking_status from animals where id = $1", [animal])).rows).toEqual([{ life_status: "sold", sale_price: "12000.00", milking_status: "none" }]);
+    expect((await db.query("select kind, amount, animal_id from other_income where animal_id = $1", [animal])).rows).toEqual([{ kind: "animal_sale", amount: "12000.00", animal_id: animal }]);
+    expect((await db.query("select other_income from public.pnl_month(public.farm_today())")).rows).toEqual([{ other_income: "12000.00" }]);
+    await expect(db.query("select public.close_animal($1, 'sold', public.farm_today(), null, 12000, $2)", [animal, account])).rejects.toThrow();
+    expect((await db.query("select count(*)::int as count from other_income where animal_id = $1", [animal])).rows).toEqual([{ count: 1 }]);
+    const otherAnimal = (await db.query<{ id: string }>("select id from animals where tag = 'B-002'")).rows[0].id;
+    await db.query("select public.close_animal($1, 'dead', public.farm_today(), 'Illness', null, null)", [otherAnimal]);
+    expect((await db.query("select life_status, exit_reason from animals where id = $1", [otherAnimal])).rows).toEqual([{ life_status: "dead", exit_reason: "Illness" }]);
 
     await db.exec("reset role; update private.demo_access set enabled = false where id = 1; set role anon");
     expect((await db.query("select id from settings")).rows).toEqual([]);

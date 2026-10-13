@@ -5,6 +5,7 @@ import { getSupabase } from "./supabase";
 import { getSettings, type FarmSettings } from "./settings";
 import { formatDay, todayPK } from "./dates";
 import { rs } from "./format";
+import type { Database } from "./database.types";
 
 export type Animal = {
   id: string; tag: string; name: string | null; species: "cow" | "buffalo";
@@ -47,7 +48,11 @@ export const farmToday = todayPK;
 export const shortDate = (iso: string) => formatDay(iso).replace(/ \d{4}$/, "");
 export const longDate = formatDay;
 
-async function allRows<T>(table: string, key = "id"): Promise<T[]> {
+type Table = keyof Database["public"]["Tables"];
+type View = keyof Database["public"]["Views"];
+type Report = "customer_month_report" | "herd_alerts" | "pnl_month";
+
+async function allRows<T>(table: Table, key = "id"): Promise<T[]> {
   const result: T[] = [];
   for (let from = 0; ; from += 1000) {
     const { data, error } = await getSupabase().from(table).select("*").order(key).range(from, from + 999);
@@ -57,8 +62,18 @@ async function allRows<T>(table: string, key = "id"): Promise<T[]> {
   }
 }
 
-async function report<T>(name: string, args: Record<string, string>): Promise<T[]> {
-  const { data, error } = await getSupabase().rpc(name, args);
+async function allViewRows<T>(view: View, key: string): Promise<T[]> {
+  const result: T[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await getSupabase().from(view).select("*").order(key).range(from, from + 999);
+    if (error) throw error;
+    result.push(...((data ?? []) as T[]));
+    if (!data || data.length < 1000) return result;
+  }
+}
+
+async function report<T>(name: Report, args: Record<string, string>): Promise<T[]> {
+  const { data, error } = await getSupabase().rpc(name, args as { p_month: string; p_today: string });
   if (error) throw error;
   return (data ?? []) as T[];
 }
@@ -69,7 +84,7 @@ export async function loadFarmData(): Promise<FarmData> {
   const [settings, animals, animalStatus, health, inseminations, animalMilk,
     customers, rates, shifts, deliveries, payments, categories, expenses, accounts,
     companyBills, otherIncome, reports, balances, alerts, pnl] = await Promise.all([
-    getSettings(), allRows<Animal>("animals"), allRows<AnimalStatus>("animal_status"),
+    getSettings(), allRows<Animal>("animals"), allViewRows<AnimalStatus>("animal_status", "id"),
     allRows<HealthEvent>("health_events"), allRows<Insemination>("inseminations"),
     allRows<AnimalMilk>("animal_milk"), allRows<Customer>("customers"),
     allRows<CustomerRate>("customer_rates"), allRows<MilkShift>("milk_shifts"),
@@ -77,7 +92,7 @@ export async function loadFarmData(): Promise<FarmData> {
     allRows<ExpenseCategory>("expense_categories"), allRows<Expense>("expenses"),
     allRows<Account>("accounts"), allRows<CompanyBill>("company_bills"),
     allRows<OtherIncome>("other_income"), report<CustomerReport>("customer_month_report", { p_month: today }),
-    allRows<CustomerBalance>("customer_balances", "customer_id"), report<HerdAlert>("herd_alerts", { p_today: today }),
+    allViewRows<CustomerBalance>("customer_balances", "customer_id"), report<HerdAlert>("herd_alerts", { p_today: today }),
     Promise.all(months.map(async (month) => ({ month, data: (await report<Pnl>("pnl_month", { p_month: month }))[0] }))),
   ]);
   return { today, settings, animals, animalStatus, health, inseminations, animalMilk,
@@ -102,8 +117,12 @@ export async function saveMilkEntry(input: { date: string; shift: "morning" | "e
   if (error) throw error;
 }
 
-export async function insertRow(table: string, value: Record<string, unknown>) {
-  const { error } = await getSupabase().from(table).insert(value);
+type InsertValue<K extends Table> = K extends "inseminations"
+  ? Omit<Database["public"]["Tables"]["inseminations"]["Insert"], "calving_due" | "checkup_due" | "dry_off_due" | "ultrasound_due">
+  : Database["public"]["Tables"][K]["Insert"];
+
+export async function insertRow<K extends Table>(table: K, value: InsertValue<K>) {
+  const { error } = await getSupabase().from(table).insert(value as never);
   if (error) throw error;
 }
 
@@ -128,10 +147,12 @@ export async function recordHealthEvent(input: {
   animalId: string; date: string; kind: string; title: string;
   cost: number; nextDueDate: string | null; categoryId: string | null; accountId: string | null;
 }) {
-  const { error } = await getSupabase().rpc("record_health_event", {
+  const args = {
     p_animal_id: input.animalId, p_event_date: input.date, p_kind: input.kind,
     p_title: input.title, p_cost: input.cost, p_next_due_date: input.nextDueDate,
     p_category_id: input.categoryId, p_account_id: input.accountId,
-  });
+  };
+  // PostgreSQL accepts NULL for optional event details, although typegen marks RPC args as strings.
+  const { error } = await getSupabase().rpc("record_health_event", args as unknown as Database["public"]["Functions"]["record_health_event"]["Args"]);
   if (error) throw error;
 }

@@ -15,6 +15,7 @@ export type Animal = {
   milking_status: "milking" | "dry" | "none";
   life_status: "active" | "sold" | "dead"; exit_date: string | null;
   exit_reason: string | null; sale_price: number | null; notes: string | null;
+  updated_at: string;
 };
 export type AnimalStatus = { id: string; breeding_status: string; service_date: string | null; calving_due: string | null };
 export type HealthEvent = { id: string; animal_id: string; event_date: string; kind: string; title: string; notes: string | null; cost: number; next_due_date: string | null };
@@ -128,10 +129,10 @@ export async function insertRow<K extends Table>(table: K, value: InsertValue<K>
   if (error) throw error;
 }
 
-export async function updateAnimal(id: string, value: Database["public"]["Tables"]["animals"]["Update"]) {
-  const { data, error } = await getSupabase().from("animals").update(value).eq("id", id).eq("life_status", "active").select("id").maybeSingle();
+export async function updateAnimal(id: string, version: string, value: Database["public"]["Tables"]["animals"]["Update"]) {
+  const { data, error } = await getSupabase().from("animals").update(value).eq("id", id).eq("life_status", "active").eq("updated_at", version).select("id").maybeSingle();
   if (error) throw error;
-  if (!data) throw new Error("Sirf active janwar ki maloomat badli ja sakti hai.");
+  if (!data) throw new Error("ANIMAL_STALE");
 }
 
 export async function closeAnimal(input: {

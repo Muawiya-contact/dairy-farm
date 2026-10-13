@@ -18,7 +18,7 @@ The staging and real-data databases are separate projects. During the demo phase
 - `/doodh/`: morning and evening milk production, animal quantities and customer deliveries
 - `/khata/`: add customers, view database balances and bills, record payments, company bills, WhatsApp bill (`?id=<uuid>`)
 - `/kharcha/`: expense and profit report, categories, accounts and entries
-- `/settings/`: shared farm settings
+- `/settings/`: shared farm settings, breeding-day offsets and account controls
 
 Animal and customer detail links use query parameters because Next.js static export cannot build pages for database IDs that do not exist at build time.
 
@@ -38,6 +38,8 @@ Import `Muawiya-contact/dairy-farm` from Git. Leave Base directory and Functions
 
 ## Database
 
-Eleven migrations in `supabase/migrations/` are recorded on both projects as of 2026-10-12. Apply future schema changes with the Supabase CLI so migration history stays in sync. Staging alone contains the invented records from `supabase/seed/dev-demo.sql`; production has no demo customers or animals. Database triggers and report functions calculate delivery amounts, customer balances and profit. The staging access switch is `private.demo_access.enabled = true`; production keeps it `false`.
+Twelve migrations in `supabase/migrations/` are recorded on both projects as of 2026-10-13. Apply future schema changes with the Supabase CLI so migration history stays in sync. Staging alone contains the invented records from `supabase/seed/dev-demo.sql`; production has no demo customers or animals. Database triggers and report functions calculate delivery amounts, customer balances and profit. The staging access switch is `private.demo_access.enabled = true`; production keeps it `false`.
+
+`npm run db:types` refreshes TypeScript database types from staging. It requires Supabase CLI login. CI runs tests, lint, typecheck and the static export build on pushes and pull requests.
 
 Run `npm run check` before pushing. The database tests use PGlite and cover owner access, staging preview access and demo data. The current project plan is in [docs/ROADMAP.md](docs/ROADMAP.md).

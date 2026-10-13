@@ -26,8 +26,9 @@ client sheets, and the claimed larger test suite were not included. See
 Use **two Supabase projects** for this farm: a staging project with invented
 records and a separate project reserved for real client data. Keep schema
 changes in versioned migrations and apply the same migrations to both projects
-at their appropriate release stages. Netlify Deploy Previews use staging for
-every screen, while the production build uses the owner-restricted project.
+at their appropriate release stages. During the demo phase, both the Netlify
+main site and Deploy Previews use staging for every screen. The separate
+real-data project stays owner restricted until a planned live-data release.
 
 Staging is disposable; production is not. Do not copy real customer, animal,
 or financial records into staging. Never put a secret/service-role key in the

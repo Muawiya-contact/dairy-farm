@@ -14,15 +14,16 @@ All current app screens use Supabase.
    account. Keep the existing `dairy` project reserved for real client data.
 2. Dry-run and apply the files in `supabase/migrations/` to staging first, then
    production, using the Supabase CLI so migration history is recorded. The
-   current sequence is `20261011000001` through `20261012000009`; the defaults
+   current sequence is `20261011000001` through `20261012000011`; the defaults
    are already in migration `000004`. There is no `base.sql` in this repository.
 3. On the fresh staging project, run `supabase/seed/dev-demo.sql` once with
    `supabase db query --linked --project-ref dlirssfoazlxzyamsltv --file supabase/seed/dev-demo.sql`.
    The seed uses relative farm dates and is not idempotent. Never run it against
    the project holding client data.
 4. Verify that anonymous requests cannot read production farm tables. Set
-   `private.demo_access.enabled = true` in staging only. The Netlify preview
-   uses that project for every screen; production requires owner sign-in.
+   `private.demo_access.enabled = true` in staging only. During the demo phase,
+   Netlify's main site and previews use staging; the real-data project still
+   requires owner sign-in.
 
 Do not use `supabase db reset --linked` for the client-data project: it deletes
 remote data. Do not paste schema migrations into SQL Editor, because that would

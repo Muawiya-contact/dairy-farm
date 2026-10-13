@@ -6,10 +6,10 @@ A Roman Urdu dairy farm web app for phone and laptop. The dashboard, animals, mi
 
 | Site | Supabase project | Access | Data |
 |---|---|---|---|
-| Netlify Deploy Preview / branch deploy | `dlirssfoazlxzyamsltv` | Shared preview link | Invented demo records |
-| Netlify production | `ylipnghdygpyqlptqazx` | Owner sign-in and row level security | Live records only |
+| Netlify main site / Deploy Preview / branch deploy | `dlirssfoazlxzyamsltv` | Shared demo, no sign-in | Invented demo records |
+| Reserved Supabase project for real data | `ylipnghdygpyqlptqazx` | Owner sign-in and row level security | Live records only |
 
-The preview and production databases are separate projects. There is no toggle in the browser for switching databases; Netlify selects the project at build time using `netlify.toml`. Anyone who has a preview link can change staging demo data, so never enter real client information there. Production requires the Supabase owner account and keeps anonymous table access disabled. The browser uses only publishable keys; do not put secret keys or database passwords in the app.
+The staging and real-data databases are separate projects. During the demo phase, every Netlify deploy, including the main site, uses staging through `netlify.toml`. Anyone with the main site or a preview link can change staging demo data, so never enter real client information there. The reserved real-data project still requires the Supabase owner account and keeps anonymous table access disabled. There is no browser toggle between databases. The browser uses only publishable keys; do not put secret keys or database passwords in the app.
 
 ## Screens
 

@@ -17,6 +17,10 @@ export const breedingFields = [
 export function validateSettings(input: Omit<FarmSettings, "id">): string | null {
   if (!input.farm_name.trim()) return "Farm ka naam likhein.";
   if (!Number.isFinite(input.default_milk_rate) || input.default_milk_rate <= 0) return "Doodh ka rate zero se zyada likhein.";
+  if (input.default_milk_rate > 99_999_999.99 ||
+      Math.abs(input.default_milk_rate * 100 - Math.round(input.default_milk_rate * 100)) > 1e-6) {
+    return "Doodh ka rate 2 decimal tak aur 10 crore se kam likhein.";
+  }
   for (const field of breedingFields) {
     const value = input[field.key];
     if (!Number.isInteger(value) || value < field.min || value > field.max) {

@@ -12,5 +12,7 @@ it("validates the breeding ranges before saving", () => {
   expect(validateSettings({ ...settings, calving_days: 199 })).toContain("Bachha");
   expect(validateSettings({ ...settings, fresh_days: 201 })).toContain("Fresh");
   expect(validateSettings({ ...settings, default_milk_rate: 0 })).toContain("rate");
+  expect(validateSettings({ ...settings, default_milk_rate: 12.345 })).toContain("2 decimal");
+  expect(validateSettings({ ...settings, default_milk_rate: 100_000_000 })).toContain("10 crore");
   expect(validateSettings({ ...settings, farm_name: " " })).toContain("naam");
 });

@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getSupabase } from "./supabase";
 import { getSettings, type FarmSettings } from "./settings";
+import { formatDay, todayPK } from "./dates";
 
 export type Animal = {
   id: string; tag: string; name: string | null; species: "cow" | "buffalo";
@@ -41,13 +42,9 @@ export type FarmData = {
 
 export const money = (value: number | null | undefined) => `Rs ${Math.round(Number(value) || 0).toLocaleString("en-IN")}`;
 export const amount = (value: number | string | null | undefined) => Number(value) || 0;
-export const farmToday = () => {
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Karachi", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
-  const part = (kind: string) => parts.find((p) => p.type === kind)?.value ?? "";
-  return `${part("year")}-${part("month")}-${part("day")}`;
-};
-export const shortDate = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-export const longDate = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+export const farmToday = todayPK;
+export const shortDate = (iso: string) => formatDay(iso).replace(/ \d{4}$/, "");
+export const longDate = formatDay;
 
 async function allRows<T>(table: string, key = "id"): Promise<T[]> {
   const result: T[] = [];

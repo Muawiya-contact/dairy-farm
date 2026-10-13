@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { amount, longDate, money, shortDate, useFarmData } from "@/lib/farm-data";
+import { addDays, monthStart } from "@/lib/dates";
 import { Body, Panel } from "./ui";
 import { BellIcon, PlusIcon } from "./icons";
 import MilkCan from "./MilkCan";
@@ -20,15 +21,14 @@ export default function FarmDashboard() {
   const shifts = d.shifts.filter((s) => s.milk_date === d.today);
   const morning = amount(shifts.find((s) => s.shift === "morning")?.total_litres);
   const evening = amount(shifts.find((s) => s.shift === "evening")?.total_litres);
-  const yesterday = new Date(`${d.today}T12:00:00`); yesterday.setDate(yesterday.getDate() - 1);
-  const yDate = yesterday.toISOString().slice(0, 10);
+  const yDate = addDays(d.today, -1);
   const yMilk = d.shifts.filter((s) => s.milk_date === yDate).reduce((n, s) => n + amount(s.total_litres), 0);
   const sale = d.deliveries.filter((x) => x.delivery_date === d.today).reduce((n, x) => n + amount(x.amount), 0)
     + d.companyBills.filter((x) => x.to_date === d.today).reduce((n, x) => n + amount(x.amount), 0)
     + d.otherIncome.filter((x) => x.income_date === d.today).reduce((n, x) => n + amount(x.amount), 0);
   const expense = d.expenses.filter((x) => x.expense_date === d.today && d.categories.find((c) => c.id === x.category_id)?.is_farm_cost).reduce((n, x) => n + amount(x.amount), 0);
   const active = d.animals.filter((a) => a.life_status === "active");
-  const monthStart = `${d.today.slice(0, 7)}-01`;
+  const firstDay = monthStart(d.today);
   const days = Array.from({ length: Number(d.today.slice(8)) }, (_, i) => `${d.today.slice(0, 8)}${String(i + 1).padStart(2, "0")}`);
   const daily = days.map((date) => ({ label: String(Number(date.slice(8))), note: shortDate(date), value:
     d.deliveries.filter((x) => x.delivery_date === date).reduce((n, x) => n + amount(x.amount), 0)
@@ -36,7 +36,7 @@ export default function FarmDashboard() {
     + d.otherIncome.filter((x) => x.income_date === date).reduce((n, x) => n + amount(x.amount), 0)
     - d.expenses.filter((x) => x.expense_date === date && d.categories.find((c) => c.id === x.category_id)?.is_farm_cost).reduce((n, x) => n + amount(x.amount), 0),
   }));
-  const monthly = d.monthlyPnl.map((x) => ({ label: new Date(`${x.month}T00:00:00`).toLocaleDateString("en-GB", { month: "short" }), value: amount(x.data?.profit) }));
+  const monthly = d.monthlyPnl.map((x) => ({ label: longDate(x.month).split(" ")[1], value: amount(x.data?.profit) }));
   const yearSales = d.monthlyPnl.reduce((n, x) => n + amount(x.data?.total_income), 0);
   const yearExpenses = d.monthlyPnl.reduce((n, x) => n + amount(x.data?.farm_expenses), 0);
   const delivered = d.deliveries.filter((x) => x.delivery_date === d.today).reduce((n, x) => n + amount(x.litres), 0);
@@ -52,7 +52,7 @@ export default function FarmDashboard() {
         <dl className="mt-5 flex gap-6"><div><dt className="text-[14px] text-[#cfe3cf]">Subah</dt><dd className="font-display text-[24px] font-bold tnum">{morning} L</dd></div><div><dt className="text-[14px] text-[#cfe3cf]">Shaam</dt><dd className="font-display text-[24px] font-bold tnum">{evening} L</dd></div></dl>
       </div><MilkCan morning={morning} evening={evening} /></div></section>
       <Panel title="Aaj ka hisaab"><dl className="divide-y divide-line"><div className="flex justify-between py-2.5"><dt>Kamai</dt><dd className="font-bold tnum">{money(sale)}</dd></div><div className="flex justify-between py-2.5"><dt>Farm kharcha</dt><dd className="font-bold tnum">{money(expense)}</dd></div><div className="flex justify-between py-2.5"><dt>Munafa</dt><dd className="font-bold tnum">{money(sale - expense)}</dd></div></dl><div className="mt-3 grid grid-cols-2 gap-2"><Link href="/doodh/" className="flex min-h-12 items-center justify-center gap-1 rounded-xl bg-berseem font-semibold text-white"><PlusIcon width={18} />Doodh</Link><Link href="/kharcha/" className="flex min-h-12 items-center justify-center gap-1 rounded-xl border border-berseem font-semibold text-berseem"><PlusIcon width={18} />Kharcha</Link></div></Panel>
-      <div className="lg:col-span-2"><ProfitChart daily={daily} monthly={monthly} dailyLabel={`${shortDate(monthStart)} se ${shortDate(d.today)}`} monthlyLabel={`${d.today.slice(0, 4)}, January se ab tak`} year={{ label: `${d.today.slice(0, 4)}, January se ab tak`, sales: yearSales, expenses: yearExpenses }} /></div>
+      <div className="lg:col-span-2"><ProfitChart daily={daily} monthly={monthly} dailyLabel={`${shortDate(firstDay)} se ${shortDate(d.today)}`} monthlyLabel={`${d.today.slice(0, 4)}, January se ab tak`} year={{ label: `${d.today.slice(0, 4)}, January se ab tak`, sales: yearSales, expenses: yearExpenses }} /></div>
       <div className="grid gap-4"><Panel title={`Janwar (${active.length})`} aside={<Link href="/janwar/" className="text-sm font-semibold text-berseem underline">Sab dekhein</Link>}><dl className="grid grid-cols-2 gap-3">{[["Doodh de rahe", active.filter((a) => a.milking_status === "milking").length],["Gaabhan", d.animalStatus.filter((s) => active.some((a) => a.id === s.id) && s.breeding_status === "pregnant").length],["Khushk", active.filter((a) => a.milking_status === "dry").length],["Bachay", active.filter((a) => a.category === "calf").length]].map(([label,value]) => <div key={label}><dt className="text-sm text-muted">{label}</dt><dd className="font-display text-2xl font-bold tnum">{value}</dd></div>)}</dl></Panel>
         <section id="alerts" className="rounded-2xl border border-line bg-paper p-4"><h2 className="font-display text-[17px] font-bold">Tawajju dein</h2>{d.alerts.length ? <ul className="mt-2 divide-y divide-line">{d.alerts.map((a, i) => <li key={`${a.animal_id}-${a.alert_kind}-${i}`}><Link href={`/janwar/?id=${a.animal_id}`} className="block py-2 text-sm hover:text-berseem">{a.message}</Link></li>)}</ul> : <p className="mt-2 text-sm text-muted">Abhi koi alert nahi.</p>}</section></div>
       <p className="text-sm text-muted lg:col-span-3">Aaj {delivered} litre customers ko diya gaya.</p>

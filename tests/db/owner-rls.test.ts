@@ -39,6 +39,7 @@ test("only the designated owner can read or write farm data", async () => {
     await db.exec(readFileSync(resolve(migrationDir, "20261012000009_create_customer.sql"), "utf8"));
     await db.exec(readFileSync(resolve(migrationDir, "20261012000010_customer_opening_balance.sql"), "utf8"));
     await db.exec(readFileSync(resolve(migrationDir, "20261012000011_health_event_expense.sql"), "utf8"));
+    await db.exec(readFileSync(resolve(migrationDir, "20261013000012_farm_cash_active.sql"), "utf8"));
     await db.exec("update private.demo_access set enabled = false where id = 1");
     await db.exec(`
       insert into auth.users (id) values ('${owner}'), ('${stranger}');
@@ -47,6 +48,7 @@ test("only the designated owner can read or write farm data", async () => {
       set request.jwt.claim.sub = '${owner}';
     `);
     expect((await db.query("select id from settings")).rows).toEqual([{ id: 1 }]);
+    await expect(db.exec("update accounts set active = false where is_farm_cash")).rejects.toThrow(/accounts_farm_cash_active/);
     await db.exec("insert into animals (tag) values ('B-001')");
     expect((await db.query("select tag from animals")).rows).toEqual([{ tag: "B-001" }]);
 

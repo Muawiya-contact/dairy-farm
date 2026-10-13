@@ -12,6 +12,7 @@ describe("friendly database errors", () => {
     expect(friendlyError(new TypeError("Failed to fetch"))).toContain("Internet nahi");
     expect(friendlyError({ status: 503, message: "Service unavailable" })).toContain("Database so raha");
     expect(friendlyError({ status: 401 })).toContain("Dobara login");
+    expect(friendlyError(new Error("Supabase URL aur publishable key set nahi hain."))).toContain("settings missing");
   });
 
   it("hides unknown database details and logs once", () => {

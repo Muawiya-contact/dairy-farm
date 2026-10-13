@@ -1,4 +1,5 @@
 const messages: [RegExp, string][] = [
+  [/Supabase URL aur publishable key set nahi hain/i, "App ki Supabase settings missing hain. Site admin se rabta karein."],
   [/MONTH_LOCKED/i, "Yeh maheena band hai. Settings mein ja kar kholein."],
   [/RATE_MISSING/i, "Is customer ka rate set nahi. Pehle rate likhein."],
   [/FREE_CUSTOMER/i, "Muft doodh wale se wusooli nahi hoti."],

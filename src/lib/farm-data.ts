@@ -11,8 +11,10 @@ export type Animal = {
   id: string; tag: string; name: string | null; species: "cow" | "buffalo";
   breed: string | null; sex: "female" | "male"; category: "cow" | "heifer" | "calf" | "bull";
   birth_date: string | null; mother_id: string | null; purchase_date: string | null;
-  purchase_price: number | null; milking_status: "milking" | "dry" | "none";
-  life_status: "active" | "sold" | "dead"; notes: string | null;
+  purchase_price: number | null; source: "born" | "purchased"; sire: string | null;
+  milking_status: "milking" | "dry" | "none";
+  life_status: "active" | "sold" | "dead"; exit_date: string | null;
+  exit_reason: string | null; sale_price: number | null; notes: string | null;
 };
 export type AnimalStatus = { id: string; breeding_status: string; service_date: string | null; calving_due: string | null };
 export type HealthEvent = { id: string; animal_id: string; event_date: string; kind: string; title: string; notes: string | null; cost: number; next_due_date: string | null };
@@ -123,6 +125,25 @@ type InsertValue<K extends Table> = K extends "inseminations"
 
 export async function insertRow<K extends Table>(table: K, value: InsertValue<K>) {
   const { error } = await getSupabase().from(table).insert(value as never);
+  if (error) throw error;
+}
+
+export async function updateAnimal(id: string, value: Database["public"]["Tables"]["animals"]["Update"]) {
+  const { data, error } = await getSupabase().from("animals").update(value).eq("id", id).eq("life_status", "active").select("id").maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("Sirf active janwar ki maloomat badli ja sakti hai.");
+}
+
+export async function closeAnimal(input: {
+  animalId: string; status: "sold" | "dead"; date: string; reason: string;
+  price: number | null; accountId: string | null;
+}) {
+  const args = {
+    p_animal_id: input.animalId, p_status: input.status, p_exit_date: input.date,
+    p_reason: input.reason, p_sale_price: input.price, p_account_id: input.accountId,
+  };
+  // Typegen marks nullable PostgreSQL function arguments as required strings/numbers.
+  const { error } = await getSupabase().rpc("close_animal", args as unknown as Database["public"]["Functions"]["close_animal"]["Args"]);
   if (error) throw error;
 }
 

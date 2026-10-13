@@ -100,7 +100,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
       {c.kind !== "cash" && c.kind !== "free" && <Panel title="Wusooli likhein">
         <form onSubmit={onPayment} className="grid gap-2">
           <input name="amount" required type="number" min="0.01" step="0.01" placeholder="Raqam Rs" aria-label="Raqam" className={field} />
-          <input name="date" type="date" defaultValue={data.today} required aria-label="Tareekh" className={field} />
+          <label className="text-sm text-muted">Wusooli ki tareekh<input name="date" type="date" defaultValue={data.today} required className={field} /></label>
           <select name="method" aria-label="Method" className={field}><option value="cash">Cash</option><option value="bank">Bank</option><option value="easypaisa">Easypaisa</option><option value="jazzcash">JazzCash</option><option value="cheque">Cheque</option></select>
           <select name="account" required aria-label="Account" className={field}>{data.accounts.filter((a) => a.active).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select>
           <button disabled={busy || !data.accounts.length} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50">Wusooli save karein</button>
@@ -109,8 +109,8 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
       {c.kind !== "company" && c.kind !== "free" && <Panel title="Doodh ka rate">
         <p className="mb-2 text-sm text-muted">Nayi tareekh se rate badlein. Purani entries ka rate wahi rahega.</p>
         <form onSubmit={onRate} className="grid gap-2">
-          <input key={`${c.id}-${rate}`} name="rate" type="number" min="0.01" step="0.01" defaultValue={rate || data.settings.default_milk_rate} required aria-label="Naya rate Rs/L" className={field} />
-          <input name="date" type="date" max={data.today} defaultValue={data.today} required aria-label="Rate ki tareekh" className={field} />
+          <input key={`${c.id}-${rate}`} name="rate" type="number" min="0.01" step="0.01" defaultValue={rate || data.settings.default_milk_rate} required placeholder="Naya rate Rs/L" aria-label="Naya rate Rs/L" className={field} />
+          <label className="text-sm text-muted">Rate ki tareekh<input name="date" type="date" max={data.today} defaultValue={data.today} required className={field} /></label>
           <button disabled={busy} className="min-h-11 rounded-xl border border-berseem font-bold text-berseem">Rate save karein</button>
         </form>
       </Panel>}
@@ -158,12 +158,12 @@ function CustomerList({ data, save, busy, error, success }: {
     <Body className="grid gap-4">
       {adding && <Panel title="Naya customer"><form onSubmit={onCreate} className="grid gap-3 sm:grid-cols-2">
         <input name="name" required placeholder="Naam" aria-label="Naam" className={field} />
-        <input name="phone" placeholder="Phone" aria-label="Phone" className={field} />
+        <input name="phone" placeholder="Phone (misal: 03xxxxxxxxx)" aria-label="Phone" className={field} />
         <select name="kind" value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Qism" className={field}><option value="regular">Regular</option><option value="contractor">Contractor</option><option value="company">Company</option><option value="cash">Cash</option><option value="free">Muft</option></select>
-        <input name="rate" type="number" min="0" step="0.01" defaultValue={data.settings.default_milk_rate} placeholder="Rate Rs/L" aria-label="Rate" disabled={kind === "company" || kind === "free"} className={field} />
-        <input name="morning" type="number" min="0" step="0.01" defaultValue="0" placeholder="Subah L" aria-label="Subah litres" className={field} />
-        <input name="evening" type="number" min="0" step="0.01" defaultValue="0" placeholder="Shaam L" aria-label="Shaam litres" className={field} />
-        <input name="openingBalance" type="number" step="0.01" defaultValue="0" placeholder="Pichla baqaya Rs" aria-label="Pichla baqaya" disabled={kind === "cash" || kind === "free"} className={field} />
+        <label className="text-sm text-muted">Doodh ka rate (Rs/L) · Settings se<input name="rate" type="number" min="0" step="0.01" defaultValue={data.settings.default_milk_rate} placeholder="Rate Rs/L" disabled={kind === "company" || kind === "free"} className={field} /></label>
+        <input name="morning" type="number" min="0" step="0.01" placeholder="Subah L (khali = 0)" aria-label="Subah litres" className={field} />
+        <input name="evening" type="number" min="0" step="0.01" placeholder="Shaam L (khali = 0)" aria-label="Shaam litres" className={field} />
+        <input name="openingBalance" type="number" step="0.01" placeholder="Pichla baqaya Rs (khali = 0)" aria-label="Pichla baqaya" disabled={kind === "cash" || kind === "free"} className={field} />
         <label className="text-sm text-muted">Pichla hisaab kis tareekh se?<input name="openingDate" type="date" max={data.today} defaultValue={data.today} required className={field} /></label>
         <button disabled={busy} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50 sm:col-span-2">Customer save karein</button>
       </form></Panel>}

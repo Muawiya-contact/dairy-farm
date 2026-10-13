@@ -45,13 +45,13 @@ function SettingsForm({ initial }: { initial: FarmSettings }) {
   return (
     <form noValidate onSubmit={submit} className="max-w-2xl rounded-2xl border border-line bg-paper p-5">
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="font-semibold">Farm ka naam<input required disabled={mutation.isPending} value={farm} onChange={(event) => { edit(); setFarm(event.target.value); }} className={inputClass} /></label>
-        <label className="font-semibold">Maalik ka naam<input disabled={mutation.isPending} value={owner} onChange={(event) => { edit(); setOwner(event.target.value); }} className={inputClass} /></label>
-        <label className="font-semibold">Doodh ka default rate (Rs/L)<input required disabled={mutation.isPending} type="number" min="0.01" step="0.01" value={rate} onChange={(event) => { edit(); setRate(event.target.value); }} className={inputClass} /></label>
-        <label className="font-semibold">WhatsApp bill ka paigham<input disabled={mutation.isPending} value={footer} onChange={(event) => { edit(); setFooter(event.target.value); }} className={inputClass} /></label>
+        <label className="font-semibold">Farm ka naam<input required disabled={mutation.isPending} placeholder="Farm ka naam" value={farm} onChange={(event) => { edit(); setFarm(event.target.value); }} className={inputClass} /></label>
+        <label className="font-semibold">Maalik ka naam<input disabled={mutation.isPending} placeholder="Maalik ka naam" value={owner} onChange={(event) => { edit(); setOwner(event.target.value); }} className={inputClass} /></label>
+        <label className="font-semibold">Doodh ka default rate (Rs/L)<input required disabled={mutation.isPending} type="number" min="0.01" step="0.01" placeholder="Misal: 150" value={rate} onChange={(event) => { edit(); setRate(event.target.value); }} className={inputClass} /></label>
+        <label className="font-semibold">WhatsApp bill ka paigham<input disabled={mutation.isPending} placeholder="Bill ke neeche paigham" value={footer} onChange={(event) => { edit(); setFooter(event.target.value); }} className={inputClass} /></label>
       </div>
       <fieldset className="mt-5"><legend className="font-display text-lg font-bold">Nasl kashi ke din</legend><p className="mb-3 text-sm text-muted">Tabdeeli sirf nayi entries par lagegi.</p>
-        <div className="grid gap-4 sm:grid-cols-2">{breedingFields.map(({ key, label, min, max }) => <label key={key} className="font-semibold">{label} (din)<input required disabled={mutation.isPending} type="number" min={min} max={max} step="1" value={days[key]} onChange={(event) => { edit(); setDays((current) => ({ ...current, [key]: event.target.value })); }} className={inputClass} /></label>)}</div>
+        <div className="grid gap-4 sm:grid-cols-2">{breedingFields.map(({ key, label, min, max }) => <label key={key} className="font-semibold">{label} (din)<input required disabled={mutation.isPending} type="number" min={min} max={max} step="1" placeholder={`${min}–${max} din`} value={days[key]} onChange={(event) => { edit(); setDays((current) => ({ ...current, [key]: event.target.value })); }} className={inputClass} /></label>)}</div>
       </fieldset>
       <button disabled={mutation.isPending} className="mt-5 min-h-12 rounded-xl bg-berseem px-5 font-bold text-white disabled:opacity-50">{mutation.isPending ? "Save ho raha hai…" : "Save karein"}</button>
       {validation && <p role="alert" className="mt-3 text-udhaar">{validation}</p>}
@@ -64,7 +64,7 @@ function SettingsForm({ initial }: { initial: FarmSettings }) {
 function AccountEditor({ account }: { account: FarmAccount }) {
   const client = useQueryClient();
   const [name, setName] = useState(account.name);
-  const [balance, setBalance] = useState(String(account.opening_balance));
+  const [balance, setBalance] = useState(account.opening_balance === 0 ? "" : String(account.opening_balance));
   const [date, setDate] = useState(account.opening_date);
   const [active, setActive] = useState(account.active);
   const [validation, setValidation] = useState("");
@@ -81,8 +81,8 @@ function AccountEditor({ account }: { account: FarmAccount }) {
   };
   return <form onSubmit={submit} className="rounded-xl border border-line p-4">
     <div className="mb-3 flex items-center justify-between gap-2"><h3 className="font-semibold">{account.is_farm_cash ? "Farm galla" : account.kind === "bank" ? "Bank" : account.kind === "person" ? "Person" : "Cash"}</h3><span className="text-sm text-muted">{account.active ? "Active" : "Band"}</span></div>
-    <div className="grid gap-3 sm:grid-cols-3"><label className="text-sm font-semibold">Naam<input required disabled={mutation.isPending} value={name} onChange={(event) => { edit(); setName(event.target.value); }} className={inputClass} /></label>
-      <label className="text-sm font-semibold">Opening balance (Rs)<input required disabled={mutation.isPending} type="number" step="0.01" value={balance} onChange={(event) => { edit(); setBalance(event.target.value); }} className={inputClass} /></label>
+    <div className="grid gap-3 sm:grid-cols-3"><label className="text-sm font-semibold">Naam<input required disabled={mutation.isPending} placeholder="Account ka naam" value={name} onChange={(event) => { edit(); setName(event.target.value); }} className={inputClass} /></label>
+      <label className="text-sm font-semibold">Opening balance (Rs)<input disabled={mutation.isPending} type="number" step="0.01" placeholder="Khali = Rs 0" value={balance} onChange={(event) => { edit(); setBalance(event.target.value); }} className={inputClass} /></label>
       <label className="text-sm font-semibold">Opening date<input required disabled={mutation.isPending} type="date" value={date} onChange={(event) => { edit(); setDate(event.target.value); }} className={inputClass} /></label></div>
     <div className="mt-3 flex flex-wrap items-center gap-4"><label className="text-sm font-semibold"><input type="checkbox" checked={active} disabled={account.is_farm_cash || mutation.isPending} onChange={(event) => { edit(); setActive(event.target.checked); }} /> Active</label>
       <button disabled={mutation.isPending} className="min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem disabled:opacity-50">{mutation.isPending ? "Save ho raha hai…" : "Account save karein"}</button></div>
@@ -98,12 +98,12 @@ function AccountsSection() {
   const query = useQuery({ queryKey: ["accounts"], queryFn: getAccounts });
   const [name, setName] = useState("");
   const [kind, setKind] = useState<"cash" | "bank" | "person">("bank");
-  const [balance, setBalance] = useState("0");
+  const [balance, setBalance] = useState("");
   const [date, setDate] = useState(() => todayPK());
   const [validation, setValidation] = useState("");
   const mutation = useMutation({
     mutationFn: () => createAccount({ name, kind, opening_balance: Number(balance), opening_date: date, active: true }),
-    onSuccess: () => { setName(""); setBalance("0"); void client.invalidateQueries({ queryKey: ["accounts"] }); void client.invalidateQueries({ queryKey: ["farm-data"] }); },
+    onSuccess: () => { setName(""); setBalance(""); void client.invalidateQueries({ queryKey: ["accounts"] }); void client.invalidateQueries({ queryKey: ["farm-data"] }); },
   });
   const edit = () => { setValidation(""); mutation.reset(); };
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -117,9 +117,9 @@ function AccountsSection() {
     {query.isError && <p role="alert" className="mt-3 text-udhaar">{friendlyError(query.error)} <button onClick={() => void query.refetch()} className="underline">Dobara koshish</button></p>}
     {query.data && <div className="mt-4 grid gap-3">{query.data.map((account) => <AccountEditor key={account.id} account={account} />)}</div>}
     <form onSubmit={submit} className="mt-5 border-t border-line pt-4"><h3 className="font-semibold">Naya account</h3><div className="mt-2 grid gap-3 sm:grid-cols-2">
-      <label className="text-sm font-semibold">Naam<input required disabled={mutation.isPending} value={name} onChange={(event) => { edit(); setName(event.target.value); }} className={inputClass} /></label>
+      <label className="text-sm font-semibold">Naam<input required disabled={mutation.isPending} placeholder="Account ka naam" value={name} onChange={(event) => { edit(); setName(event.target.value); }} className={inputClass} /></label>
       <label className="text-sm font-semibold">Qism<select disabled={mutation.isPending} value={kind} onChange={(event) => { edit(); setKind(event.target.value as typeof kind); }} className={inputClass}><option value="cash">Cash</option><option value="bank">Bank</option><option value="person">Person</option></select></label>
-      <label className="text-sm font-semibold">Opening balance (Rs)<input required disabled={mutation.isPending} type="number" step="0.01" value={balance} onChange={(event) => { edit(); setBalance(event.target.value); }} className={inputClass} /></label>
+      <label className="text-sm font-semibold">Opening balance (Rs)<input disabled={mutation.isPending} type="number" step="0.01" placeholder="Khali = Rs 0" value={balance} onChange={(event) => { edit(); setBalance(event.target.value); }} className={inputClass} /></label>
       <label className="text-sm font-semibold">Opening date<input required disabled={mutation.isPending} type="date" value={date} onChange={(event) => { edit(); setDate(event.target.value); }} className={inputClass} /></label></div>
       <button disabled={mutation.isPending} className="mt-3 min-h-11 rounded-xl bg-berseem px-4 font-semibold text-white disabled:opacity-50">{mutation.isPending ? "Save ho raha hai…" : "Account shamil karein"}</button>
       {validation && <p role="alert" className="mt-2 text-udhaar">{validation}</p>}

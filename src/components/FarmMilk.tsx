@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { amount, customerRate, longDate, money, saveMilkEntry, useFarmData, type FarmData } from "@/lib/farm-data";
+import { friendlyError } from "@/lib/errors";
 import { Body, PageHeader, Panel } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
 import { MinusIcon, PlusIcon } from "./icons";
@@ -35,7 +36,7 @@ function ShiftForm({ data, date, shift }: { data: FarmData; date: string; shift:
     try {
       await saveMilkEntry({ date, shift, total: milkTotal, mode, animals: mode === "per_animal" ? milkers.map((a) => ({ animal_id: a.id, litres: perAnimal[a.id] ?? 0 })) : [], deliveries: active.filter((c) => (qty[c.id] ?? 0) > 0).map((c) => ({ customer_id: c.id, litres: qty[c.id] })) });
       await qc.invalidateQueries({ queryKey: ["farm-data"] }); setSaved(true);
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    } catch (e) { setError(friendlyError(e)); }
     finally { setBusy(false); }
   };
   return <div className="grid gap-4 lg:grid-cols-2 lg:items-start">

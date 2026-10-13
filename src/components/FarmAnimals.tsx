@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { amount, insertRow, longDate, money, recordHealthEvent, shortDate, useFarmData, type Animal } from "@/lib/farm-data";
+import { friendlyError } from "@/lib/errors";
 import { Body, PageHeader, Panel, StatusTag } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
 import { PlusIcon, SearchIcon } from "./icons";
@@ -29,7 +30,7 @@ export default function FarmAnimals() {
   const run = async (fn: () => Promise<void>) => {
     setBusy(true); setError("");
     try { await fn(); await qc.invalidateQueries({ queryKey: ["farm-data"] }); setAdd(false); }
-    catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    catch (e) { setError(friendlyError(e)); }
     finally { setBusy(false); }
   };
   if (selected) {

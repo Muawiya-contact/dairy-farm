@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { amount, longDate, money, shortDate, useFarmData } from "@/lib/farm-data";
 import { addDays, monthStart } from "@/lib/dates";
+import { friendlyError } from "@/lib/errors";
 import { Body, Panel } from "./ui";
 import { BellIcon, PlusIcon } from "./icons";
 import MilkCan from "./MilkCan";
@@ -10,7 +11,7 @@ import ProfitChart from "./ProfitChart";
 
 export function FarmLoading({ error, retry }: { error?: Error | null; retry?: () => void }) {
   return <Body className="py-8"><div role={error ? "alert" : "status"} className="rounded-2xl border border-line bg-paper p-5 text-muted">
-    {error ? <>Supabase se data nahi mila: {error.message} <button onClick={retry} className="font-semibold text-berseem underline">Dobara koshish</button></> : "Supabase se data load ho raha hai…"}
+    {error ? <>Supabase se data nahi mila: {friendlyError(error)} <button onClick={retry} className="font-semibold text-berseem underline">Dobara koshish</button></> : "Supabase se data load ho raha hai…"}
   </div></Body>;
 }
 

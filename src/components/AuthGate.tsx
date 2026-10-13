@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import { useQueryClient } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase";
+import { friendlyError } from "@/lib/errors";
 
 const requireAuth = process.env.NEXT_PUBLIC_REQUIRE_AUTH === "true";
 
@@ -31,7 +32,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       if (sessionError) throw sessionError;
       applySession(data.session);
     }).catch((sessionError: Error) => {
-      setError(sessionError.message);
+      setError(friendlyError(sessionError));
       applySession(null);
     });
     const { data: listener } = client.auth.onAuthStateChange((_event, session) => {
@@ -46,9 +47,9 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     setError("");
     try {
       const result = await getSupabase().auth.signInWithPassword({ email, password });
-      if (result.error) setError(result.error.message);
+      if (result.error) setError(friendlyError(result.error));
     } catch (signInError) {
-      setError(signInError instanceof Error ? signInError.message : String(signInError));
+      setError(friendlyError(signInError));
     } finally {
       setPassword("");
       setBusy(false);

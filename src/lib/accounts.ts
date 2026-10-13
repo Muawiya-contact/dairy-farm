@@ -11,6 +11,10 @@ const columns = "id,name,kind,opening_balance,opening_date,active,is_farm_cash";
 export function validateAccount(account: AccountFields, isFarmCash = false): string | null {
   if (!account.name.trim()) return "Account ka naam likhein.";
   if (!Number.isFinite(account.opening_balance)) return "Opening balance sahi likhein.";
+  if (Math.abs(account.opening_balance) > 9_999_999_999.99 ||
+      Math.abs(account.opening_balance * 100 - Math.round(account.opening_balance * 100)) > 1e-6) {
+    return "Opening balance 2 decimal tak aur 10 arab se kam likhein.";
+  }
   try { addDays(account.opening_date, 0); }
   catch { return "Opening date sahi likhein."; }
   if (isFarmCash && !account.active) return "Farm galla band nahi ho sakta.";
@@ -41,6 +45,6 @@ export async function updateAccount(id: string, input: AccountFields): Promise<v
   const { error } = await getSupabase().from("accounts").update({
     name: input.name.trim(), opening_balance: input.opening_balance,
     opening_date: input.opening_date, active: input.active,
-  }).eq("id", id);
+  }).eq("id", id).select("id").single();
   if (error) throw error;
 }

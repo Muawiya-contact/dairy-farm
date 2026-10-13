@@ -8,6 +8,7 @@ const messages: [RegExp, string][] = [
   [/ANIMAL_NOT_MILKING/i, "Yeh janwar doodh nahi deta."],
   [/NO_FARM_CASH/i, "Farm galla account nahi bana. Settings dekhein."],
   [/STALE/i, "Kisi aur ne yeh entry badal di hai. Reload karein."],
+  [/PGRST116|result contains 0 rows/i, "Yeh entry ab nahi milti. Reload karein."],
   [/customer_rates_customer_id_effective_from_key/i, "Is tareekh ka rate pehle se hai, usay edit karein."],
   [/insem_dates_after_service/i, "Yeh tareekh tukhm-rezi se pehle nahi ho sakti."],
   [/animals_exit_ok/i, "Bechne ya marne ki tareekh likhein."],

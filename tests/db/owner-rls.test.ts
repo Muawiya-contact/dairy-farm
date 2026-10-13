@@ -42,6 +42,7 @@ test("only the designated owner can read or write farm data", async () => {
     await db.exec(readFileSync(resolve(migrationDir, "20261013000012_farm_cash_active.sql"), "utf8"));
     await db.exec(readFileSync(resolve(migrationDir, "20261013000013_close_animal.sql"), "utf8"));
     await db.exec(readFileSync(resolve(migrationDir, "20261013000014_animal_exit_activity.sql"), "utf8"));
+    await db.exec(readFileSync(resolve(migrationDir, "20261013000015_guard_animal_history_edits.sql"), "utf8"));
     await db.exec("update private.demo_access set enabled = false where id = 1");
     await db.exec(`
       insert into auth.users (id) values ('${owner}'), ('${stranger}');
@@ -90,6 +91,13 @@ test("only the designated owner can read or write farm data", async () => {
     expect((await db.query("select farm_expenses, profit from public.pnl_month(public.farm_today())")).rows).toEqual([{ farm_expenses: "250.00", profit: "-250.00" }]);
     await expect(db.query("select public.record_health_event($1, public.farm_today(), 'treatment', 'Incomplete', 250, null, null, null)", [animal])).rejects.toThrow();
     expect((await db.query("select count(*)::int as count from health_events")).rows).toEqual([{ count: 1 }]);
+
+    await db.query("insert into health_events (animal_id, event_date, kind, title) values ($1, public.farm_today() - 1, 'checkup', 'Earlier checkup')", [animal]);
+    await expect(db.query("update animals set birth_date = public.farm_today() where id = $1", [animal])).rejects.toThrow(/ANIMAL_BIRTH_AFTER_ACTIVITY/);
+    const eveningShift = (await db.query<{ id: string }>("insert into milk_shifts (milk_date, shift, total_litres, mode) values (public.farm_today(), 'evening', 5, 'per_animal') returning id")).rows[0].id;
+    await db.query("insert into animal_milk (shift_id, animal_id, litres) values ($1, $2, 5)", [eveningShift, animal]);
+    await expect(db.query("update animals set sex = 'male', milking_status = 'none' where id = $1", [animal])).rejects.toThrow(/ANIMAL_HISTORY_SEX/);
+    expect((await db.query("select sex from animals where id = $1", [animal])).rows).toEqual([{ sex: "female" }]);
 
     const invalidAccount = "33333333-3333-4333-8333-333333333333";
     await expect(db.query("select public.close_animal($1, 'sold', public.farm_today() - 1, 'Too early', 12000, $2)", [animal, account])).rejects.toThrow(/EXIT_BEFORE_ACTIVITY/);

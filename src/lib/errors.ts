@@ -25,6 +25,7 @@ const messages: [RegExp, string][] = [
 const logged = new WeakSet<object>();
 
 export function friendlyError(error: unknown): string {
+  if (error instanceof RangeError) return error.message;
   const item = error && typeof error === "object" ? error as Record<string, unknown> : null;
   const raw = [item?.code, item?.message, item?.details, item?.hint, item?.status, typeof error === "string" ? error : ""]
     .filter((part) => part != null).join(" ");

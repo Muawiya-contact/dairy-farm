@@ -7,19 +7,20 @@ import { getSupabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/errors";
 
 const requireAuth = process.env.NEXT_PUBLIC_REQUIRE_AUTH === "true";
+const missingConfig = requireAuth && (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
 
 export default function AuthGate({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const previousUser = useRef<string | null>(null);
-  const [ready, setReady] = useState(!requireAuth);
+  const [ready, setReady] = useState(!requireAuth || missingConfig);
   const [signedIn, setSignedIn] = useState(!requireAuth);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(missingConfig ? friendlyError(new Error("Supabase URL aur publishable key set nahi hain.")) : "");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!requireAuth) return;
+    if (!requireAuth || missingConfig) return;
     const client = getSupabase();
     const applySession = (session: Session | null) => {
       const userId = session?.user.id ?? null;

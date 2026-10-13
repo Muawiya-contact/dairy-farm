@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getSupabase } from "./supabase";
 import { getSettings, type FarmSettings } from "./settings";
 import { formatDay, todayPK } from "./dates";
+import { rs } from "./format";
 
 export type Animal = {
   id: string; tag: string; name: string | null; species: "cow" | "buffalo";
@@ -40,7 +41,7 @@ export type FarmData = {
   balances: CustomerBalance[]; alerts: HerdAlert[]; monthlyPnl: { month: string; data: Pnl }[];
 };
 
-export const money = (value: number | null | undefined) => `Rs ${Math.round(Number(value) || 0).toLocaleString("en-IN")}`;
+export const money = (value: number | null | undefined) => rs(Number(value) || 0);
 export const amount = (value: number | string | null | undefined) => Number(value) || 0;
 export const farmToday = todayPK;
 export const shortDate = (iso: string) => formatDay(iso).replace(/ \d{4}$/, "");

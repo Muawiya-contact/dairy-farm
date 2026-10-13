@@ -43,6 +43,8 @@ test("only the designated owner can read or write farm data", async () => {
     await db.exec(readFileSync(resolve(migrationDir, "20261013000013_close_animal.sql"), "utf8"));
     await db.exec(readFileSync(resolve(migrationDir, "20261013000014_animal_exit_activity.sql"), "utf8"));
     await db.exec(readFileSync(resolve(migrationDir, "20261013000015_guard_animal_history_edits.sql"), "utf8"));
+    await db.exec(readFileSync(resolve(migrationDir, "20261013000016_breeding_records.sql"), "utf8"));
+    await db.exec(readFileSync(resolve(migrationDir, "20261013000017_insemination_dry_date.sql"), "utf8"));
     await db.exec("update private.demo_access set enabled = false where id = 1");
     await db.exec(`
       insert into auth.users (id) values ('${owner}'), ('${stranger}');
@@ -86,6 +88,16 @@ test("only the designated owner can read or write farm data", async () => {
     const category = (await db.query<{ id: string }>("select id from expense_categories where name = 'Dawai / vet'")).rows[0].id;
     const account = (await db.query<{ id: string }>("select id from accounts where is_farm_cash")).rows[0].id;
     const animal = (await db.query<{ id: string }>("select id from animals where tag = 'B-001'")).rows[0].id;
+    const breedingAnimal = (await db.query<{ id: string }>("insert into animals (tag) values ('B-003') returning id")).rows[0].id;
+    const breeding = (await db.query<{ id: string }>("insert into inseminations (animal_id, service_date, semen_name) values ($1, public.farm_today() - 270, 'Test bull') returning id", [breedingAnimal])).rows[0].id;
+    expect((await db.query("select semen_name, status, updated_at is not null as versioned from inseminations where id = $1", [breeding])).rows).toEqual([{ semen_name: "Test bull", status: "pending", versioned: true }]);
+    await expect(db.query("update inseminations set dry_off_date = public.farm_today() - 271 where id = $1", [breeding])).rejects.toThrow(/insem_dry_after_service/);
+    await db.query("update inseminations set dry_off_date = public.farm_today() - 10 where id = $1", [breeding]);
+    await expect(db.query("select public.record_calving($1, public.farm_today() - 271, 'alive')", [breeding])).rejects.toThrow(/CALVING_BEFORE_SERVICE/);
+    expect((await db.query("select count(*)::int as count from calvings")).rows).toEqual([{ count: 0 }]);
+    await db.query("select public.record_calving($1, public.farm_today(), 'alive')", [breeding]);
+    expect((await db.query("select c.outcome, i.status from calvings c join inseminations i on i.id = c.insemination_id where i.id = $1", [breeding])).rows).toEqual([{ outcome: "alive", status: "calved" }]);
+    await expect(db.query("select public.record_calving($1, public.farm_today(), 'alive')", [breeding])).rejects.toThrow(/BREEDING_NOT_OPEN/);
     await db.query("select public.record_health_event($1, public.farm_today(), 'treatment', 'Vet visit', 250, null, $2, $3)", [animal, category, account]);
     expect((await db.query("select h.cost, e.amount, h.expense_id = e.id as linked from health_events h join expenses e on e.id = h.expense_id")).rows).toEqual([{ cost: "250.00", amount: "250.00", linked: true }]);
     expect((await db.query("select farm_expenses, profit from public.pnl_month(public.farm_today())")).rows).toEqual([{ farm_expenses: "250.00", profit: "-250.00" }]);

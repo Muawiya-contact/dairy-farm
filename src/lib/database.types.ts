@@ -552,6 +552,7 @@ export type Database = {
           checkup_due: string
           checkup_result: string | null
           created_at: string
+          dry_off_date: string | null
           dry_off_due: string
           id: string
           notes: string | null
@@ -563,6 +564,7 @@ export type Database = {
           ultrasound_date: string | null
           ultrasound_due: string
           ultrasound_result: string | null
+          updated_at: string
         }
         Insert: {
           abortion_date?: string | null
@@ -572,6 +574,7 @@ export type Database = {
           checkup_due: string
           checkup_result?: string | null
           created_at?: string
+          dry_off_date?: string | null
           dry_off_due: string
           id?: string
           notes?: string | null
@@ -583,6 +586,7 @@ export type Database = {
           ultrasound_date?: string | null
           ultrasound_due: string
           ultrasound_result?: string | null
+          updated_at?: string
         }
         Update: {
           abortion_date?: string | null
@@ -592,6 +596,7 @@ export type Database = {
           checkup_due?: string
           checkup_result?: string | null
           created_at?: string
+          dry_off_date?: string | null
           dry_off_due?: string
           id?: string
           notes?: string | null
@@ -603,6 +608,7 @@ export type Database = {
           ultrasound_date?: string | null
           ultrasound_due?: string
           ultrasound_result?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
@@ -1144,6 +1150,15 @@ export type Database = {
         }[]
       }
       rate_on: { Args: { p_customer: string; p_day: string }; Returns: number }
+      record_calving: {
+        Args: {
+          p_calving_date: string
+          p_insemination_id: string
+          p_notes?: string
+          p_outcome: string
+        }
+        Returns: string
+      }
       record_health_event: {
         Args: {
           p_account_id: string

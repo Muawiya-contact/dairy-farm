@@ -2,6 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
+import { DATASETS } from "../../src/lib/export-data";
 
 let db: PGlite;
 
@@ -43,6 +44,19 @@ beforeAll(async () => {
 afterAll(async () => { await db?.close(); });
 
 describe("staging demo seed", () => {
+  it("exports only real columns from every public data table", async () => {
+    const result = await db.query<{ table_name: string; column_name: string }>(`
+      select table_name, column_name from information_schema.columns
+      where table_schema = 'public'
+    `);
+    const actual = new Set(result.rows.map((row) => `${row.table_name}.${row.column_name}`));
+    for (const dataset of DATASETS) {
+      expect(actual.has(`${dataset.table}.${dataset.key}`), `${dataset.table} sort key`).toBe(true);
+      for (const column of dataset.columns) {
+        expect(actual.has(`${dataset.table}.${column}`), `${dataset.table}.${column}`).toBe(true);
+      }
+    }
+  });
   it("balances all 14 days of milk production and delivery", async () => {
     const { rows } = await db.query<{ produced: number; delivered: number }>(`
       select sum(total_litres) produced,

@@ -18,7 +18,7 @@ export function AnimalBreeding({ animal, records, calvings, today, busy, run }: 
   const [editStatus, setEditStatus] = useState("pending");
   const [validation, setValidation] = useState("");
   const editing = records.find((record) => record.id === editId);
-  const active = animal.life_status === "active";
+  const active = animal.life_status === "active" && animal.sex === "female";
 
   const add = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -80,9 +80,10 @@ export function AnimalBreeding({ animal, records, calvings, today, busy, run }: 
   };
 
   return <Panel title="Nasl kashi aur bachay ki paidaish" className="lg:col-span-2">
+    {animal.sex === "male" && <p className="text-sm text-muted">Nasl kashi aur paidaish ki entries sirf mada janwar ke liye hain.</p>}
     {active && <form onSubmit={add} className="grid gap-3 rounded-xl border border-line p-3 sm:grid-cols-2 lg:grid-cols-3">
       <h3 className="font-semibold sm:col-span-2 lg:col-span-3">Nayi tukhm rezi</h3>
-      <label className="text-sm font-semibold">Tukhm rezi ki tareekh<input name="service_date" type="date" required defaultValue={today} disabled={busy} className={field} /></label>
+      <label className="text-sm font-semibold">Tukhm rezi ki tareekh<input name="service_date" type="date" required max={today} defaultValue={today} disabled={busy} className={field} /></label>
       <label className="text-sm font-semibold">Semen ki qism<select name="semen_type" disabled={busy} className={field}><option value="normal">Normal</option><option value="sexed">Sexed</option><option value="bull">Bull</option></select></label>
       <label className="text-sm font-semibold">Semen ka naam<input name="semen_name" placeholder="Misal: Irishman" disabled={busy} className={field} /></label>
       <label className="text-sm font-semibold">Technician<input name="technician" placeholder="Technician ka naam" disabled={busy} className={field} /></label>
@@ -107,7 +108,7 @@ export function AnimalBreeding({ animal, records, calvings, today, busy, run }: 
         {record.notes && <p className="mt-2 text-sm text-muted">{record.notes}</p>}
         {active && record.status !== "calved" && <button type="button" disabled={busy} onClick={() => { setEditId(editId === record.id ? null : record.id); setEditStatus(record.status); setValidation(""); }} className="mt-3 min-h-10 rounded-xl border border-berseem px-3 text-sm font-semibold text-berseem disabled:opacity-50">{editId === record.id ? "Form band karein" : "Record badlein"}</button>}
         {editing?.id === record.id && active && <form key={record.updated_at} onSubmit={save} className="mt-3 grid gap-3 border-t border-line pt-3 sm:grid-cols-2 lg:grid-cols-3">
-          <label className="text-sm font-semibold">Tukhm rezi ki tareekh<input name="service_date" type="date" required defaultValue={record.service_date} disabled={busy} className={field} /></label>
+          <label className="text-sm font-semibold">Tukhm rezi ki tareekh<input name="service_date" type="date" required max={today} defaultValue={record.service_date} disabled={busy} className={field} /></label>
           <label className="text-sm font-semibold">Semen ki qism<select name="semen_type" defaultValue={record.semen_type} disabled={busy} className={field}><option value="normal">Normal</option><option value="sexed">Sexed</option><option value="bull">Bull</option></select></label>
           <label className="text-sm font-semibold">Semen ka naam<input name="semen_name" defaultValue={record.semen_name ?? ""} placeholder="Semen ka naam" disabled={busy} className={field} /></label>
           <label className="text-sm font-semibold">Technician<input name="technician" defaultValue={record.technician ?? ""} placeholder="Technician ka naam" disabled={busy} className={field} /></label>
@@ -124,7 +125,7 @@ export function AnimalBreeding({ animal, records, calvings, today, busy, run }: 
           <button disabled={busy} className="min-h-11 rounded-xl bg-berseem px-4 font-bold text-white disabled:opacity-50 sm:col-span-2 lg:col-span-3">Badla hua record save karein</button>
         </form>}
         {active && open && <form onSubmit={(event) => calve(event, record)} className="mt-3 flex flex-wrap items-end gap-3 border-t border-line pt-3">
-          <label className="text-sm font-semibold">Asal paidaish ki tareekh<input name="calving_date" type="date" required min={record.service_date} defaultValue={today} disabled={busy} className={field} /></label>
+          <label className="text-sm font-semibold">Asal paidaish ki tareekh<input name="calving_date" type="date" required min={record.service_date} max={today} defaultValue={today} disabled={busy} className={field} /></label>
           <label className="text-sm font-semibold">Bachay ka nateeja<select name="outcome" disabled={busy} className={field}><option value="alive">Zinda</option><option value="dead">Wafat</option><option value="twins">Joray</option></select></label>
           <label className="text-sm font-semibold">Notes<input name="notes" placeholder="Bachay ki tafseel" disabled={busy} className={field} /></label>
           <button disabled={busy} className="min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem disabled:opacity-50">Paidaish darj karein</button>

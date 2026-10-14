@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { friendlyError } from "@/lib/errors";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -16,9 +16,9 @@ import {
 } from "@/lib/customer-forms";
 import {
   buildCustomerStatementPdf, buildPaymentReceiptPdf, documentFilename, receiptMessage,
-  shareCustomerPdf, statementLines, statementMessage,
+  prepareCustomerPdf, shareCustomerPdf, statementLines, statementMessage,
 } from "@/lib/customer-documents";
-import { whatsappNumber } from "@/lib/phone";
+import { whatsappChatUrl, whatsappNumber } from "@/lib/phone";
 import { downloadBlob } from "@/lib/export-data";
 import { formatMonth } from "@/lib/dates";
 import { Body, PageHeader, Panel } from "./ui";
@@ -37,6 +37,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
   const [editing, setEditing] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfStatus, setPdfStatus] = useState("");
+  useEffect(() => { void prepareCustomerPdf().catch(() => {}); }, []);
   const reportQuery = useQuery({
     queryKey: ["customer-report", c.id, month],
     queryFn: () => customerMonthReport(c.id, month),
@@ -47,7 +48,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
   const rate = customerRate(data, c.id);
   const ledger = statementLines(data, c.id, month);
   const phone = whatsappNumber(c.phone);
-  const wa = phone && report ? `https://wa.me/${phone}?text=${encodeURIComponent(statementMessage(data.settings, c, month, report))}` : null;
+  const wa = report ? whatsappChatUrl(c.phone, statementMessage(data.settings, c, month, report)) : null;
   const activeAccounts = data.accounts.filter((account) => account.active);
   const onProfile = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -99,7 +100,13 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
       if (share) {
         const message = kind === "bill" ? statementMessage(data.settings, c, month, report!) : receiptMessage(data.settings, c, payment!);
         const outcome = await shareCustomerPdf(filename, bytes, `${data.settings.farm_name} - ${c.name}`, message);
-        setPdfStatus(outcome === "downloaded" ? "PDF download ho gaya. WhatsApp khol kar file attach karein." : outcome === "shared" ? "Share sheet band hui. WhatsApp mein bhejna check karein." : "Share cancel ho gaya.");
+        const chatUrl = whatsappChatUrl(c.phone, message);
+        if (outcome === "downloaded" && chatUrl) {
+          setPdfStatus("PDF download ho gaya. WhatsApp chat khul rahi hai; PDF attach karke bhejein.");
+          window.setTimeout(() => window.location.assign(chatUrl), 1200);
+        } else {
+          setPdfStatus(outcome === "downloaded" ? "PDF download ho gaya. WhatsApp ke liye customer ka phone darj karein." : outcome === "shared" ? "Share sheet band hui. WhatsApp mein bhejna check karein." : "Share cancel ho gaya.");
+        }
       } else {
         downloadBlob(filename, new Blob([bytes], { type: "application/pdf" }));
         setPdfStatus("PDF download ho gaya.");
@@ -144,7 +151,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
           {wa && <a href={wa} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center rounded-xl border border-line px-4 font-semibold">WhatsApp matn</a>}
         </div>}
         {!phone && <p className="mt-2 text-sm text-muted">WhatsApp matn ke liye customer ka phone number likhein. PDF phir bhi download/share ho sakta hai.</p>}
-        <p className="mt-2 text-xs text-muted">Phone par PDF share sheet khulegi. Desktop par PDF download hoga; WhatsApp mein file khud attach karein.</p>
+        <p className="mt-2 text-xs text-muted">{phone ? "Phone par share sheet se WhatsApp chunein. Desktop par PDF download ke baad customer ki WhatsApp chat khulegi; PDF attach karke Send dabayein." : "Phone par share sheet se WhatsApp chunein. Desktop par PDF download hoga; chat kholne ke liye customer ka phone darj karein."}</p>
       </Panel>
       {c.kind !== "cash" && c.kind !== "free" && <Panel title="Wusooli likhein">
         <form onSubmit={onPayment} className="grid gap-2">
@@ -177,7 +184,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
       <Panel title={`${validMonth ? formatMonth(`${month}-01`) : "Maheene"} ka register`} className="lg:col-span-2"><ul className="divide-y divide-line">
         {[...ledger].reverse().map((entry) => {
           const payment = data.payments.find((item) => item.id === entry.id && item.kind === "payment");
-          const receiptWa = phone && payment ? `https://wa.me/${phone}?text=${encodeURIComponent(receiptMessage(data.settings, c, payment))}` : null;
+          const receiptWa = payment ? whatsappChatUrl(c.phone, receiptMessage(data.settings, c, payment)) : null;
           return <li key={entry.id} className="flex flex-wrap items-center gap-2 py-3 text-sm"><span className="text-muted">{shortDate(entry.date)}</span><span className="min-w-32 flex-1">{entry.detail}{entry.litres != null ? ` · ${entry.litres} L` : ""}</span><strong className={entry.credit ? "text-berseem" : ""}>{entry.credit ? `− ${money(entry.credit)}` : money(entry.charge)}</strong>
             {payment && <div className="flex w-full flex-wrap gap-2 sm:justify-end"><button type="button" disabled={pdfBusy} onClick={() => void document("receipt", payment.id, false)} className="min-h-10 rounded-lg border border-line px-3 font-semibold disabled:opacity-50">Receipt PDF</button><button type="button" disabled={pdfBusy} onClick={() => void document("receipt", payment.id, true)} className="min-h-10 rounded-lg border border-berseem px-3 font-semibold text-berseem disabled:opacity-50">PDF share</button>{receiptWa && <a href={receiptWa} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center rounded-lg border border-line px-3 font-semibold">WhatsApp matn</a>}</div>}
           </li>;

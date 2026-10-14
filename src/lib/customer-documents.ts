@@ -62,6 +62,12 @@ export function documentFilename(customer: Customer, kind: "bill" | "receipt", s
 
 type Pdf = InstanceType<typeof import("jspdf").jsPDF>;
 
+/** Warm the PDF code and fonts so a later user click can reach the native share sheet promptly. */
+export async function prepareCustomerPdf(): Promise<void> {
+  const [{ jsPDF }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
+  await installCustomerPdfFont(new jsPDF());
+}
+
 function drawHeader(pdf: Pdf, farm: FarmSettings, documentTitle: string): number {
   const nameLines = pdf.splitTextToSize(farm.farm_name, 180) as string[];
   const headerHeight = Math.max(32, 16 + nameLines.length * 7);

@@ -16,3 +16,8 @@ export function whatsappNumber(input: string | null): string | null {
   try { return normalizePhone(input).slice(1) || null; }
   catch { return null; }
 }
+
+export function whatsappChatUrl(input: string | null, message: string): string | null {
+  const number = whatsappNumber(input);
+  return number ? `https://wa.me/${number}?text=${encodeURIComponent(message)}` : null;
+}

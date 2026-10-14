@@ -32,6 +32,17 @@ beforeAll(async () => {
 afterAll(async () => { await db?.close(); });
 
 describe("Step 6 database money rules", () => {
+  it("shows a closed account while it still holds a balance", async () => {
+    const closed = (await db.query<{ id: string }>(
+      "insert into accounts (name, kind, opening_balance, opening_date, active) values ('Closed test account', 'bank', 40, farm_today(), false) returning id",
+    )).rows[0].id;
+    const summary = (await db.query<{ opening: string; closing: string }>(
+      "select opening, closing from account_month_summary(farm_today()) where account_id = $1", [closed],
+    )).rows[0];
+    expect(Number(summary.opening)).toBe(40);
+    expect(Number(summary.closing)).toBe(40);
+  });
+
   it("moves money once between accounts and rejects invalid transfers", async () => {
     const before = (await db.query<{ account_id: string; closing: string }>("select account_id, closing from account_month_summary(farm_today()) where account_id in ($1, $2)", [farmCash, bank])).rows;
     const date = (await db.query<{ day: string }>("select farm_today() as day")).rows[0].day;

@@ -71,8 +71,15 @@ export default function FarmExpenses() {
     busyRef.current = true; setBusy(true); setError(""); setSuccess("");
     try {
       await action();
-      setSuccess(message);
-      await Promise.all([qc.invalidateQueries({ queryKey: ["farm-data"] }), qc.invalidateQueries({ queryKey: ["galla"] })]);
+      try {
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: ["farm-data"] }, { throwOnError: true }),
+          qc.invalidateQueries({ queryKey: ["galla"] }, { throwOnError: true }),
+        ]);
+        setSuccess(message);
+      } catch {
+        setSuccess("Supabase mein save ho gaya. Naye totals load nahi hue; page reload karein.");
+      }
     } catch (issue) { setError(friendlyError(issue)); }
     finally { busyRef.current = false; setBusy(false); }
   };
@@ -113,7 +120,7 @@ export default function FarmExpenses() {
             : <label className="text-sm">Category<select name="category" required defaultValue={defaultCategoryId} className={field}>
               <option value="" disabled>Category chunein</option>{availableCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
             </select></label>}
-          <label className="text-sm">Paisa kis account se nikla?<select name="account" required defaultValue={activeAccounts[0]?.id ?? ""} className={field}>
+          <label className="text-sm">Paisa kis account se nikla?<select name="account" required defaultValue="" className={field}>
             <option value="" disabled>Account chunein</option>{activeAccounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
           </select></label>
           <label className="text-sm">Raqam (Rs)<input name="amount" required type="number" min="0.01" step="0.01" placeholder="Misal: 1250" className={field} /></label>

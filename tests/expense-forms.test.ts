@@ -41,6 +41,7 @@ describe("expense entry form", () => {
       expect(() => parseExpenseEntry(form({ amount }), "home", today, accounts, categories)).toThrow();
     }
     expect(() => parseExpenseEntry(form({ account: "closed" }), "home", today, accounts, categories)).toThrow(/Active account/);
+    expect(() => parseExpenseEntry(form({ account: "" }), "home", today, accounts, categories)).toThrow(/Active account/);
     expect(() => parseExpenseEntry(form({ account: "new", date: "2026-10-09" }), "home", today, accounts, categories)).toThrow(/Account khulne/);
     expect(() => parseExpenseEntry(form({ category: "inactive" }), "farm", today, accounts, categories)).toThrow(/category/);
     expect(() => parseExpenseEntry(form({}), "home", today, accounts, categories.filter((c) => c.id !== "home"))).toThrow(/category/);

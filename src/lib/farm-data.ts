@@ -28,7 +28,7 @@ export type CustomerRate = { id: string; customer_id: string; rate: number; effe
 export type MilkShift = { id: string; milk_date: string; shift: "morning" | "evening"; total_litres: number; mode: "total" | "per_animal" };
 export type MilkDelivery = { id: string; delivery_date: string; shift: "morning" | "evening"; customer_id: string; litres: number; rate: number | null; amount: number };
 export type Payment = { id: string; customer_id: string; payment_date: string; amount: number; kind: string; method: string | null; account_id: string | null; delivery_id: string | null; note: string | null; revision: number };
-export type ExpenseCategory = { id: string; name: string; is_farm_cost: boolean; active: boolean; sort_order: number };
+export type ExpenseCategory = { id: string; name: string; is_farm_cost: boolean; is_salary: boolean; active: boolean; sort_order: number };
 export type Expense = { id: string; expense_date: string; category_id: string; amount: number; account_id: string; note: string | null };
 export type Account = { id: string; name: string; kind: string; is_farm_cash: boolean; active: boolean; opening_date: string };
 export type CompanyBill = { id: string; customer_id: string; from_date: string; to_date: string; litres: number; amount: number };
@@ -57,7 +57,7 @@ type Table = keyof Database["public"]["Tables"];
 type View = keyof Database["public"]["Views"];
 type Report = "customer_month_report" | "herd_alerts" | "pnl_month";
 
-async function allRows<T>(table: Table, key = "id"): Promise<T[]> {
+export async function allRows<T>(table: Table, key = "id"): Promise<T[]> {
   const result: T[] = [];
   for (let from = 0; ; from += 1000) {
     const { data, error } = await getSupabase().from(table).select("*").order(key).range(from, from + 999);

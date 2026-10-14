@@ -8,10 +8,11 @@ const accounts = [
   { id: "closed", active: false, opening_date: "2026-09-01" },
 ];
 const categories = [
-  { id: "farm", name: "Wanda", is_farm_cost: true, active: true },
-  { id: "home", name: "Ghar ka kharcha", is_farm_cost: false, active: true },
-  { id: "personal", name: "Dukan bill", is_farm_cost: false, active: true },
-  { id: "inactive", name: "Purana", is_farm_cost: true, active: false },
+  { id: "farm", name: "Wanda", is_farm_cost: true, is_salary: false, active: true },
+  { id: "home", name: "Ghar ka kharcha", is_farm_cost: false, is_salary: false, active: true },
+  { id: "personal", name: "Dukan bill", is_farm_cost: false, is_salary: false, active: true },
+  { id: "inactive", name: "Purana", is_farm_cost: true, is_salary: false, active: false },
+  { id: "salary", name: "Tankhwah", is_farm_cost: true, is_salary: true, active: true },
 ];
 
 function form(fields: Record<string, string>): FormData {
@@ -44,6 +45,7 @@ describe("expense entry form", () => {
     expect(() => parseExpenseEntry(form({ account: "" }), "home", today, accounts, categories)).toThrow(/Active account/);
     expect(() => parseExpenseEntry(form({ account: "new", date: "2026-10-09" }), "home", today, accounts, categories)).toThrow(/Account khulne/);
     expect(() => parseExpenseEntry(form({ category: "inactive" }), "farm", today, accounts, categories)).toThrow(/category/);
+    expect(() => parseExpenseEntry(form({ category: "salary" }), "farm", today, accounts, categories)).toThrow(/Tankhwah/);
     expect(() => parseExpenseEntry(form({}), "home", today, accounts, categories.filter((c) => c.id !== "home"))).toThrow(/category/);
   });
 });

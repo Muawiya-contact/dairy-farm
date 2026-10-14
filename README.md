@@ -18,7 +18,7 @@ The staging and real-data databases are separate projects. During the demo phase
 - `/doodh/`: morning and evening milk production, animal quantities and customer deliveries
 - `/khata/`: add and edit customers, view monthly database balances and detailed PDF bills, record payments and company bills, download or share payment receipts (`?id=<uuid>`)
 - `/galla/`: account ledger, manual transfers, cash counts and reconciliation
-- `/kharcha/`: expense and profit report, categories, accounts and entries
+- `/kharcha/`: farm, home and other personal expenses with separate history, profit, categories and accounts
 - `/settings/`: shared farm settings, breeding-day offsets and account controls
 
 Animal and customer detail links use query parameters because Next.js static export cannot build pages for database IDs that do not exist at build time.
@@ -39,7 +39,7 @@ Import `Muawiya-contact/dairy-farm` from Git. Leave Base directory and Functions
 
 ## Database
 
-Twenty-three migrations in `supabase/migrations/` are recorded on both projects as of 2026-10-14. Apply future schema changes with the Supabase CLI so migration history stays in sync. Staging alone contains the invented records from `supabase/seed/dev-demo.sql`; no demo seed was applied to production. Database triggers and report functions calculate delivery amounts, customer balances and profit. The staging access switch is `private.demo_access.enabled = true`; production keeps it `false`. Step 6 implementation and money rules are described in [docs/steps/step-6-galla.md](docs/steps/step-6-galla.md).
+Twenty-four migrations in `supabase/migrations/` are recorded on both projects as of 2026-10-14. Apply future schema changes with the Supabase CLI so migration history stays in sync. Staging alone contains the invented records from `supabase/seed/dev-demo.sql`; no demo seed was applied to production. Database triggers and report functions calculate delivery amounts, customer balances and profit. The staging access switch is `private.demo_access.enabled = true`; production keeps it `false`. Step 6 money rules are described in [docs/steps/step-6-galla.md](docs/steps/step-6-galla.md); the home-expense workflow is in [docs/steps/step-7-kharcha.md](docs/steps/step-7-kharcha.md).
 
 Set the optional farm contact number in Settings before sending customer documents. A statement PDF includes the selected month's saved deliveries, company bills and payments; a receipt PDF confirms one payment. On phones that support file sharing, the PDF opens the system share sheet. When file sharing is unavailable and the customer has a valid phone number, the PDF downloads and the customer's WhatsApp chat opens with a prefilled message; the owner still attaches the PDF and presses Send. Sharing is always initiated by the owner.
 

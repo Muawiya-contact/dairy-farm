@@ -22,7 +22,7 @@ export const DATASETS: { table: Table; label: string; key: string; columns: stri
   { table: "accounts", label: "Accounts", key: "id", columns: ["id", "name", "kind", "is_farm_cash", "opening_balance", "opening_date", "active", "sort_order", "created_at"] },
   { table: "staff", label: "Staff", key: "id", columns: ["id", "name", "role", "monthly_salary", "phone", "active", "created_at"] },
   { table: "month_locks", label: "Band maheenay", key: "month", columns: ["month", "locked_at", "note"] },
-  { table: "settings", label: "Farm settings", key: "id", columns: ["id", "farm_name", "owner_name", "go_live_date", "default_milk_rate", "ultrasound_days", "checkup_days", "dry_off_days", "calving_days", "fresh_days", "whatsapp_footer"] },
+  { table: "settings", label: "Farm settings", key: "id", columns: ["id", "farm_name", "owner_name", "contact_phone", "go_live_date", "default_milk_rate", "ultrasound_days", "checkup_days", "dry_off_days", "calving_days", "fresh_days", "whatsapp_footer"] },
 ];
 
 export const REPORTS = [
@@ -58,6 +58,7 @@ const COLUMN_LABELS: Record<string, string> = {
   personal_expenses: "Zaati kharchay (Rs)", profit: "Munafa ya nuqsan (Rs)",
   staff_name: "Mulazim ka naam", is_farm_cost: "Farm ka kharcha",
   technician: "Technician", sort_order: "Tarteeb", kind: "Qism",
+  contact_phone: "Farm contact number",
 };
 
 export const columnLabel = (column: string) => COLUMN_LABELS[column] ?? column.replaceAll("_", " ");
@@ -111,7 +112,7 @@ export function downloadFile(filename: string, content: string, mime: string): v
   downloadBlob(filename, new Blob([content], { type: mime }));
 }
 
-function downloadBlob(filename: string, blob: Blob): void {
+export function downloadBlob(filename: string, blob: Blob): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url; link.download = filename;

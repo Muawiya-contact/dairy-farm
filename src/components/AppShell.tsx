@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { BookIcon, CanIcon, CowIcon, HomeIcon, WalletIcon } from "./icons";
+import { BookIcon, CanIcon, CoinsIcon, CowIcon, HomeIcon, WalletIcon } from "./icons";
 import { useQuery } from "@tanstack/react-query";
 import { getSettings } from "@/lib/settings";
 import { getSupabase } from "@/lib/supabase";
@@ -13,6 +13,7 @@ const NAV = [
   { href: "/janwar/", label: "Janwar", Icon: CowIcon },
   { href: "/doodh/", label: "Doodh", Icon: CanIcon },
   { href: "/khata/", label: "Khata", Icon: BookIcon },
+  { href: "/galla/", label: "Galla", Icon: CoinsIcon },
   { href: "/kharcha/", label: "Kharcha", Icon: WalletIcon },
 ];
 
@@ -61,7 +62,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       {/* Phone: bottom menu */}
       <nav
         aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-line bg-paper/95 px-1 pt-1 pb-[max(10px,env(safe-area-inset-bottom))] backdrop-blur lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-6 border-t border-line bg-paper/95 px-1 pt-1 pb-[max(10px,env(safe-area-inset-bottom))] backdrop-blur lg:hidden"
       >
         {NAV.map(({ href, label, Icon }) => {
           const on = isActive(path, href);

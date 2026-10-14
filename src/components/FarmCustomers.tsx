@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { friendlyError } from "@/lib/errors";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -21,6 +21,8 @@ import {
 import { whatsappChatUrl, whatsappNumber } from "@/lib/phone";
 import { downloadBlob } from "@/lib/export-data";
 import { formatMonth } from "@/lib/dates";
+import { correctPayment, getCustomerPaymentAudit, recordDiscount, voidPayment } from "@/lib/galla";
+import { parseDiscount, parsePaymentCorrection, parseVoidReason } from "@/lib/galla-forms";
 import { Body, PageHeader, Panel } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
 import { PlusIcon } from "./icons";
@@ -37,12 +39,17 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
   const [editing, setEditing] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfStatus, setPdfStatus] = useState("");
+  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
+  const [voidPaymentId, setVoidPaymentId] = useState<string | null>(null);
+  const paymentPending = useRef<{ id: string; signature: string } | null>(null);
+  const discountPending = useRef<{ id: string; signature: string } | null>(null);
   useEffect(() => { void prepareCustomerPdf().catch(() => {}); }, []);
   const reportQuery = useQuery({
     queryKey: ["customer-report", c.id, month],
     queryFn: () => customerMonthReport(c.id, month),
     enabled: validMonth,
   });
+  const auditQuery = useQuery({ queryKey: ["payment-audit", c.id], queryFn: () => getCustomerPaymentAudit(c.id) });
   const balance = amount(data.balances.find((x) => x.customer_id === c.id)?.balance);
   const report = reportQuery.data;
   const rate = customerRate(data, c.id);
@@ -61,9 +68,43 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
     const form = event.currentTarget;
     const values = new FormData(form);
     void save(async () => {
-      await recordCustomerPayment(c.id, parseCustomerPayment(values, data.today));
-      form.reset();
+      const input = parseCustomerPayment(values, data.today);
+      const signature = JSON.stringify(input);
+      if (paymentPending.current?.signature !== signature) paymentPending.current = { id: crypto.randomUUID(), signature };
+      await recordCustomerPayment(c.id, input, paymentPending.current.id);
+      paymentPending.current = null; form.reset();
     }, "Wusooli save ho gayi. Neeche register se receipt share karein.");
+  };
+  const onDiscount = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    void save(async () => {
+      const input = parseDiscount(new FormData(form), data.today);
+      const signature = JSON.stringify(input);
+      if (discountPending.current?.signature !== signature) discountPending.current = { id: crypto.randomUUID(), signature };
+      await recordDiscount(discountPending.current.id, c.id, input);
+      discountPending.current = null; form.reset();
+    }, "Riayat save ho gayi. Customer ka baqaya kam hua; galla mein paisa nahi aaya.");
+  };
+  const onCorrection = (event: FormEvent<HTMLFormElement>, paymentId: string) => {
+    event.preventDefault();
+    const payment = data.payments.find((item) => item.id === paymentId && item.customer_id === c.id);
+    if (!payment) return;
+    const values = new FormData(event.currentTarget);
+    void save(() => correctPayment(payment.id, payment.revision,
+      parsePaymentCorrection(values, data.today, payment.kind, data.accounts)),
+    "Entry durust ho gayi. Purani raqam audit mein mehfooz hai.").then((saved) => { if (saved) setEditingPaymentId(null); });
+  };
+  const onVoid = (event: FormEvent<HTMLFormElement>, paymentId: string) => {
+    event.preventDefault();
+    const payment = data.payments.find((item) => item.id === paymentId && item.customer_id === c.id);
+    if (!payment) return;
+    let reason: string;
+    try { reason = parseVoidReason(new FormData(event.currentTarget)); }
+    catch (issue) { void save(async () => { throw issue; }, ""); return; }
+    if (!window.confirm(`${payment.kind === "discount" ? "Riayat" : "Wusooli"} ${money(payment.amount)} radd karein? Customer ka baqaya badlega.`)) return;
+    void save(() => voidPayment(payment.id, payment.revision, reason), "Entry radd ho gayi. Wajah audit mein mehfooz hai.")
+      .then((saved) => { if (saved) setVoidPaymentId(null); });
   };
   const onRate = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -163,6 +204,15 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
         </form>
         {!activeAccounts.length && <p className="mt-2 text-sm text-muted">Pehle Settings mein active account banayein.</p>}
       </Panel>}
+      {c.kind !== "cash" && c.kind !== "free" && <Panel title="Riayat dein">
+        <p className="mb-2 text-sm text-muted">Riayat customer ka baqaya kam karti hai; galla mein paisa nahi aata.</p>
+        <form onSubmit={onDiscount} className="grid gap-2">
+          <input name="amount" type="number" min="0.01" step="0.01" required placeholder="Riayat Rs" aria-label="Riayat raqam" className={field} />
+          <label className="text-sm text-muted">Riayat ki tareekh<input name="date" type="date" max={data.today} defaultValue={data.today} required className={field} /></label>
+          <input name="reason" required placeholder="Riayat ki wajah" aria-label="Riayat ki wajah" className={field} />
+          <button disabled={busy} className="min-h-11 rounded-xl border border-berseem font-bold text-berseem disabled:opacity-50">Riayat save karein</button>
+        </form>
+      </Panel>}
       {c.kind !== "company" && c.kind !== "free" && <Panel title="Doodh ka rate">
         <p className="mb-2 text-sm text-muted">Rate ki tareekh chunein. Purani saved deliveries ki raqam nahi badlegi.</p>
         <form onSubmit={onRate} className="grid gap-2">
@@ -183,14 +233,38 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
       </Panel>}
       <Panel title={`${validMonth ? formatMonth(`${month}-01`) : "Maheene"} ka register`} className="lg:col-span-2"><ul className="divide-y divide-line">
         {[...ledger].reverse().map((entry) => {
-          const payment = data.payments.find((item) => item.id === entry.id && item.kind === "payment");
+          const paymentEntry = data.payments.find((item) => item.id === entry.id);
+          const payment = paymentEntry?.kind === "payment" ? paymentEntry : null;
           const receiptWa = payment ? whatsappChatUrl(c.phone, receiptMessage(data.settings, c, payment)) : null;
           return <li key={entry.id} className="flex flex-wrap items-center gap-2 py-3 text-sm"><span className="text-muted">{shortDate(entry.date)}</span><span className="min-w-32 flex-1">{entry.detail}{entry.litres != null ? ` · ${entry.litres} L` : ""}</span><strong className={entry.credit ? "text-berseem" : ""}>{entry.credit ? `− ${money(entry.credit)}` : money(entry.charge)}</strong>
             {payment && <div className="flex w-full flex-wrap gap-2 sm:justify-end"><button type="button" disabled={pdfBusy} onClick={() => void document("receipt", payment.id, false)} className="min-h-10 rounded-lg border border-line px-3 font-semibold disabled:opacity-50">Receipt PDF</button><button type="button" disabled={pdfBusy} onClick={() => void document("receipt", payment.id, true)} className="min-h-10 rounded-lg border border-berseem px-3 font-semibold text-berseem disabled:opacity-50">Receipt share karein</button>{receiptWa && <a href={receiptWa} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center rounded-lg border border-line px-3 font-semibold">WhatsApp matn</a>}</div>}
+            {paymentEntry?.delivery_id && <p className="w-full text-xs text-muted">Naqd sale: is entry ko doodh ki shift se durust karein.</p>}
+            {paymentEntry && !paymentEntry.delivery_id && <div className="flex w-full gap-2 sm:justify-end"><button type="button" disabled={busy} onClick={() => { setEditingPaymentId(editingPaymentId === paymentEntry.id ? null : paymentEntry.id); setVoidPaymentId(null); }} className="min-h-10 rounded-lg border border-line px-3 font-semibold">Durust karein</button><button type="button" disabled={busy} onClick={() => { setVoidPaymentId(voidPaymentId === paymentEntry.id ? null : paymentEntry.id); setEditingPaymentId(null); }} className="min-h-10 rounded-lg border border-udhaar px-3 font-semibold text-udhaar">Radd karein</button></div>}
+            {paymentEntry && editingPaymentId === paymentEntry.id && <form key={`${paymentEntry.id}-${paymentEntry.revision}`} onSubmit={(event) => onCorrection(event, paymentEntry.id)} className="grid w-full gap-2 rounded-xl bg-ground p-3 sm:grid-cols-2">
+              <label className="text-sm">Tareekh<input name="date" type="date" max={data.today} defaultValue={paymentEntry.payment_date} required className={field} /></label>
+              <label className="text-sm">Raqam<input name="amount" type="number" min="0.01" step="0.01" defaultValue={paymentEntry.amount} required className={field} /></label>
+              {paymentEntry.kind === "payment" && <><label className="text-sm">Tareeqa<select name="method" defaultValue={paymentEntry.method ?? "cash"} className={field}><option value="cash">Cash</option><option value="bank">Bank</option><option value="easypaisa">Easypaisa</option><option value="jazzcash">JazzCash</option><option value="cheque">Cheque</option></select></label><label className="text-sm">Account<select name="account" defaultValue={paymentEntry.account_id ?? ""} required className={field}><option value="" disabled>Account chunein</option>{data.accounts.filter((item) => item.active || item.id === paymentEntry.account_id).map((item) => <option key={item.id} value={item.id}>{item.name}{item.active ? "" : " (band)"}</option>)}</select></label></>}
+              <input name="reason" required placeholder="Correction ki wajah" aria-label="Correction ki wajah" className={`${field} sm:col-span-2`} />
+              <button disabled={busy} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50 sm:col-span-2">Durust entry save karein</button>
+            </form>}
+            {paymentEntry && voidPaymentId === paymentEntry.id && <form onSubmit={(event) => onVoid(event, paymentEntry.id)} className="grid w-full gap-2 rounded-xl bg-ground p-3">
+              <p>Entry radd hone se customer ka baqaya badlega. Purani entry audit mein rahegi.</p>
+              <input name="reason" required placeholder="Radd karne ki wajah" aria-label="Radd karne ki wajah" className={field} />
+              <button disabled={busy} className="min-h-11 rounded-xl bg-udhaar font-bold text-white disabled:opacity-50">Entry radd karein</button>
+            </form>}
           </li>;
         })}
         {!ledger.length && <li className="py-3 text-muted">Abhi koi entry nahi.</li>}
       </ul></Panel>
+      <Panel title="Wusooli corrections ki history" className="lg:col-span-2">
+        {auditQuery.isPending && <p role="status" className="text-muted">History load ho rahi hai…</p>}
+        {auditQuery.isError && <p role="alert" className="text-udhaar">History nahi khuli: {friendlyError(auditQuery.error)} <button type="button" onClick={() => void auditQuery.refetch()} className="underline">Dobara koshish</button></p>}
+        {auditQuery.data && <ul className="divide-y divide-line">{auditQuery.data.map((item) => {
+          const before = item.before_row && typeof item.before_row === "object" && !Array.isArray(item.before_row) ? item.before_row : {};
+          const after = item.after_row && typeof item.after_row === "object" && !Array.isArray(item.after_row) ? item.after_row : {};
+          return <li key={item.id} className="py-2 text-sm"><span>{shortDate(item.changed_at.slice(0, 10))} · {item.action === "delete" ? "Radd" : "Durust"} · {money(Number(before.amount))}{item.action === "update" ? ` → ${money(Number(after.amount))}` : ""}</span><p className="text-muted">Wajah: {item.reason}</p></li>;
+        })}{!auditQuery.data.length && <li className="py-2 text-muted">Abhi koi correction nahi.</li>}</ul>}
+      </Panel>
       {pdfStatus && <p role="status" className="text-berseem-deep lg:col-span-2">{pdfStatus}</p>}
       {success && <p role="status" className="text-berseem-deep lg:col-span-2">{success}</p>}
       {error && <p role="alert" className="text-udhaar lg:col-span-2">Save nahi hua: {error}</p>}
@@ -244,22 +318,28 @@ export default function FarmCustomers() {
   const queryClient = useQueryClient();
   const id = useSearchParams().get("id") ?? "";
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   if (!query.data) return <FarmLoading error={query.error} retry={() => void query.refetch()} />;
   const data = query.data;
   const save: Save = async (action, message) => {
+    if (busyRef.current) return false;
+    busyRef.current = true;
     setBusy(true); setError(""); setSuccess("");
     try {
       await action();
       await queryClient.invalidateQueries({ queryKey: ["farm-data"] });
       await queryClient.invalidateQueries({ queryKey: ["customer-report"] });
+      await queryClient.invalidateQueries({ queryKey: ["payment-audit"] });
+      await queryClient.invalidateQueries({ queryKey: ["galla"] });
       setSuccess(message);
       return true;
     } catch (saveError) {
       setError(friendlyError(saveError));
       return false;
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };

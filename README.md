@@ -40,6 +40,7 @@ Import `Muawiya-contact/dairy-farm` from Git. Leave Base directory and Functions
 ## Database
 
 Twenty-two migrations in `supabase/migrations/` are recorded on both projects as of 2026-10-14. Apply future schema changes with the Supabase CLI so migration history stays in sync. Staging alone contains the invented records from `supabase/seed/dev-demo.sql`; no demo seed was applied to production. Database triggers and report functions calculate delivery amounts, customer balances and profit. The staging access switch is `private.demo_access.enabled = true`; production keeps it `false`. Step 6 implementation and money rules are described in [docs/steps/step-6-galla.md](docs/steps/step-6-galla.md).
+Twenty migrations in `supabase/migrations/` are recorded on both projects as of 2026-10-14. Apply future schema changes with the Supabase CLI so migration history stays in sync. Staging alone contains the invented records from `supabase/seed/dev-demo.sql`; no demo seed was applied to production. Database triggers and report functions calculate delivery amounts, customer balances and profit. The staging access switch is `private.demo_access.enabled = true`; production keeps it `false`.
 
 Set the optional farm contact number in Settings before sending customer documents. A statement PDF includes the selected month's saved deliveries, company bills and payments; a receipt PDF confirms one payment. On phones that support file sharing, the PDF opens the system share sheet. When file sharing is unavailable and the customer has a valid phone number, the PDF downloads and the customer's WhatsApp chat opens with a prefilled message; the owner still attaches the PDF and presses Send. Sharing is always initiated by the owner.
 
@@ -47,4 +48,4 @@ The animal page records semen details, checkups and calving against existing Sup
 
 `npm run db:types` refreshes TypeScript database types from staging. It requires Supabase CLI login. CI runs tests, lint, typecheck and the static export build on pushes and pull requests.
 
-Run `npm run check` before pushing. The database tests use PGlite and cover owner access, staging preview access and demo data. The current project plan is in [docs/ROADMAP.md](docs/ROADMAP.md).
+Run `npm run check` before pushing. The database tests use PGlite and cover owner access, staging preview access and demo data. The [roadmap](docs/ROADMAP.md) and [implementation documentation](docs/DOCUMENTATION.md) track each step and its acceptance criteria.

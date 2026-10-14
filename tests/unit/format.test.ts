@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { litres, parseAmount, parseLitres, rs } from "../../src/lib/format";
+import { litres, parseAmount, parseLitres, parsePositiveAmount, parseSignedAmount, rs } from "../../src/lib/format";
 
 describe("farm number helpers", () => {
   it("formats Pakistani rupees and litres", () => {
@@ -18,5 +18,18 @@ describe("farm number helpers", () => {
   it.each(["-5", "abc", "1.2.3", "12.555", "1,50", "", "Infinity"])("rejects %s", (input) => {
     expect(() => parseAmount(input)).toThrow(RangeError);
     expect(() => parseLitres(input)).toThrow(RangeError);
+  });
+
+  it("allows a signed opening balance but rejects malformed values", () => {
+    expect(parseSignedAmount("-1,250.50")).toBe(-1250.5);
+    expect(parseSignedAmount("0")).toBe(0);
+    expect(() => parseSignedAmount("-12.345")).toThrow(RangeError);
+    expect(() => parseSignedAmount("--5")).toThrow(RangeError);
+  });
+
+  it("requires a positive expense, payment, or sale amount", () => {
+    expect(parsePositiveAmount("0.01")).toBe(0.01);
+    expect(() => parsePositiveAmount("0")).toThrow(RangeError);
+    expect(() => parsePositiveAmount("-10")).toThrow(RangeError);
   });
 });

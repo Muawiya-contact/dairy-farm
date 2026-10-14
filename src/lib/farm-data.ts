@@ -5,6 +5,7 @@ import { getSupabase } from "./supabase";
 import { getSettings, type FarmSettings } from "./settings";
 import { formatDay, todayPK } from "./dates";
 import { rs } from "./format";
+import type { CustomerPayment, CustomerProfile, NewCustomer } from "./customer-forms";
 import type { Database } from "./database.types";
 
 export type Animal = {
@@ -26,11 +27,11 @@ export type Customer = { id: string; name: string; phone: string | null; kind: s
 export type CustomerRate = { id: string; customer_id: string; rate: number; effective_from: string };
 export type MilkShift = { id: string; milk_date: string; shift: "morning" | "evening"; total_litres: number; mode: "total" | "per_animal" };
 export type MilkDelivery = { id: string; delivery_date: string; shift: "morning" | "evening"; customer_id: string; litres: number; rate: number | null; amount: number };
-export type Payment = { id: string; customer_id: string; payment_date: string; amount: number; kind: string; method: string | null; account_id: string | null };
+export type Payment = { id: string; customer_id: string; payment_date: string; amount: number; kind: string; method: string | null; account_id: string | null; note: string | null };
 export type ExpenseCategory = { id: string; name: string; is_farm_cost: boolean; active: boolean; sort_order: number };
 export type Expense = { id: string; expense_date: string; category_id: string; amount: number; account_id: string; note: string | null };
 export type Account = { id: string; name: string; is_farm_cash: boolean; active: boolean };
-export type CompanyBill = { id: string; customer_id: string; to_date: string; amount: number };
+export type CompanyBill = { id: string; customer_id: string; from_date: string; to_date: string; litres: number; amount: number };
 export type OtherIncome = { id: string; income_date: string; amount: number };
 export type CustomerReport = { customer_id: string; name: string; kind: string; litres: number; amount: number; previous_balance: number; paid: number; discount: number; balance: number };
 export type CustomerBalance = { customer_id: string; balance: number };
@@ -113,6 +114,19 @@ export function customerRate(data: Pick<FarmData, "rates" | "today">, id: string
     .sort((a, b) => b.effective_from.localeCompare(a.effective_from))[0]?.rate);
 }
 
+/** Keep old deliveries visible when a customer is later made inactive. */
+export function milkShiftCustomers(data: Pick<FarmData, "customers" | "deliveries">, date: string, shift: "morning" | "evening"): Customer[] {
+  const historical = new Set(data.deliveries.filter((row) => row.delivery_date === date && row.shift === shift).map((row) => row.customer_id));
+  return data.customers.filter((customer) => customer.active || historical.has(customer.id));
+}
+
+/** An old shift still needs animals that were milking then, even if they are now dry or sold. */
+export function milkShiftAnimals(data: Pick<FarmData, "animals" | "animalMilk">, shiftId: string | undefined): Animal[] {
+  const historical = new Set(data.animalMilk.filter((row) => row.shift_id === shiftId).map((row) => row.animal_id));
+  return data.animals.filter((animal) =>
+    (animal.life_status === "active" && animal.sex === "female" && animal.milking_status === "milking") || historical.has(animal.id));
+}
+
 export async function saveMilkEntry(input: { date: string; shift: "morning" | "evening"; total: number; mode: "total" | "per_animal"; animals: { animal_id: string; litres: number }[]; deliveries: { customer_id: string; litres: number }[] }) {
   const { error } = await getSupabase().rpc("save_milk_entry", {
     p_date: input.date, p_shift: input.shift, p_total: input.total, p_mode: input.mode,
@@ -149,13 +163,35 @@ export async function closeAnimal(input: {
   if (error) throw error;
 }
 
-export async function createCustomer(input: { name: string; kind: string; phone: string; morning: number; evening: number; rate: number; openingBalance: number; openingDate: string }) {
+export async function createCustomer(input: NewCustomer) {
   const { error } = await getSupabase().rpc("create_customer", {
     p_name: input.name, p_kind: input.kind, p_phone: input.phone,
     p_morning: input.morning, p_evening: input.evening, p_rate: input.rate,
     p_opening_balance: input.openingBalance, p_opening_date: input.openingDate,
   });
   if (error) throw error;
+}
+
+export async function updateCustomerProfile(id: string, input: CustomerProfile): Promise<void> {
+  const { data, error } = await getSupabase().from("customers").update({
+    name: input.name, phone: input.phone || null,
+    default_morning: input.morning, default_evening: input.evening, active: input.active,
+  }).eq("id", id).select("id").maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("CUSTOMER_STALE");
+}
+
+export async function recordCustomerPayment(customerId: string, input: CustomerPayment): Promise<void> {
+  const { error } = await getSupabase().from("payments").insert({
+    customer_id: customerId, payment_date: input.date, amount: input.amount,
+    kind: "payment", method: input.method, account_id: input.accountId,
+  });
+  if (error) throw error;
+}
+
+export async function customerMonthReport(customerId: string, month: string): Promise<CustomerReport | null> {
+  const rows = await report<CustomerReport>("customer_month_report", { p_month: `${month}-01` });
+  return rows.find((row) => row.customer_id === customerId) ?? null;
 }
 
 export async function saveCustomerRate(customerId: string, rate: number, effectiveFrom: string) {

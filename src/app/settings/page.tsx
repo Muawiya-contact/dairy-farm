@@ -16,6 +16,7 @@ function SettingsForm({ initial }: { initial: FarmSettings }) {
   const client = useQueryClient();
   const [farm, setFarm] = useState(initial.farm_name);
   const [owner, setOwner] = useState(initial.owner_name);
+  const [contactPhone, setContactPhone] = useState(initial.contact_phone);
   const [rate, setRate] = useState(String(initial.default_milk_rate));
   const [footer, setFooter] = useState(initial.whatsapp_footer);
   const [days, setDays] = useState(() => Object.fromEntries(breedingFields.map(({ key }) => [key, String(initial[key])])) as Record<(typeof breedingFields)[number]["key"], string>);
@@ -33,7 +34,7 @@ function SettingsForm({ initial }: { initial: FarmSettings }) {
     try { parsedRate = parseAmount(rate); }
     catch { setValidation("Doodh ka sahi rate likhein."); return; }
     const values = {
-      farm_name: farm.trim(), owner_name: owner.trim(), default_milk_rate: parsedRate,
+      farm_name: farm.trim(), owner_name: owner.trim(), contact_phone: contactPhone.trim(), default_milk_rate: parsedRate,
       whatsapp_footer: footer.trim(), ultrasound_days: Number(days.ultrasound_days),
       checkup_days: Number(days.checkup_days), dry_off_days: Number(days.dry_off_days),
       calving_days: Number(days.calving_days), fresh_days: Number(days.fresh_days),
@@ -48,6 +49,7 @@ function SettingsForm({ initial }: { initial: FarmSettings }) {
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="font-semibold">Farm ka naam<input required disabled={mutation.isPending} placeholder="Farm ka naam" value={farm} onChange={(event) => { edit(); setFarm(event.target.value); }} className={inputClass} /></label>
         <label className="font-semibold">Maalik ka naam<input disabled={mutation.isPending} placeholder="Maalik ka naam" value={owner} onChange={(event) => { edit(); setOwner(event.target.value); }} className={inputClass} /></label>
+        <label className="font-semibold">Farm ka contact number<input disabled={mutation.isPending} type="tel" inputMode="tel" placeholder="03xxxxxxxxx (optional)" value={contactPhone} onChange={(event) => { edit(); setContactPhone(event.target.value); }} className={inputClass} /><span className="mt-1 block text-xs font-normal text-muted">Bill aur receipt PDF par nazar aayega.</span></label>
         <label className="font-semibold">Doodh ka default rate (Rs/L)<input required disabled={mutation.isPending} type="number" min="0.01" step="0.01" placeholder="Misal: 150" value={rate} onChange={(event) => { edit(); setRate(event.target.value); }} className={inputClass} /></label>
         <label className="font-semibold">WhatsApp bill ka paigham<input disabled={mutation.isPending} placeholder="Bill ke neeche paigham" value={footer} onChange={(event) => { edit(); setFooter(event.target.value); }} className={inputClass} /></label>
       </div>

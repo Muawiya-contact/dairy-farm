@@ -262,7 +262,17 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
         {auditQuery.data && <ul className="divide-y divide-line">{auditQuery.data.map((item) => {
           const before = item.before_row && typeof item.before_row === "object" && !Array.isArray(item.before_row) ? item.before_row : {};
           const after = item.after_row && typeof item.after_row === "object" && !Array.isArray(item.after_row) ? item.after_row : {};
-          return <li key={item.id} className="py-2 text-sm"><span>{shortDate(item.changed_at.slice(0, 10))} · {item.action === "delete" ? "Radd" : "Durust"} · {money(Number(before.amount))}{item.action === "update" ? ` → ${money(Number(after.amount))}` : ""}</span><p className="text-muted">Wajah: {item.reason}</p></li>;
+          const oldDate = typeof before.payment_date === "string" ? before.payment_date : "";
+          const newDate = typeof after.payment_date === "string" ? after.payment_date : "";
+          const oldAccount = data.accounts.find((account) => account.id === before.account_id)?.name ?? "Account";
+          const newAccount = data.accounts.find((account) => account.id === after.account_id)?.name ?? "Account";
+          return <li key={item.id} className="py-2 text-sm">
+            <span>{shortDate(item.changed_at.slice(0, 10))} · {item.action === "delete" ? "Radd" : "Durust"} · {money(Number(before.amount))}{item.action === "update" ? ` → ${money(Number(after.amount))}` : ""}</span>
+            {item.action === "update" && oldDate !== newDate && <p className="text-muted">Tareekh: {shortDate(oldDate)} → {shortDate(newDate)}</p>}
+            {item.action === "update" && before.account_id !== after.account_id && <p className="text-muted">Account: {oldAccount} → {newAccount}</p>}
+            {item.action === "update" && before.method !== after.method && <p className="text-muted">Tareeqa: {String(before.method ?? "—")} → {String(after.method ?? "—")}</p>}
+            <p className="text-muted">Wajah: {item.reason}</p>
+          </li>;
         })}{!auditQuery.data.length && <li className="py-2 text-muted">Abhi koi correction nahi.</li>}</ul>}
       </Panel>
       {pdfStatus && <p role="status" className="text-berseem-deep lg:col-span-2">{pdfStatus}</p>}

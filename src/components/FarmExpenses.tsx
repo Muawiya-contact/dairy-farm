@@ -61,6 +61,9 @@ export default function FarmExpenses() {
   const personalCategories = d.categories.filter((category) => category.active && expenseMode(category) === "personal").sort(categoryOrder);
   const activeAccounts = d.accounts.filter((account) => account.active);
   const availableCategories = mode === "farm" ? farmCategories : personalCategories;
+  const defaultCategoryId = mode === "farm"
+    ? farmCategories.find((category) => category.name === "Farm ka kharcha")?.id ?? farmCategories[0]?.id ?? ""
+    : personalCategories[0]?.id ?? "";
   const canSave = activeAccounts.length > 0 && (mode === "home" ? !!homeCategory : availableCategories.length > 0);
 
   const run = async (action: () => Promise<void>, message: string) => {
@@ -107,7 +110,7 @@ export default function FarmExpenses() {
         <form key={mode} onSubmit={onExpense} className="grid gap-3 sm:grid-cols-2">
           <label className="text-sm">Tareekh<input name="date" type="date" max={d.today} required defaultValue={d.today} className={field} /></label>
           {mode === "home" ? <div className="self-end rounded-xl bg-berseem-soft px-3 py-3 text-sm text-berseem-deep">Category: Ghar ka kharcha</div>
-            : <label className="text-sm">Category<select name="category" required defaultValue={availableCategories[0]?.id ?? ""} className={field}>
+            : <label className="text-sm">Category<select name="category" required defaultValue={defaultCategoryId} className={field}>
               <option value="" disabled>Category chunein</option>{availableCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
             </select></label>}
           <label className="text-sm">Paisa kis account se nikla?<select name="account" required defaultValue={activeAccounts[0]?.id ?? ""} className={field}>

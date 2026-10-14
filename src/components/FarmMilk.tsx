@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { amount, customerRate, longDate, milkShiftCustomers, money, saveMilkEntry, useFarmData, type FarmData } from "@/lib/farm-data";
+import { amount, customerRate, longDate, milkShiftAnimals, milkShiftCustomers, money, saveMilkEntry, useFarmData, type FarmData } from "@/lib/farm-data";
 import { parseLitres } from "@/lib/format";
 import { friendlyError } from "@/lib/errors";
 import { Body, PageHeader, Panel } from "./ui";
@@ -16,7 +16,7 @@ function ShiftForm({ data, date, shift }: { data: FarmData; date: string; shift:
   const qc = useQueryClient();
   const existing = data.shifts.find((s) => s.milk_date === date && s.shift === shift);
   const active = milkShiftCustomers(data, date, shift);
-  const milkers = data.animals.filter((a) => a.life_status === "active" && a.sex === "female" && a.milking_status === "milking");
+  const milkers = milkShiftAnimals(data, existing?.id);
   const [mode, setMode] = useState<"total" | "per_animal">(existing?.mode ?? "total");
   const [total, setTotal] = useState(existing ? String(existing.total_litres) : "");
   const [perAnimal, setPerAnimal] = useState<Record<string, number>>(() => Object.fromEntries(milkers.map((a) => [a.id, amount(data.animalMilk.find((x) => x.shift_id === existing?.id && x.animal_id === a.id)?.litres)])));

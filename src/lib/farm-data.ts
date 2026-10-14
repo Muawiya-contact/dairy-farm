@@ -120,6 +120,13 @@ export function milkShiftCustomers(data: Pick<FarmData, "customers" | "deliverie
   return data.customers.filter((customer) => customer.active || historical.has(customer.id));
 }
 
+/** An old shift still needs animals that were milking then, even if they are now dry or sold. */
+export function milkShiftAnimals(data: Pick<FarmData, "animals" | "animalMilk">, shiftId: string | undefined): Animal[] {
+  const historical = new Set(data.animalMilk.filter((row) => row.shift_id === shiftId).map((row) => row.animal_id));
+  return data.animals.filter((animal) =>
+    (animal.life_status === "active" && animal.sex === "female" && animal.milking_status === "milking") || historical.has(animal.id));
+}
+
 export async function saveMilkEntry(input: { date: string; shift: "morning" | "evening"; total: number; mode: "total" | "per_animal"; animals: { animal_id: string; litres: number }[]; deliveries: { customer_id: string; litres: number }[] }) {
   const { error } = await getSupabase().rpc("save_milk_entry", {
     p_date: input.date, p_shift: input.shift, p_total: input.total, p_mode: input.mode,

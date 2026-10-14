@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { customerRate, milkShiftCustomers } from "../src/lib/farm-data";
+import { customerRate, milkShiftAnimals, milkShiftCustomers } from "../src/lib/farm-data";
 
 test("milk entry uses the rate effective on its selected date", () => {
   const data = {
@@ -24,4 +24,20 @@ test("editing an old milk shift keeps a later-deactivated customer's delivery", 
   } as unknown as Parameters<typeof milkShiftCustomers>[0];
   expect(milkShiftCustomers(data, "2026-10-01", "morning").map((customer) => customer.id)).toEqual(["active", "old"]);
   expect(milkShiftCustomers(data, "2026-10-02", "morning").map((customer) => customer.id)).toEqual(["active"]);
+});
+
+test("editing an old per-animal shift keeps a cow that is now dry or sold", () => {
+  const data = {
+    animals: [
+      { id: "current", life_status: "active", sex: "female", milking_status: "milking" },
+      { id: "dry", life_status: "active", sex: "female", milking_status: "dry" },
+      { id: "sold", life_status: "sold", sex: "female", milking_status: "none" },
+    ],
+    animalMilk: [
+      { animal_id: "dry", shift_id: "old" },
+      { animal_id: "sold", shift_id: "old" },
+    ],
+  } as unknown as Parameters<typeof milkShiftAnimals>[0];
+  expect(milkShiftAnimals(data, "old").map((animal) => animal.id)).toEqual(["current", "dry", "sold"]);
+  expect(milkShiftAnimals(data, "new").map((animal) => animal.id)).toEqual(["current"]);
 });

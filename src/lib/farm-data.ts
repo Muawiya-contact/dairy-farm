@@ -113,6 +113,12 @@ export function customerRate(data: Pick<FarmData, "rates" | "today">, id: string
     .sort((a, b) => b.effective_from.localeCompare(a.effective_from))[0]?.rate);
 }
 
+/** Keep old deliveries visible when a customer is later made inactive. */
+export function milkShiftCustomers(data: Pick<FarmData, "customers" | "deliveries">, date: string, shift: "morning" | "evening"): Customer[] {
+  const historical = new Set(data.deliveries.filter((row) => row.delivery_date === date && row.shift === shift).map((row) => row.customer_id));
+  return data.customers.filter((customer) => customer.active || historical.has(customer.id));
+}
+
 export async function saveMilkEntry(input: { date: string; shift: "morning" | "evening"; total: number; mode: "total" | "per_animal"; animals: { animal_id: string; litres: number }[]; deliveries: { customer_id: string; litres: number }[] }) {
   const { error } = await getSupabase().rpc("save_milk_entry", {
     p_date: input.date, p_shift: input.shift, p_total: input.total, p_mode: input.mode,

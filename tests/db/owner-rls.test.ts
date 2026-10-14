@@ -47,6 +47,7 @@ test("only the designated owner can read or write farm data", async () => {
     await db.exec(readFileSync(resolve(migrationDir, "20261013000017_insemination_dry_date.sql"), "utf8"));
     await db.exec(readFileSync(resolve(migrationDir, "20261013000018_guard_breeding_subjects.sql"), "utf8"));
     await db.exec(readFileSync(resolve(migrationDir, "20261014000019_farm_contact_phone.sql"), "utf8"));
+    await db.exec(readFileSync(resolve(migrationDir, "20261014000020_preserve_milk_entry_ids.sql"), "utf8"));
     await db.exec("update private.demo_access set enabled = false where id = 1");
     await db.exec(`
       insert into auth.users (id) values ('${owner}'), ('${stranger}');

@@ -20,6 +20,7 @@ describe("staff salary forms", () => {
     expect(parsePeriod(form({ staff: "worker", month: "2026-10", agreed_amount: "1000" }), today, staff))
       .toEqual({ staff_id: "worker", salary_month: "2026-10-01", agreed_amount: 1000 });
     expect(() => parsePeriod(form({ staff: "worker", month: "2026-11", agreed_amount: "1000" }), today, staff)).toThrow(/Aane wale/);
+    expect(() => parsePeriod(form({ staff: "worker", month: "0000-01", agreed_amount: "1000" }), today, staff)).toThrow(/Sahi tankhwah/);
     expect(() => parsePeriod(form({ staff: "missing", month: "2026-10", agreed_amount: "1000" }), today, staff)).toThrow(/Mulazim/);
   });
 

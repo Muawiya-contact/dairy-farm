@@ -37,7 +37,9 @@ export function parseStaff(form: FormData): StaffFields {
 
 export function parseSalaryMonth(input: string, today: string): string {
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(input)) throw new RangeError("Sahi tankhwah ka maheena chunein.");
-  const month = monthStart(`${input}-01`);
+  let month: string;
+  try { month = monthStart(`${input}-01`); }
+  catch { throw new RangeError("Sahi tankhwah ka maheena chunein."); }
   if (month > monthStart(today)) throw new RangeError("Aane wale mahine ki tankhwah abhi na kholein.");
   return month;
 }

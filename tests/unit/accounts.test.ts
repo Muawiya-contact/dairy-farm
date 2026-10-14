@@ -1,6 +1,7 @@
 import { expect, it, vi } from "vitest";
 import { updateAccount, validateAccount } from "../../src/lib/accounts";
 import { getSupabase } from "../../src/lib/supabase";
+import { addDays, todayPK } from "../../src/lib/dates";
 
 vi.mock("../../src/lib/supabase", () => ({ getSupabase: vi.fn() }));
 
@@ -14,6 +15,7 @@ it("keeps farm cash active and checks account inputs", () => {
   expect(validateAccount({ ...account, opening_balance: 1.234 })).toContain("2 decimal");
   expect(validateAccount({ ...account, opening_balance: 10_000_000_000 })).toContain("10 arab");
   expect(validateAccount({ ...account, opening_balance: -25.5 })).toBeNull();
+  expect(validateAccount({ ...account, opening_date: addDays(todayPK(), 1) })).toContain("aaj se aage");
 });
 
 it("does not report success when an account disappears during update", async () => {

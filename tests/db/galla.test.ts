@@ -32,15 +32,34 @@ beforeAll(async () => {
 afterAll(async () => { await db?.close(); });
 
 describe("Step 6 database money rules", () => {
-  it("shows a closed account while it still holds a balance", async () => {
+  it("dates mid-month opening balances and keeps closed balances visible", async () => {
+    const openingDate = (await db.query<{ day: string }>(
+      "select ((date_trunc('month', farm_today()) - interval '1 month')::date + 14) as day",
+    )).rows[0].day;
     const closed = (await db.query<{ id: string }>(
-      "insert into accounts (name, kind, opening_balance, opening_date, active) values ('Closed test account', 'bank', 40, farm_today(), false) returning id",
+      "insert into accounts (name, kind, opening_balance, opening_date, active) values ('Closed test account', 'bank', 40, $1, false) returning id",
+      [openingDate],
     )).rows[0].id;
-    const summary = (await db.query<{ opening: string; closing: string }>(
+    const month = (await db.query<{ opening: string; money_in: string; closing: string }>(
+      "select opening, money_in, closing from account_month_summary($1) where account_id = $2", [openingDate, closed],
+    )).rows[0];
+    expect([Number(month.opening), Number(month.money_in), Number(month.closing)]).toEqual([0, 40, 40]);
+    expect(Number((await db.query<{ balance: string }>("select account_balance_on($1,$2::date - 1) as balance", [closed, openingDate])).rows[0].balance)).toBe(0);
+    expect(Number((await db.query<{ balance: string }>("select account_balance_on($1,$2) as balance", [closed, openingDate])).rows[0].balance)).toBe(40);
+    const later = (await db.query<{ opening: string; closing: string }>(
       "select opening, closing from account_month_summary(farm_today()) where account_id = $1", [closed],
     )).rows[0];
-    expect(Number(summary.opening)).toBe(40);
-    expect(Number(summary.closing)).toBe(40);
+    expect([Number(later.opening), Number(later.closing)]).toEqual([40, 40]);
+
+    const debt = (await db.query<{ id: string }>(
+      "insert into accounts (name, kind, opening_balance, opening_date) values ('Negative opening test', 'person', -25, $1) returning id", [openingDate],
+    )).rows[0].id;
+    const negative = (await db.query<{ opening: string; money_out: string; closing: string }>(
+      "select opening, money_out, closing from account_month_summary($1) where account_id = $2", [openingDate, debt],
+    )).rows[0];
+    expect([Number(negative.opening), Number(negative.money_out), Number(negative.closing)]).toEqual([0, 25, -25]);
+    await expect(db.query("insert into accounts (name, kind, opening_date) values ('Future account', 'bank', farm_today()+1)"))
+      .rejects.toThrow(/FUTURE_DATE/);
   });
 
   it("moves money once between accounts and rejects invalid transfers", async () => {

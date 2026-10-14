@@ -9,19 +9,12 @@ import { addDays, formatMonth } from "@/lib/dates";
 import { getAccountBalanceOn, getAccountEntries, getAccountMonth, getCashCounts,
   getGallaToday, monthBounds, recordCashCount, recordTransfer } from "@/lib/galla";
 import { parseCashCount, parseTransfer } from "@/lib/galla-forms";
+import { buildAccountLedger } from "@/lib/galla-ledger";
 import { Body, PageHeader, Panel } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 type Pending = { id: string; signature: string };
-
-function withRunningBalance(entries: Awaited<ReturnType<typeof getAccountEntries>>, opening: number) {
-  let cents = Math.round(opening * 100);
-  return entries.map((entry) => {
-    cents += Math.round(amount(entry.money_in) * 100) - Math.round(amount(entry.money_out) * 100);
-    return { ...entry, running: cents / 100 };
-  });
-}
 
 export default function FarmGalla() {
   const qc = useQueryClient();
@@ -89,7 +82,7 @@ export default function FarmGalla() {
   };
 
   if (!meta.data) return <FarmLoading error={meta.error} retry={() => void meta.refetch()} />;
-  const ledger = withRunningBalance(entries.data ?? [], amount(current?.opening));
+  const ledger = validMonth ? buildAccountLedger(entries.data ?? [], selected ?? null, month, amount(current?.opening)) : [];
   const endingBalance = ledger.length ? ledger[ledger.length - 1].running : amount(current?.opening);
   const latestCount = counts.data?.[0];
   return <>
@@ -140,7 +133,7 @@ export default function FarmGalla() {
           <input name="reason" placeholder="Farq ho to wajah zaroor likhein" aria-label="Cash farq ki wajah" className={field} />
           <button disabled={busy || !activeAccounts.some((item) => item.kind === "cash") || expected.isPending || expected.isError} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50">Cash ginti save karein</button>
         </form>
-        <p className="mt-2 text-xs text-muted">Ginti sirf tasdeeq hai; is se ledger ka balance nahi badalta. Ghalat ginti ke liye nayi entry likhein.</p>
+        <p className="mt-2 text-xs text-muted">Din ke aakhir mein cash ginein. Ginti sirf tasdeeq hai; is se ledger ka balance nahi badalta. Baad mein us din ki entry badle to nayi ginti likhein.</p>
         {counts.isError && <p role="alert" className="mt-2 text-udhaar">Ginti ki list nahi khuli: {friendlyError(counts.error)} <button type="button" onClick={() => void counts.refetch()} className="underline">Dobara koshish</button></p>}
         {selected?.kind === "cash" && counts.data && <ul className="mt-3 divide-y divide-line text-sm">{counts.data.map((item) => <li key={item.id} className="py-2"><span>{shortDate(item.count_date)} · Gina {money(item.counted_amount)} · Hisaab {money(item.expected_balance)} · Farq <strong className={amount(item.difference) ? "text-udhaar" : "text-berseem"}>{money(item.difference)}</strong></span>{item.reason && <p className="text-muted">{item.reason}</p>}</li>)}{!counts.data.length && <li className="py-2 text-muted">Is maheene koi cash ginti nahi.</li>}</ul>}
         {latestCount?.count_date === countDate && expected.data != null && Math.abs(amount(latestCount.expected_balance) - amount(expected.data)) > 0.009 && <p role="alert" className="mt-2 text-udhaar">Is ginti ke baad purani entry badli hai; nayi ginti karein.</p>}

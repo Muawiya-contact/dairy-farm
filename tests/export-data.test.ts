@@ -6,6 +6,8 @@ describe("CSV exports", () => {
   it("keeps labelled columns in an empty production table", () => {
     expect(toCsv(DATASETS[0].columns.slice(0, 3), [])).toBe('\uFEFF"ID","Tag","Naam"\r\n');
     expect(DATASETS.find((dataset) => dataset.table === "settings")?.columns).toContain("contact_phone");
+    expect(DATASETS.find((dataset) => dataset.table === "salary_periods")?.columns).toContain("agreed_amount");
+    expect(DATASETS.find((dataset) => dataset.table === "expenses")?.columns).toContain("salary_period_id");
   });
 
   it("escapes quotes, line breaks and spreadsheet formulas", () => {

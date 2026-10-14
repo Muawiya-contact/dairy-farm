@@ -36,6 +36,9 @@ describe("Step 7 home expense rules", () => {
     expect((await db.query<{ count: number }>("select count(*)::int as count from expense_categories where lower(name) = 'ghar ka kharcha'")).rows[0].count).toBe(1);
     await expect(db.query("update expense_categories set is_farm_cost = true where id = $1", [homeCategoryId]))
       .rejects.toThrow(/home_category_personal/);
+    await expect(db.query(
+      "insert into expense_categories (name, is_farm_cost) values (' Ghar ka kharcha ', false)",
+    )).rejects.toThrow(/expense_categories_home_name_uq/);
   });
 
   it("reduces only the chosen account and personal total, leaving farm profit intact", async () => {

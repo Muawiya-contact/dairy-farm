@@ -6,7 +6,7 @@ Updated during Step 7 on 2026-10-14. The [roadmap](ROADMAP.md) defines eight ste
 
 Next.js builds a static site on Netlify. React Query and the Supabase browser client read and write PostgreSQL records. The browser gets only a publishable key. Tables, constraints, triggers, RLS, and database report functions are the source of truth for financial records. Stored money uses PostgreSQL `numeric(12,2)` and business dates use `date` and the database `farm_today()` rule; browser timezone and floating-point sums must not redefine balances.
 
-Netlify main and Deploy Previews currently connect to **staging**, which contains invented demo data and allows shared access. A separate **production** Supabase project has the same 27 migrations, owner-only access, and no demo seed. Production is reserved for real client data. Switching the live site to production requires a planned release; there is no browser database toggle.
+Netlify main and Deploy Previews currently connect to **staging**, which contains invented demo data and allows shared access. A separate **production** Supabase project has the same 28 migrations, owner-only access, and no demo seed. Production is reserved for real client data. Switching the live site to production requires a planned release; there is no browser database toggle.
 
 ## Definition of done for every step
 
@@ -80,7 +80,7 @@ Migrations `20261014000024` and `20261014000025` are recorded on both projects; 
 
 ## Step 7: Mulazim aur tankhwah
 
-The dedicated `/salary/` screen manages staff, a separately agreed amount for each worker and month, multiple partial payments, the amount paid and remaining, and payment history. Payments debit one chosen active account through the existing `expenses` ledger and reduce farm profit on the payment date. The agreed amount does not itself create a cash transaction. Migrations `20261014000026` and `20261014000027` enforce monthly uniqueness, salary links, overpayment prevention, month locks, RLS, and an immutable agreed amount after the first payment. Existing salary expenses were linked to their payment month as fully paid; no unpaid debt was inferred. See [Step 7 salary](steps/step-7-salary.md) for detailed behavior and checks. Advances, paid-entry corrections, and other-income entry remain separate work.
+The dedicated `/salary/` screen manages staff, a separately agreed amount for each worker and month, multiple partial payments, the amount paid and remaining, and payment history. Payments debit one chosen active account through the existing `expenses` ledger and reduce farm profit on the payment date. The agreed amount does not itself create a cash transaction. Migrations `20261014000026` through `20261014000028` enforce monthly uniqueness, salary links, overpayment prevention, month locks, RLS, an immutable agreed amount after the first payment, and immutable paid entries until an audited correction workflow exists. Existing salary expenses were linked to their payment month as fully paid; no unpaid debt was inferred. See [Step 7 salary](steps/step-7-salary.md) for detailed behavior and checks. Advances, paid-entry corrections, and other-income entry remain separate work.
 
 ## Official references
 

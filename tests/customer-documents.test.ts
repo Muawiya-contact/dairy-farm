@@ -40,6 +40,7 @@ it("builds a selected-month ledger from saved records without pulling in another
 it("includes farm identity and exact payment reference in share text", () => {
   expect(statementMessage(farm, customer, "2026-10", report)).toContain("+923001234567");
   expect(statementMessage(farm, customer, "2026-10", report)).toContain("Baqi Rs 800.00");
+  expect(statementMessage(farm, customer, "2026-10", report)).toContain("Doodh delivery: 10 L");
   expect(receiptMessage(farm, customer, payment)).toContain("payment-1");
 });
 

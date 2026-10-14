@@ -133,10 +133,11 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
         {reportQuery.isError && <p role="alert" className="text-udhaar">Bill nahi khula: {friendlyError(reportQuery.error)} <button type="button" onClick={() => void reportQuery.refetch()} className="underline">Dobara koshish</button></p>}
         {reportQuery.isSuccess && !report && <p className="text-muted">Is maheene ka hisaab nahi mila.</p>}
         {report && <dl className="divide-y divide-line">
-          {[["Pichla baqaya", report.previous_balance], [`Doodh · ${amount(report.litres)} L`, report.amount],
+          {[["Pichla baqaya", report.previous_balance], ["Doodh / parchi ki raqam", report.amount],
             ["Wusooli", report.paid], ["Riayat", report.discount], ["Maheene ke aakhir mein baqi", report.balance]]
             .map(([label, value]) => <div key={String(label)} className="flex justify-between gap-3 py-2"><dt>{label}</dt><dd className="font-bold">{money(amount(value as number))}</dd></div>)}
         </dl>}
+        {report && <p className="mt-2 text-sm text-muted">Doodh delivery: {amount(report.litres)} L. Company parchi ki litres neeche register aur PDF mein hain.</p>}
         {report && <div className="mt-3 flex flex-wrap gap-2">
           <button type="button" disabled={pdfBusy} onClick={() => void document("bill", null, false)} className="min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem disabled:opacity-50">Tafseeli PDF download</button>
           <button type="button" disabled={pdfBusy} onClick={() => void document("bill", null, true)} className="min-h-11 rounded-xl bg-berseem px-4 font-semibold text-white disabled:opacity-50">PDF share karein</button>

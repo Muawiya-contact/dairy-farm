@@ -62,8 +62,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
           })}
         </nav>
         <div className={`mt-auto flex flex-col gap-2 ${sidebarCollapsed ? "items-center" : "px-3"}`}>
-          <Link href="/settings/" aria-label="Settings" aria-current={isActive(path, "/settings/") ? "page" : undefined} title={sidebarCollapsed ? "Settings" : undefined} className={`flex min-h-10 items-center gap-2 rounded-xl text-sm font-semibold text-berseem hover:bg-berseem-soft ${sidebarCollapsed ? "w-10 justify-center" : "px-2"}`}>
-            <SettingsIcon width={19} height={19} />{!sidebarCollapsed && "Settings"}
+          <Link href="/settings/" aria-label="Settings" aria-current={isActive(path, "/settings/") ? "page" : undefined} title="Settings" className="flex min-h-10 w-10 items-center justify-center rounded-xl text-berseem hover:bg-berseem-soft">
+            <SettingsIcon width={19} height={19} />
           </Link>
           {process.env.NEXT_PUBLIC_REQUIRE_AUTH === "true" && <button type="button" onClick={() => void getSupabase().auth.signOut()} aria-label="Sign out" title={sidebarCollapsed ? "Sign out" : undefined} className={`flex min-h-10 items-center gap-2 rounded-xl text-sm font-semibold text-berseem hover:bg-berseem-soft ${sidebarCollapsed ? "w-10 justify-center" : "px-2"}`}><SignOutIcon width={19} height={19} />{!sidebarCollapsed && "Sign out"}</button>}
           {!sidebarCollapsed && <p className="text-xs text-muted">Data Supabase se aa raha hai.</p>}
@@ -71,7 +71,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <main className="min-w-0 flex-1 pb-28 lg:pb-12">
-        <div className="flex justify-end gap-4 px-4 pt-2 lg:hidden"><Link href="/settings/" className="flex min-h-11 items-center gap-1 text-sm font-semibold text-berseem underline"><SettingsIcon width={17} height={17} />Settings</Link>{process.env.NEXT_PUBLIC_REQUIRE_AUTH === "true" && <button onClick={() => void getSupabase().auth.signOut()} className="text-sm font-semibold text-berseem underline">Sign out</button>}</div>
+        <div className="flex justify-end gap-4 px-4 pt-2 lg:hidden"><Link href="/settings/" aria-label="Settings" title="Settings" className="flex min-h-11 min-w-11 items-center justify-center text-berseem"><SettingsIcon width={21} height={21} /></Link>{process.env.NEXT_PUBLIC_REQUIRE_AUTH === "true" && <button onClick={() => void getSupabase().auth.signOut()} className="text-sm font-semibold text-berseem underline">Sign out</button>}</div>
         <div className="mx-auto w-full max-w-5xl">{children}</div>
       </main>
 

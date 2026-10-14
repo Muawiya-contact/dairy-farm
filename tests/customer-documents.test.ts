@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
 import {
   balanceLabel, buildCustomerStatementPdf, buildPaymentReceiptPdf, documentFilename,
-  receiptMessage, statementLines, statementMessage,
+  receiptMessage, shareCustomerPdf, statementLines, statementMessage,
 } from "../src/lib/customer-documents";
 import type { Customer, CustomerReport, FarmData, Payment } from "../src/lib/farm-data";
 import type { FarmSettings } from "../src/lib/settings";
@@ -51,4 +51,19 @@ it("generates separate readable statement and payment PDFs", async () => {
   expect(new TextDecoder().decode(receipt.slice(0, 8))).toBe("%PDF-1.3");
   expect(statement.length).toBeGreaterThan(2000);
   expect(receipt.length).toBeGreaterThan(2000);
+});
+
+it("hands the receipt PDF to the phone's app chooser", async () => {
+  const share = vi.fn().mockResolvedValue(undefined);
+  const canShare = vi.fn().mockReturnValue(true);
+  vi.stubGlobal("navigator", { share, canShare });
+  const bytes = new Uint8Array([37, 80, 68, 70]);
+
+  expect(await shareCustomerPdf("receipt.pdf", bytes, "Saim Dairy Farm", "Wusooli receipt")).toBe("shared");
+  const payload = share.mock.calls[0][0] as ShareData;
+  expect(payload.title).toBe("Saim Dairy Farm");
+  expect(payload.text).toBe("Wusooli receipt");
+  expect(payload.files?.[0]).toMatchObject({ name: "receipt.pdf", type: "application/pdf" });
+  expect(canShare).toHaveBeenCalledWith({ files: payload.files });
+  expect(new Uint8Array(await payload.files![0].arrayBuffer())).toEqual(bytes);
 });

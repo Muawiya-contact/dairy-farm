@@ -47,4 +47,4 @@ The animal page records semen details, checkups and calving against existing Sup
 
 `npm run db:types` refreshes TypeScript database types from staging. It requires Supabase CLI login. CI runs tests, lint, typecheck and the static export build on pushes and pull requests.
 
-Run `npm run check` before pushing. The database tests use PGlite and cover owner access, staging preview access and demo data. The current project plan is in [docs/ROADMAP.md](docs/ROADMAP.md).
+Run `npm run check` before pushing. The database tests use PGlite and cover owner access, staging preview access and demo data. The [roadmap](docs/ROADMAP.md) and [implementation documentation](docs/DOCUMENTATION.md) track each step and its acceptance criteria.

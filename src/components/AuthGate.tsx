@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/errors";
+import LogoMark from "./LogoMark";
 
 const requireAuth = process.env.NEXT_PUBLIC_REQUIRE_AUTH === "true";
 const missingConfig = requireAuth && (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
@@ -60,7 +61,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   if (!ready) return <main className="mx-auto max-w-sm p-8 text-muted">Account check ho raha hai…</main>;
   if (!signedIn) return (
     <main className="mx-auto max-w-sm px-5 py-16">
-      <h1 className="font-display text-3xl font-bold">Dairy Farm</h1>
+      <h1 className="flex items-center gap-3 font-display text-3xl font-bold"><LogoMark size={48} />Dairy Farm</h1>
       <p className="mt-2 text-muted">Production data ke liye owner account se sign in karein.</p>
       <form onSubmit={signIn} className="mt-6 grid gap-3 rounded-2xl border border-line bg-paper p-5">
         <label className="grid gap-1 font-semibold">Email<input type="email" autoComplete="email" required placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="min-h-12 rounded-xl border border-line px-3" /></label>

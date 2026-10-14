@@ -22,6 +22,7 @@ const data = {
 
 beforeAll(() => vi.stubGlobal("fetch", async (url: string) => {
   const filename = url.split("/").pop();
+  if (filename === "icon-192.png") return new Response(readFileSync(resolve("public/brand", filename)));
   if (filename !== "OpenSans-Regular.ttf" && filename !== "OpenSans-Bold.ttf") return new Response(null, { status: 404 });
   return new Response(readFileSync(resolve("public/fonts", filename)));
 }));
@@ -51,6 +52,8 @@ it("generates separate readable statement and payment PDFs", async () => {
   expect(new TextDecoder().decode(receipt.slice(0, 8))).toBe("%PDF-1.3");
   expect(statement.length).toBeGreaterThan(2000);
   expect(receipt.length).toBeGreaterThan(2000);
+  expect(new TextDecoder().decode(statement)).toContain("/Subtype /Image");
+  expect(new TextDecoder().decode(receipt)).toContain("/Subtype /Image");
 });
 
 it("hands the receipt PDF to the phone's app chooser", async () => {

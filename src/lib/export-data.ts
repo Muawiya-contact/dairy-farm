@@ -1,5 +1,7 @@
 import { getSupabase } from "./supabase";
 import type { Database } from "./database.types";
+import { loadPdfLogo } from "./pdf-brand";
+import { getSettings } from "./settings";
 
 type Table = keyof Database["public"]["Tables"];
 
@@ -149,15 +151,20 @@ export async function buildXlsx(title: string, columns: string[], rows: Record<s
   return new Uint8Array(buffer as unknown as ArrayBuffer);
 }
 
-export async function buildPdf(title: string, columns: string[], rows: Record<string, unknown>[]): Promise<Uint8Array<ArrayBuffer>> {
-  const [{ jsPDF }, { autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
+export async function buildPdf(title: string, columns: string[], rows: Record<string, unknown>[], farmName: string): Promise<Uint8Array<ArrayBuffer>> {
+  const [{ jsPDF }, { autoTable }, logo] = await Promise.all([import("jspdf"), import("jspdf-autotable"), loadPdfLogo()]);
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a3" });
-  pdf.setFontSize(16);
-  pdf.text(title, 10, 13);
+  pdf.addImage(logo, "PNG", 10, 8, 16, 16);
+  pdf.setFontSize(15);
+  const nameLines = pdf.splitTextToSize(farmName, 360) as string[];
+  const titleY = Math.max(20, 13 + nameLines.length * 7);
+  pdf.text(nameLines, 31, 13);
+  pdf.setFontSize(10);
+  pdf.text(title, 31, titleY);
   pdf.setFontSize(9);
-  pdf.text(`${rows.length} entries`, 10, 19);
+  pdf.text(`${rows.length} entries`, 31, titleY + 6);
   autoTable(pdf, {
-    startY: 23, head: [columns.map((column) => columnLabel(column, title))],
+    startY: titleY + 10, head: [columns.map((column) => columnLabel(column, title))],
     body: rows.map((row) => columns.map((column) => displayCell(row[column]))),
     styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak" },
     headStyles: { fillColor: [45, 106, 57] },
@@ -173,6 +180,7 @@ export async function exportRows(filename: string, title: string, columns: strin
   } else if (format === "xlsx") {
     downloadBlob(`${filename}.xlsx`, new Blob([await buildXlsx(title, columns, rows)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
   } else {
-    downloadBlob(`${filename}.pdf`, new Blob([await buildPdf(title, columns, rows)], { type: "application/pdf" }));
+    const farm = await getSettings();
+    downloadBlob(`${filename}.pdf`, new Blob([await buildPdf(title, columns, rows, farm.farm_name)], { type: "application/pdf" }));
   }
 }

@@ -7,6 +7,7 @@ import { BackIcon, BookIcon, CanIcon, CoinsIcon, CowIcon, HomeIcon, SettingsIcon
 import { useQuery } from "@tanstack/react-query";
 import { getSettings } from "@/lib/settings";
 import { getSupabase } from "@/lib/supabase";
+import LogoMark from "./LogoMark";
 
 const NAV = [
   { href: "/", label: "Home", Icon: HomeIcon },
@@ -27,11 +28,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh lg:flex">
       {/* Laptop: side menu */}
-      <aside className={`hidden lg:sticky lg:top-0 lg:flex lg:h-dvh lg:shrink-0 lg:flex-col lg:border-r lg:border-line lg:bg-paper lg:py-6 ${sidebarCollapsed ? "lg:w-16 lg:px-2" : "lg:w-60 lg:px-4"}`}>
+      <aside className={`hidden lg:sticky lg:top-0 lg:flex lg:h-dvh lg:shrink-0 lg:flex-col lg:border-r lg:border-line lg:bg-paper lg:py-6 ${sidebarCollapsed ? "lg:w-16 lg:px-2" : "lg:w-72 lg:px-4"}`}>
         <div className={`flex items-start pb-6 ${sidebarCollapsed ? "justify-center" : "justify-between gap-2 px-3"}`}>
-          {!sidebarCollapsed && <div className="min-w-0">
-            <div className="font-display text-xl font-bold leading-tight">{settings.data?.farm_name || "Dairy Farm"}</div>
-            <div className="text-sm text-muted">Hisaab kitaab</div>
+          {!sidebarCollapsed && <div className="flex min-w-0 items-center gap-2">
+            <LogoMark size={36} />
+            <div className="min-w-0">
+              <div className="truncate font-display text-base font-bold leading-tight" title={settings.data?.farm_name || "Dairy Farm"}>{settings.data?.farm_name || "Dairy Farm"}</div>
+              <div className="text-xs text-muted">Hisaab kitaab</div>
+            </div>
           </div>}
           <button
             type="button"
@@ -71,7 +75,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <main className="min-w-0 flex-1 pb-28 lg:pb-12">
-        <div className="flex justify-end gap-4 px-4 pt-2 lg:hidden"><Link href="/settings/" aria-label="Settings" title="Settings" className="flex min-h-11 min-w-11 items-center justify-center text-berseem"><SettingsIcon width={21} height={21} /></Link>{process.env.NEXT_PUBLIC_REQUIRE_AUTH === "true" && <button onClick={() => void getSupabase().auth.signOut()} className="text-sm font-semibold text-berseem underline">Sign out</button>}</div>
+        <div className="flex items-center justify-between gap-3 px-4 pt-2 lg:hidden"><div className="flex min-w-0 items-center gap-2"><LogoMark size={32} /><span className="truncate font-display text-sm font-bold">{settings.data?.farm_name || "Dairy Farm"}</span></div><div className="flex shrink-0 items-center gap-2"><Link href="/settings/" aria-label="Settings" title="Settings" className="flex min-h-11 min-w-11 items-center justify-center text-berseem"><SettingsIcon width={21} height={21} /></Link>{process.env.NEXT_PUBLIC_REQUIRE_AUTH === "true" && <button onClick={() => void getSupabase().auth.signOut()} className="text-sm font-semibold text-berseem underline">Sign out</button>}</div></div>
         <div className="mx-auto w-full max-w-5xl">{children}</div>
       </main>
 

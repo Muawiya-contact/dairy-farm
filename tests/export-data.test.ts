@@ -1,6 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import ExcelJS from "exceljs";
 import { buildPdf, buildXlsx, columnLabel, DATASETS, displayCell, toCsv } from "../src/lib/export-data";
+
+beforeAll(() => vi.stubGlobal("fetch", async (url: string) =>
+  url === "/brand/icon-192.png"
+    ? new Response(readFileSync(resolve("public/brand/icon-192.png")))
+    : new Response(null, { status: 404 })
+));
+afterAll(() => vi.unstubAllGlobals());
 
 describe("CSV exports", () => {
   it("keeps labelled columns in an empty production table", () => {
@@ -32,8 +41,10 @@ it("creates readable Excel and PDF exports, including an empty-table header", as
   const sheet = workbook.worksheets[0];
   expect(sheet.getRow(1).values).toEqual([undefined, "Tag", "Naam", "Raqam (Rs)"]);
   expect(sheet.getRow(2).values).toEqual([undefined, "C-1", "Bessie", 0]);
-  const pdf = await buildPdf("Janwar", columns, []);
+  const pdf = await buildPdf("Janwar", columns, [], "Saim Dairy Farm");
   expect(new TextDecoder().decode(pdf.slice(0, 8))).toBe("%PDF-1.3");
-  const auditPdf = await buildPdf("Payment audit", ["before_row"], [{ before_row: { amount: 10 } }]);
+  expect(new TextDecoder().decode(pdf)).toContain("/Subtype /Image");
+  expect(new TextDecoder().decode(pdf)).toContain("Saim Dairy Farm");
+  const auditPdf = await buildPdf("Payment audit", ["before_row"], [{ before_row: { amount: 10 } }], "Saim Dairy Farm");
   expect(new TextDecoder().decode(auditPdf)).not.toContain("[object Object]");
 });

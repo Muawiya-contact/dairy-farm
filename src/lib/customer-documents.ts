@@ -70,13 +70,13 @@ export async function prepareCustomerPdf(): Promise<void> {
 }
 
 function drawHeader(pdf: Pdf, farm: FarmSettings, documentTitle: string, logo: Uint8Array<ArrayBuffer>): number {
+  pdf.setFont("OpenSans", "bold"); pdf.setFontSize(17);
   const nameLines = pdf.splitTextToSize(farm.farm_name, 154) as string[];
   const headerHeight = Math.max(34, 19 + nameLines.length * 7);
   pdf.setFillColor(37, 94, 53);
   pdf.rect(0, 0, 210, headerHeight, "F");
   pdf.addImage(logo, "PNG", 14, 7, 20, 20);
   pdf.setTextColor(255, 255, 255);
-  pdf.setFont("OpenSans", "bold"); pdf.setFontSize(17);
   pdf.text(nameLines, 42, 14);
   pdf.setFont("OpenSans", "normal"); pdf.setFontSize(9);
   pdf.text(documentTitle, 42, headerHeight - 7);

@@ -38,6 +38,7 @@ beforeAll(async () => {
     "20261013000018_guard_breeding_subjects.sql",
     "20261014000019_farm_contact_phone.sql",
     "20261014000020_preserve_milk_entry_ids.sql",
+    "20261014000021_galla_workflow.sql",
   ]) {
     await db.exec(readFileSync(resolve("supabase/migrations", name), "utf8"));
   }

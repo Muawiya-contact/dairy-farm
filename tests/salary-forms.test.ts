@@ -23,8 +23,9 @@ describe("staff salary forms", () => {
     expect(() => parsePeriod(form({ staff: "missing", month: "2026-10", agreed_amount: "1000" }), today, staff)).toThrow(/Mulazim/);
   });
 
-  it("rejects blank, negative, and overprecise salary values", () => {
-    for (const amount of ["", "-1", "1.001", "10000000000"]) {
+  it("treats a blank default as unset and rejects invalid salary values", () => {
+    expect(parseStaff(form({ name: "Variable pay", monthly_salary: "" })).monthly_salary).toBe(0);
+    for (const amount of ["-1", "1.001", "10000000000"]) {
       expect(() => parseStaff(form({ name: "Test", monthly_salary: amount }))).toThrow();
     }
     expect(() => parseStaff(form({ name: "", monthly_salary: "0" }))).toThrow(/naam/);

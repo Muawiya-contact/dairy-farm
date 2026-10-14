@@ -26,10 +26,11 @@ function rupees(input: string, positive: boolean): number {
 export function parseStaff(form: FormData): StaffFields {
   const name = value(form, "name");
   const role = value(form, "role");
+  const salary = value(form, "monthly_salary");
   if (!name || name.length > 100) throw new RangeError("Mulazim ka naam 1 se 100 huroof tak likhein.");
   if (role.length > 100) throw new RangeError("Kaam ki tafseel 100 huroof tak likhein.");
   return {
-    name, role: role || null, monthly_salary: rupees(value(form, "monthly_salary"), false),
+    name, role: role || null, monthly_salary: salary ? rupees(salary, false) : 0,
     active: form.get("active") === "on",
   };
 }

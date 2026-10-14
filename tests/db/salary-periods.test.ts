@@ -76,6 +76,8 @@ describe("salary periods and payments", () => {
     `, [salaryCategoryId, accountId, staffId, periodId])).rejects.toThrow(/SALARY_OVERPAID/);
     await expect(db.query("update salary_periods set agreed_amount = 999 where id = $1", [periodId]))
       .rejects.toThrow(/SALARY_BELOW_PAID/);
+    await expect(db.query("update salary_periods set agreed_amount = 1100 where id = $1", [periodId]))
+      .rejects.toThrow(/SALARY_PERIOD_PAID/);
   });
 
   it("rejects missing or mismatched salary links and advances", async () => {
@@ -112,13 +114,14 @@ describe("salary periods and payments", () => {
     await db.exec(`set request.jwt.claim.sub = '${owner}'; set role authenticated`);
     try { expect((await db.query("select id from salary_periods")).rows.length).toBeGreaterThan(0); }
     finally { await db.exec("reset role; reset request.jwt.claim.sub"); }
-    await db.query("update salary_periods set agreed_amount = 1100 where id = $1", [periodId]);
+    const unpaidStaff = (await db.query<{ id: string }>("insert into staff(name, monthly_salary) values ('Unpaid lock worker', 100) returning id")).rows[0].id;
+    const unpaidPeriod = (await db.query<{ id: string }>("insert into salary_periods(staff_id, salary_month, agreed_amount) values ($1, date_trunc('month', farm_today())::date, 100) returning id", [unpaidStaff])).rows[0].id;
     await db.exec("insert into month_locks(month) values (date_trunc('month', farm_today())::date)");
-    await expect(db.query("update salary_periods set agreed_amount = 1001 where id = $1", [periodId]))
+    await expect(db.query("update salary_periods set agreed_amount = 101 where id = $1", [unpaidPeriod]))
       .rejects.toThrow(/MONTH_LOCKED/);
     await expect(db.query(`
       insert into expenses(expense_date, category_id, account_id, staff_id, salary_period_id, amount)
       values (farm_today(), $1, $2, $3, $4, 1)
-    `, [salaryCategoryId, accountId, staffId, periodId])).rejects.toThrow(/MONTH_LOCKED/);
+    `, [salaryCategoryId, accountId, unpaidStaff, unpaidPeriod])).rejects.toThrow(/MONTH_LOCKED/);
   });
 });

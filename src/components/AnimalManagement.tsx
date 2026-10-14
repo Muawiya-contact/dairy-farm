@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { closeAnimal, longDate, money, updateAnimal, type Account, type Animal } from "@/lib/farm-data";
 import { friendlyError } from "@/lib/errors";
+import { parseAmount, parsePositiveAmount } from "@/lib/format";
 import { Panel } from "./ui";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
@@ -57,7 +58,7 @@ export function AnimalManagement({ animal, animals, accounts, today }: {
         birth_date: optional(f.get("birth")), mother_id: optional(f.get("mother")),
         sire: optional(f.get("sire")), source,
         purchase_date: source === "born" ? null : optional(f.get("purchaseDate")),
-        purchase_price: source === "born" || !text(f.get("purchasePrice")) ? null : Number(f.get("purchasePrice")),
+        purchase_price: source === "born" || !text(f.get("purchasePrice")) ? null : parseAmount(text(f.get("purchasePrice"))),
         notes: optional(f.get("notes")),
       }));
     }}>
@@ -79,7 +80,7 @@ export function AnimalManagement({ animal, animals, accounts, today }: {
     {mode === "exit" && <form className="grid gap-3 sm:grid-cols-2" onSubmit={(e: FormEvent<HTMLFormElement>) => {
       e.preventDefault(); const f = new FormData(e.currentTarget);
       void run(() => closeAnimal({ animalId: animal.id, status: exitStatus, date: text(f.get("date")), reason: text(f.get("reason")),
-        price: exitStatus === "sold" ? Number(f.get("price")) : null,
+        price: exitStatus === "sold" ? parsePositiveAmount(text(f.get("price"))) : null,
         accountId: exitStatus === "sold" ? text(f.get("account")) : null }));
     }}>
       <p className="text-sm text-muted sm:col-span-2">Is action ke baad janwar active list aur doodh entry se hat jayega. Farokht ki raqam accounts mein bhi darj hogi.</p>

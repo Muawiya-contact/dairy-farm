@@ -46,6 +46,7 @@ test("only the designated owner can read or write farm data", async () => {
     await db.exec(readFileSync(resolve(migrationDir, "20261013000016_breeding_records.sql"), "utf8"));
     await db.exec(readFileSync(resolve(migrationDir, "20261013000017_insemination_dry_date.sql"), "utf8"));
     await db.exec(readFileSync(resolve(migrationDir, "20261013000018_guard_breeding_subjects.sql"), "utf8"));
+    await db.exec(readFileSync(resolve(migrationDir, "20261014000019_farm_contact_phone.sql"), "utf8"));
     await db.exec("update private.demo_access set enabled = false where id = 1");
     await db.exec(`
       insert into auth.users (id) values ('${owner}'), ('${stranger}');
@@ -54,6 +55,9 @@ test("only the designated owner can read or write farm data", async () => {
       set request.jwt.claim.sub = '${owner}';
     `);
     expect((await db.query("select id from settings")).rows).toEqual([{ id: 1 }]);
+    expect((await db.query("select contact_phone from settings")).rows).toEqual([{ contact_phone: "" }]);
+    await expect(db.exec("update settings set contact_phone = 'not a number' where id = 1")).rejects.toThrow(/settings_contact_phone_format/);
+    await db.exec("update settings set contact_phone = '+923001234567' where id = 1");
     await expect(db.exec("update accounts set active = false where is_farm_cash")).rejects.toThrow(/accounts_farm_cash_active/);
     await db.exec("insert into animals (tag) values ('B-001')");
     expect((await db.query("select tag from animals")).rows).toEqual([{ tag: "B-001" }]);

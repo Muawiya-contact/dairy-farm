@@ -853,6 +853,7 @@ export type Database = {
         Row: {
           calving_days: number
           checkup_days: number
+          contact_phone: string
           default_milk_rate: number
           dry_off_days: number
           farm_name: string
@@ -866,6 +867,7 @@ export type Database = {
         Insert: {
           calving_days?: number
           checkup_days?: number
+          contact_phone?: string
           default_milk_rate?: number
           dry_off_days?: number
           farm_name?: string
@@ -879,6 +881,7 @@ export type Database = {
         Update: {
           calving_days?: number
           checkup_days?: number
+          contact_phone?: string
           default_milk_rate?: number
           dry_off_days?: number
           farm_name?: string

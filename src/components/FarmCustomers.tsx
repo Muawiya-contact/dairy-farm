@@ -256,7 +256,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
         })}
         {!ledger.length && <li className="py-3 text-muted">Abhi koi entry nahi.</li>}
       </ul></Panel>
-      <Panel title="Wusooli corrections ki history" className="lg:col-span-2">
+      <Panel title="Aakhri 50 wusooli corrections" className="lg:col-span-2">
         {auditQuery.isPending && <p role="status" className="text-muted">History load ho rahi hai…</p>}
         {auditQuery.isError && <p role="alert" className="text-udhaar">History nahi khuli: {friendlyError(auditQuery.error)} <button type="button" onClick={() => void auditQuery.refetch()} className="underline">Dobara koshish</button></p>}
         {auditQuery.data && <ul className="divide-y divide-line">{auditQuery.data.map((item) => {
@@ -266,14 +266,18 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
           const newDate = typeof after.payment_date === "string" ? after.payment_date : "";
           const oldAccount = data.accounts.find((account) => account.id === before.account_id)?.name ?? "Account";
           const newAccount = data.accounts.find((account) => account.id === after.account_id)?.name ?? "Account";
+          const changedAt = new Intl.DateTimeFormat("en-GB", {
+            timeZone: "Asia/Karachi", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+          }).format(new Date(item.changed_at));
           return <li key={item.id} className="py-2 text-sm">
-            <span>{shortDate(item.changed_at.slice(0, 10))} · {item.action === "delete" ? "Radd" : "Durust"} · {money(Number(before.amount))}{item.action === "update" ? ` → ${money(Number(after.amount))}` : ""}</span>
+            <span>{changedAt} · {item.action === "delete" ? "Radd" : "Durust"} · {money(Number(before.amount))}{item.action === "update" ? ` → ${money(Number(after.amount))}` : ""}</span>
             {item.action === "update" && oldDate !== newDate && <p className="text-muted">Tareekh: {shortDate(oldDate)} → {shortDate(newDate)}</p>}
             {item.action === "update" && before.account_id !== after.account_id && <p className="text-muted">Account: {oldAccount} → {newAccount}</p>}
             {item.action === "update" && before.method !== after.method && <p className="text-muted">Tareeqa: {String(before.method ?? "—")} → {String(after.method ?? "—")}</p>}
             <p className="text-muted">Wajah: {item.reason}</p>
           </li>;
         })}{!auditQuery.data.length && <li className="py-2 text-muted">Abhi koi correction nahi.</li>}</ul>}
+        {!!auditQuery.data?.length && <p className="mt-2 text-xs text-muted">Poori audit history Settings ke data export mein milti hai.</p>}
       </Panel>
       {pdfStatus && <p role="status" className="text-berseem-deep lg:col-span-2">{pdfStatus}</p>}
       {success && <p role="status" className="text-berseem-deep lg:col-span-2">{success}</p>}

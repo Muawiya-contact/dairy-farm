@@ -80,7 +80,7 @@ describe("Step 6 database money rules", () => {
     await expect(db.query("select correct_manual_payment($1,1,farm_today(),101.001,'cash',$2,'Ghalat raqam')", [payment.id, farmCash])).rejects.toThrow(/PAYMENT_INVALID/);
     expect((await db.query<{ revision: number }>("select correct_manual_payment($1,1,farm_today(),125,'cash',$2,'Raqam durust ki') as revision", [payment.id, farmCash])).rows[0].revision).toBe(2);
     await expect(db.query("select correct_manual_payment($1,1,farm_today(),130,'cash',$2,'Dobara')", [payment.id, farmCash])).rejects.toThrow(/PAYMENT_STALE/);
-    expect((await db.query("select action, reason from payment_audit where payment_id = $1", [payment.id])).rows).toEqual([{ action: "update", reason: "Raqam durust ki" }]);
+    expect((await db.query("select customer_id, action, reason from payment_audit where payment_id = $1", [payment.id])).rows).toEqual([{ customer_id: ahmed, action: "update", reason: "Raqam durust ki" }]);
     await db.query("select void_manual_payment($1,2,'Duplicate entry')", [payment.id]);
     expect((await db.query("select id from payments where id = $1", [payment.id])).rows).toEqual([]);
     expect((await db.query("select action from payment_audit where payment_id = $1 order by changed_at", [payment.id])).rows).toEqual([{ action: "update" }, { action: "delete" }]);
@@ -95,6 +95,12 @@ describe("Step 6 database money rules", () => {
     )).rows[0].id;
     const report = (await db.query<{ discount: string }>("select discount from customer_month_report(farm_today()) where customer_id = $1", [ahmed])).rows[0];
     expect(Number(report.discount)).toBeGreaterThanOrEqual(10);
+    expect((await db.query("select ref_id from account_entries($1) where ref_id = $2", [farmCash, discount])).rows).toEqual([]);
+    await db.query("select correct_manual_payment($1,1,farm_today(),15,null,null,'Riayat durust ki')", [discount]);
+    const audit = (await db.query<{ old_amount: string; new_amount: string }>(
+      "select before_row->>'amount' as old_amount, after_row->>'amount' as new_amount from payment_audit where payment_id = $1", [discount],
+    )).rows[0];
+    expect([Number(audit.old_amount), Number(audit.new_amount)]).toEqual([10, 15]);
     expect((await db.query("select ref_id from account_entries($1) where ref_id = $2", [farmCash, discount])).rows).toEqual([]);
     await expect(db.query("insert into payments (customer_id,payment_date,amount,kind,method,account_id) values ($1,farm_today(),10,'discount','cash',$2)", [ahmed, farmCash])).rejects.toThrow(/DISCOUNT_ACCOUNT/);
     const oldDate = (await db.query<{ day: string }>("select (farm_today() - interval '2 months')::date as day")).rows[0].day;

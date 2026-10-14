@@ -6,6 +6,7 @@ alter table public.payments add column revision integer not null default 1 check
 create table public.payment_audit (
   id uuid primary key default gen_random_uuid(),
   payment_id uuid not null,
+  customer_id uuid not null references public.customers(id) on delete restrict,
   action text not null check (action in ('update', 'delete')),
   before_row jsonb not null,
   after_row jsonb,
@@ -13,7 +14,7 @@ create table public.payment_audit (
   actor_id uuid,
   changed_at timestamptz not null default clock_timestamp()
 );
-create index payment_audit_payment_idx on public.payment_audit (payment_id, changed_at desc);
+create index payment_audit_customer_idx on public.payment_audit (customer_id, changed_at desc);
 alter table public.payment_audit enable row level security;
 create policy owner_read on public.payment_audit for select to authenticated
   using ((select private.is_app_owner()));
@@ -142,8 +143,8 @@ declare v_reason text;
 begin
   v_reason := coalesce(nullif(btrim(current_setting('app.payment_change_reason', true)), ''),
                        'Naqd doodh entry badli');
-  insert into public.payment_audit (payment_id, action, before_row, after_row, reason, actor_id)
-  values (old.id, lower(tg_op), to_jsonb(old),
+  insert into public.payment_audit (payment_id, customer_id, action, before_row, after_row, reason, actor_id)
+  values (old.id, old.customer_id, lower(tg_op), to_jsonb(old),
           case when tg_op = 'UPDATE' then to_jsonb(new) else null end,
           v_reason, auth.uid());
   return null;

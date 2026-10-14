@@ -56,8 +56,9 @@ export default function FarmExpenses() {
   })).filter((category) => category.total > 0).sort((a, b) => b.total - a.total);
   const maxCategory = byCat[0]?.total || 1;
   const homeCategory = d.categories.find((category) => category.active && isHomeCategory(category));
-  const farmCategories = d.categories.filter((category) => category.active && category.is_farm_cost);
-  const personalCategories = d.categories.filter((category) => category.active && expenseMode(category) === "personal");
+  const categoryOrder = (a: ExpenseCategory, b: ExpenseCategory) => a.sort_order - b.sort_order || a.name.localeCompare(b.name);
+  const farmCategories = d.categories.filter((category) => category.active && category.is_farm_cost).sort(categoryOrder);
+  const personalCategories = d.categories.filter((category) => category.active && expenseMode(category) === "personal").sort(categoryOrder);
   const activeAccounts = d.accounts.filter((account) => account.active);
   const availableCategories = mode === "farm" ? farmCategories : personalCategories;
   const canSave = activeAccounts.length > 0 && (mode === "home" ? !!homeCategory : availableCategories.length > 0);
@@ -98,7 +99,7 @@ export default function FarmExpenses() {
       {personalTotal > 0 && <p className="text-sm text-muted lg:col-span-2">Doosray zaati kharchay: {money(personalTotal)}. Ghar aur doosray zaati kharchay account se nikalte hain, farm munafay se nahi.</p>}
       <Panel title="Naya kharcha" className="lg:col-span-2">
         <div className="mb-3 grid gap-2 sm:grid-cols-3" role="group" aria-label="Kharcha ki qism">
-          {(["farm", "home", "personal"] as const).map((choice) => <button key={choice} type="button" onClick={() => { setMode(choice); setError(""); setSuccess(""); }}
+          {(["farm", "home", "personal"] as const).map((choice) => <button key={choice} type="button" disabled={busy} onClick={() => { setMode(choice); setError(""); setSuccess(""); }}
             aria-pressed={mode === choice} className={`min-h-11 rounded-xl border px-3 text-sm font-semibold ${mode === choice ? "border-berseem bg-berseem-soft text-berseem-deep" : "border-line"}`}>
             {modeNames[choice]}
           </button>)}

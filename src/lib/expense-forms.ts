@@ -2,7 +2,7 @@ import { addDays } from "./dates";
 import { parsePositiveAmount } from "./format";
 
 export type ExpenseMode = "farm" | "home" | "personal";
-export type ExpenseFormCategory = { id: string; name: string; is_farm_cost: boolean; active: boolean };
+export type ExpenseFormCategory = { id: string; name: string; is_farm_cost: boolean; is_salary: boolean; active: boolean };
 export type ExpenseFormAccount = { id: string; active: boolean; opening_date: string };
 export type ExpenseInput = { date: string; categoryId: string; accountId: string; amount: number; note: string | null };
 
@@ -38,6 +38,7 @@ export function parseExpenseEntry(
     ? categories.find((item) => item.active && isHomeCategory(item))
     : categories.find((item) => item.id === value(form, "category") && item.active);
   if (!category || expenseMode(category) !== mode) throw new RangeError("Is qism ki active category chunein.");
+  if (category.is_salary) throw new RangeError("Tankhwah Mulazim aur tankhwah page par darj karein.");
 
   let amount: number;
   try { amount = parsePositiveAmount(value(form, "amount")); }

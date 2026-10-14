@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { amount, insertRow, longDate, money, shortDate, useFarmData, type Account, type Expense, type ExpenseCategory } from "@/lib/farm-data";
@@ -57,7 +58,7 @@ export default function FarmExpenses() {
   const maxCategory = byCat[0]?.total || 1;
   const homeCategory = d.categories.find((category) => category.active && isHomeCategory(category));
   const categoryOrder = (a: ExpenseCategory, b: ExpenseCategory) => a.sort_order - b.sort_order || a.name.localeCompare(b.name);
-  const farmCategories = d.categories.filter((category) => category.active && category.is_farm_cost).sort(categoryOrder);
+  const farmCategories = d.categories.filter((category) => category.active && category.is_farm_cost && !category.is_salary).sort(categoryOrder);
   const personalCategories = d.categories.filter((category) => category.active && expenseMode(category) === "personal").sort(categoryOrder);
   const activeAccounts = d.accounts.filter((account) => account.active);
   const availableCategories = mode === "farm" ? farmCategories : personalCategories;
@@ -107,6 +108,7 @@ export default function FarmExpenses() {
         <div className="border-l border-line p-3 sm:p-4 lg:border-l-0"><p className="text-sm text-muted">Farm munafa</p><strong className={`font-display text-xl ${amount(pnl?.profit) < 0 ? "text-udhaar" : "text-berseem"}`}>{money(pnl?.profit)}</strong></div>
       </section>
       {personalTotal > 0 && <p className="text-sm text-muted lg:col-span-2">Doosray zaati kharchay: {money(personalTotal)}. Ghar aur doosray zaati kharchay account se nikalte hain, farm munafay se nahi.</p>}
+      <Link href="/salary/" className="rounded-xl border border-berseem bg-berseem-soft px-4 py-3 font-semibold text-berseem-deep lg:col-span-2">Mulazim aur tankhwah →</Link>
       <Panel title="Naya kharcha" className="lg:col-span-2">
         <div className="mb-3 grid gap-2 sm:grid-cols-3" role="group" aria-label="Kharcha ki qism">
           {(["farm", "home", "personal"] as const).map((choice) => <button key={choice} type="button" disabled={busy} onClick={() => { setMode(choice); setError(""); setSuccess(""); }}

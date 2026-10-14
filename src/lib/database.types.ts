@@ -458,6 +458,7 @@ export type Database = {
           id: string
           note: string | null
           quantity: number | null
+          salary_period_id: string | null
           staff_id: string | null
           unit: string | null
         }
@@ -470,6 +471,7 @@ export type Database = {
           id?: string
           note?: string | null
           quantity?: number | null
+          salary_period_id?: string | null
           staff_id?: string | null
           unit?: string | null
         }
@@ -482,6 +484,7 @@ export type Database = {
           id?: string
           note?: string | null
           quantity?: number | null
+          salary_period_id?: string | null
           staff_id?: string | null
           unit?: string | null
         }
@@ -498,6 +501,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_salary_period_id_fkey"
+            columns: ["salary_period_id"]
+            isOneToOne: false
+            referencedRelation: "salary_periods"
             referencedColumns: ["id"]
           },
           {
@@ -921,6 +931,38 @@ export type Database = {
           },
         ]
       }
+      salary_periods: {
+        Row: {
+          agreed_amount: number
+          created_at: string
+          id: string
+          salary_month: string
+          staff_id: string
+        }
+        Insert: {
+          agreed_amount: number
+          created_at?: string
+          id?: string
+          salary_month: string
+          staff_id: string
+        }
+        Update: {
+          agreed_amount?: number
+          created_at?: string
+          id?: string
+          salary_month?: string
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_periods_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       settings: {
         Row: {
           calving_days: number
@@ -975,6 +1017,7 @@ export type Database = {
           name: string
           phone: string | null
           role: string | null
+          updated_at: string
         }
         Insert: {
           active?: boolean
@@ -984,6 +1027,7 @@ export type Database = {
           name: string
           phone?: string | null
           role?: string | null
+          updated_at?: string
         }
         Update: {
           active?: boolean
@@ -993,6 +1037,7 @@ export type Database = {
           name?: string
           phone?: string | null
           role?: string | null
+          updated_at?: string
         }
         Relationships: []
       }

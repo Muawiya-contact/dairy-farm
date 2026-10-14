@@ -1,5 +1,5 @@
 import { PGlite } from "@electric-sql/pglite";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
 import { DATASETS } from "../../src/lib/export-data";
@@ -17,29 +17,7 @@ beforeAll(async () => {
       select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
     $$;
   `);
-  for (const name of [
-    "20261011000001_schema.sql",
-    "20261011000002_reports.sql",
-    "20261011000003_rls.sql",
-    "20261011000004_defaults.sql",
-    "20261011000005_open_preview.sql",
-    "20261011000006_restore_owner_policy.sql",
-    "20261012000007_demo_settings.sql",
-    "20261012000008_live_app_data.sql",
-    "20261012000009_create_customer.sql",
-    "20261012000010_customer_opening_balance.sql",
-    "20261012000011_health_event_expense.sql",
-    "20261013000012_farm_cash_active.sql",
-    "20261013000013_close_animal.sql",
-    "20261013000014_animal_exit_activity.sql",
-    "20261013000015_guard_animal_history_edits.sql",
-    "20261013000016_breeding_records.sql",
-    "20261013000017_insemination_dry_date.sql",
-    "20261013000018_guard_breeding_subjects.sql",
-    "20261014000019_farm_contact_phone.sql",
-    "20261014000020_preserve_milk_entry_ids.sql",
-    "20261014000021_galla_workflow.sql",
-  ]) {
+  for (const name of readdirSync(resolve("supabase/migrations")).filter((file) => file.endsWith(".sql")).sort()) {
     await db.exec(readFileSync(resolve("supabase/migrations", name), "utf8"));
   }
   await db.exec(readFileSync(resolve("supabase/seed/dev-demo.sql"), "utf8"));

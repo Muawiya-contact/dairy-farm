@@ -91,9 +91,12 @@ select c.id, farm_today() - 3, 30000, 'bank', a.id
 from customers c, accounts a where c.name = 'Rana Sweets' and a.name = 'Jahangir Sahab';
 
 insert into staff (name, role, monthly_salary) values ('Ismail', 'Worker', 25000);
+insert into salary_periods (staff_id, salary_month, agreed_amount)
+select id, date_trunc('month', farm_today())::date, 25000
+from staff where name = 'Ismail';
 
-insert into expenses (expense_date, category_id, amount, account_id, staff_id, quantity, unit, note)
-select farm_today() - v.days_ago, ec.id, v.amount, a.id, s.id, v.qty, v.unit, v.note
+insert into expenses (expense_date, category_id, amount, account_id, staff_id, salary_period_id, quantity, unit, note)
+select farm_today() - v.days_ago, ec.id, v.amount, a.id, s.id, p.id, v.qty, v.unit, v.note
 from (values
   (10, 'Wanda',           21000, 'Jahangir Sahab', null,     10, 'bori', '10 bori wanda'),
   (8,  'Bijli bill',      12000, 'Jahangir Sahab', null,     null, null, 'Bijli ka bill'),
@@ -102,7 +105,9 @@ from (values
 ) v(days_ago, cat, amount, acct, staff, qty, unit, note)
 join expense_categories ec on ec.name = v.cat
 join accounts a on a.name = v.acct
-left join staff s on s.name = v.staff;
+left join staff s on s.name = v.staff
+left join salary_periods p on p.staff_id = s.id
+  and p.salary_month = date_trunc('month', farm_today() - v.days_ago)::date;
 
 insert into transfers (transfer_date, from_account_id, to_account_id, amount, note)
 select farm_today() - 1, f.id, t.id, 15000, 'Hafte ka cash'

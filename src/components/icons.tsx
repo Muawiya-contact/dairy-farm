@@ -21,6 +21,8 @@ export const BookIcon = (p: P) => <svg {...base(p)}><path d="M5 4h11a3 3 0 0 1 3
 export const WalletIcon = (p: P) => <svg {...base(p)}><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18" /><path d="M15 15h3" /></svg>;
 export const CoinsIcon = (p: P) => <svg {...base(p)}><circle cx="9" cy="9" r="5" /><path d="M9 6v6M7 7.5h3a1.5 1.5 0 0 1 0 3H8M16 7a5 5 0 1 1-1 9.9" /></svg>;
 export const BackIcon = (p: P) => <svg {...base(p)}><path d="M15 5l-7 7 7 7" /></svg>;
+export const SettingsIcon = (p: P) => <svg {...base(p)}><path d="M10 3.5h4l.6 2.1 1.5.9 2.1-.5 2 3.5-1.5 1.6v1.8l1.5 1.6-2 3.5-2.1-.5-1.5.9-.6 2.1h-4l-.6-2.1-1.5-.9-2.1.5-2-3.5 1.5-1.6v-1.8L3.8 9.5l2-3.5 2.1.5 1.5-.9z" /><circle cx="12" cy="12" r="2.5" /></svg>;
+export const SignOutIcon = (p: P) => <svg {...base(p)}><path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5M14 7l5 5-5 5M8 12h11" /></svg>;
 export const SearchIcon = (p: P) => <svg {...base(p)}><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>;
 export const PlusIcon = (p: P) => <svg {...base(p)}><path d="M12 5v14M5 12h14" /></svg>;
 export const MinusIcon = (p: P) => <svg {...base(p)}><path d="M5 12h14" /></svg>;

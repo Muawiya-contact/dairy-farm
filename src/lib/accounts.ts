@@ -1,6 +1,6 @@
 import type { Database } from "./database.types";
 import { getSupabase } from "./supabase";
-import { addDays } from "./dates";
+import { addDays, todayPK } from "./dates";
 
 type Row = Database["public"]["Tables"]["accounts"]["Row"];
 export type FarmAccount = Pick<Row, "id" | "name" | "kind" | "opening_balance" | "opening_date" | "active" | "is_farm_cash">;
@@ -17,6 +17,7 @@ export function validateAccount(account: AccountFields, isFarmCash = false): str
   }
   try { addDays(account.opening_date, 0); }
   catch { return "Opening date sahi likhein."; }
+  if (account.opening_date > todayPK()) return "Opening date aaj se aage nahi ho sakti.";
   if (isFarmCash && !account.active) return "Farm galla band nahi ho sakta.";
   return null;
 }

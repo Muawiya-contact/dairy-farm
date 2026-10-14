@@ -1,0 +1,123 @@
+import { getSupabase } from "./supabase";
+import type { Database } from "./database.types";
+
+export type AccountMonth = Database["public"]["Functions"]["account_month_summary"]["Returns"][number];
+export type AccountEntry = Database["public"]["Functions"]["account_entries"]["Returns"][number];
+export type CashCount = Database["public"]["Tables"]["cash_counts"]["Row"];
+export type PaymentAudit = Database["public"]["Tables"]["payment_audit"]["Row"];
+
+export function monthBounds(month: string): { start: string; end: string } {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new RangeError("Sahi maheena chunein.");
+  const [year, number] = month.split("-").map(Number);
+  const nextYear = number === 12 ? year + 1 : year;
+  const nextMonth = number === 12 ? 1 : number + 1;
+  return { start: `${month}-01`, end: `${nextYear}-${String(nextMonth).padStart(2, "0")}-01` };
+}
+
+export async function getGallaToday(): Promise<string> {
+  const { data, error } = await getSupabase().rpc("farm_today");
+  if (error) throw error;
+  return data;
+}
+
+export async function getAccountMonth(month: string): Promise<AccountMonth[]> {
+  const { start } = monthBounds(month);
+  const { data, error } = await getSupabase().rpc("account_month_summary", { p_month: start });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getAccountEntries(accountId: string, month: string): Promise<AccountEntry[]> {
+  const { start, end } = monthBounds(month);
+  const rows: AccountEntry[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await getSupabase().rpc("account_entries", { p_account: accountId })
+      .gte("entry_date", start).lt("entry_date", end)
+      .order("entry_date").order("ref_id").range(from, from + 999);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data || data.length < 1000) return rows;
+  }
+}
+
+export async function getCashCounts(accountId: string, month: string): Promise<CashCount[]> {
+  const { start, end } = monthBounds(month);
+  const rows: CashCount[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await getSupabase().from("cash_counts").select("*")
+      .eq("account_id", accountId).gte("count_date", start).lt("count_date", end)
+      .order("count_date", { ascending: false }).order("created_at", { ascending: false })
+      .range(from, from + 999);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data || data.length < 1000) return rows;
+  }
+}
+
+export async function getAccountBalanceOn(accountId: string, date: string): Promise<number | null> {
+  const { data, error } = await getSupabase().rpc("account_balance_on", { p_account: accountId, p_date: date });
+  if (error) throw error;
+  return data;
+}
+
+export type TransferInput = { date: string; from: string; to: string; amount: number; note: string | null };
+export async function recordTransfer(id: string, input: TransferInput): Promise<void> {
+  const row = { id, transfer_date: input.date, from_account_id: input.from,
+    to_account_id: input.to, amount: input.amount, note: input.note };
+  const { error } = await getSupabase().from("transfers").insert(row);
+  if (!error) return;
+  if (error.code !== "23505") throw error;
+  const { data, error: lookupError } = await getSupabase().from("transfers").select("*").eq("id", id).maybeSingle();
+  if (lookupError) throw lookupError;
+  if (!data || data.transfer_date !== input.date || data.from_account_id !== input.from ||
+      data.to_account_id !== input.to || Number(data.amount) !== input.amount || data.note !== input.note) throw error;
+}
+
+export type CashCountInput = { date: string; accountId: string; counted: number; reason: string | null };
+export async function recordCashCount(id: string, input: CashCountInput): Promise<void> {
+  const { error } = await getSupabase().from("cash_counts").insert({
+    id, count_date: input.date, account_id: input.accountId,
+    counted_amount: input.counted, reason: input.reason,
+  });
+  if (!error) return;
+  if (error.code !== "23505") throw error;
+  const { data, error: lookupError } = await getSupabase().from("cash_counts").select("*").eq("id", id).maybeSingle();
+  if (lookupError) throw lookupError;
+  if (!data || data.count_date !== input.date || data.account_id !== input.accountId ||
+      Number(data.counted_amount) !== input.counted || data.reason !== input.reason) throw error;
+}
+
+export async function recordDiscount(id: string, customerId: string, input: { date: string; amount: number; reason: string }): Promise<void> {
+  const { error } = await getSupabase().from("payments").insert({
+    id, customer_id: customerId, payment_date: input.date, amount: input.amount,
+    kind: "discount", note: input.reason, method: null, account_id: null,
+  });
+  if (!error) return;
+  if (error.code !== "23505") throw error;
+  const { data, error: lookupError } = await getSupabase().from("payments").select("*").eq("id", id).maybeSingle();
+  if (lookupError) throw lookupError;
+  if (!data || data.customer_id !== customerId || data.payment_date !== input.date ||
+      Number(data.amount) !== input.amount || data.kind !== "discount" || data.note !== input.reason) throw error;
+}
+
+export async function correctPayment(id: string, revision: number, input: {
+  date: string; amount: number; method: string | null; accountId: string | null; reason: string;
+}): Promise<void> {
+  const { error } = await getSupabase().rpc("correct_manual_payment", {
+    p_id: id, p_revision: revision, p_date: input.date, p_amount: input.amount,
+    p_method: input.method, p_account: input.accountId, p_reason: input.reason,
+  });
+  if (error) throw error;
+}
+
+export async function voidPayment(id: string, revision: number, reason: string): Promise<void> {
+  const { error } = await getSupabase().rpc("void_manual_payment", { p_id: id, p_revision: revision, p_reason: reason });
+  if (error) throw error;
+}
+
+export async function getCustomerPaymentAudit(customerId: string): Promise<PaymentAudit[]> {
+  const { data, error } = await getSupabase().from("payment_audit").select("*")
+    .eq("customer_id", customerId).order("changed_at", { ascending: false }).limit(50);
+  if (error) throw error;
+  return data ?? [];
+}

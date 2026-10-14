@@ -14,7 +14,9 @@ export const DATASETS: { table: Table; label: string; key: string; columns: stri
   { table: "customers", label: "Customers", key: "id", columns: ["id", "name", "phone", "kind", "free_reason", "default_morning", "default_evening", "opening_balance", "opening_date", "active", "sort_order", "notes", "created_at"] },
   { table: "customer_rates", label: "Doodh ke rate", key: "id", columns: ["id", "customer_id", "rate", "effective_from"] },
   { table: "company_bills", label: "Company bills", key: "id", columns: ["id", "customer_id", "from_date", "to_date", "litres", "amount", "notes", "created_at"] },
-  { table: "payments", label: "Wusooli", key: "id", columns: ["id", "customer_id", "payment_date", "amount", "kind", "method", "account_id", "delivery_id", "note", "created_at"] },
+  { table: "payments", label: "Wusooli", key: "id", columns: ["id", "customer_id", "payment_date", "amount", "kind", "method", "account_id", "delivery_id", "note", "revision", "created_at"] },
+  { table: "payment_audit", label: "Wusooli corrections", key: "id", columns: ["id", "payment_id", "customer_id", "action", "before_row", "after_row", "reason", "actor_id", "changed_at"] },
+  { table: "cash_counts", label: "Cash counts", key: "id", columns: ["id", "account_id", "count_date", "counted_amount", "expected_balance", "difference", "reason", "created_at"] },
   { table: "expenses", label: "Kharchay", key: "id", columns: ["id", "expense_date", "category_id", "amount", "account_id", "staff_id", "quantity", "unit", "note", "created_at"] },
   { table: "expense_categories", label: "Kharchay ki qisamain", key: "id", columns: ["id", "name", "is_farm_cost", "is_salary", "active", "sort_order"] },
   { table: "other_income", label: "Doosri aamdani", key: "id", columns: ["id", "income_date", "kind", "amount", "account_id", "animal_id", "note", "created_at"] },
@@ -52,27 +54,36 @@ const COLUMN_LABELS: Record<string, string> = {
   discount: "Riayat (Rs)", balance: "Baqaya (Rs)", label: "Tafseel",
   produced: "Paida hua doodh (L)", sold_litres: "Bikne wala doodh (L)",
   free_litres: "Muft doodh (L)", delivered: "Diya gaya doodh (L)",
-  difference: "Farq (L)", company_slip_litres: "Company parchi doodh (L)",
+  difference: "Farq", company_slip_litres: "Company parchi doodh (L)",
   milk_income: "Doodh ki aamdani (Rs)", other_income: "Doosri aamdani (Rs)",
   total_income: "Kul aamdani (Rs)", farm_expenses: "Farm kharchay (Rs)",
   personal_expenses: "Zaati kharchay (Rs)", profit: "Munafa ya nuqsan (Rs)",
   staff_name: "Mulazim ka naam", is_farm_cost: "Farm ka kharcha",
   technician: "Technician", sort_order: "Tarteeb", kind: "Qism",
   contact_phone: "Farm contact number",
+  counted_amount: "Gini hui cash (Rs)", expected_balance: "Hisaab ke mutabiq (Rs)",
+  before_row: "Purani entry (JSON)", after_row: "Nayi entry (JSON)",
+  changed_at: "Badalne ka waqt", actor_id: "Badalne wala user ID",
 };
 
-export const columnLabel = (column: string) => COLUMN_LABELS[column] ?? column.replaceAll("_", " ");
+export const columnLabel = (column: string, title = "") =>
+  column === "difference" && title === "Cash counts" ? "Farq (Rs)" :
+  column === "difference" && title === "Doodh ka khulasa" ? "Farq (L)" :
+  COLUMN_LABELS[column] ?? column.replaceAll("_", " ");
+
+export const displayCell = (value: unknown): string =>
+  value == null ? "" : typeof value === "object" ? JSON.stringify(value) : String(value);
 
 export function csvCell(value: unknown): string {
   if (value == null) return "";
-  const raw = typeof value === "object" ? JSON.stringify(value) : String(value);
+  const raw = displayCell(value);
   // Spreadsheet software treats these prefixes as formulas, even inside quoted CSV cells.
   const safe = typeof value === "string" && /^[\s]*[=+\-@]/.test(raw) ? `'${raw}` : raw;
   return `"${safe.replaceAll('"', '""')}"`;
 }
 
-export function toCsv(columns: string[], rows: Record<string, unknown>[]): string {
-  return "\uFEFF" + [columns.map((column) => csvCell(columnLabel(column))).join(","),
+export function toCsv(columns: string[], rows: Record<string, unknown>[], title = ""): string {
+  return "\uFEFF" + [columns.map((column) => csvCell(columnLabel(column, title))).join(","),
     ...rows.map((row) => columns.map((column) => csvCell(row[column])).join(","))].join("\r\n") + "\r\n";
 }
 
@@ -126,11 +137,11 @@ export async function buildXlsx(title: string, columns: string[], rows: Record<s
   const { default: ExcelJS } = await import("exceljs");
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet(title.slice(0, 31).replace(/[\\/?*\[\]:]/g, " "));
-  sheet.addRow(columns.map(columnLabel));
-  for (const row of rows) sheet.addRow(columns.map((column) => row[column] == null ? "" : typeof row[column] === "object" ? JSON.stringify(row[column]) : row[column]));
+  sheet.addRow(columns.map((column) => columnLabel(column, title)));
+  for (const row of rows) sheet.addRow(columns.map((column) => typeof row[column] === "object" ? displayCell(row[column]) : row[column] ?? ""));
   sheet.getRow(1).font = { bold: true };
   sheet.views = [{ state: "frozen", ySplit: 1 }];
-  columns.forEach((column, index) => { sheet.getColumn(index + 1).width = Math.min(35, Math.max(14, columnLabel(column).length + 3)); });
+  columns.forEach((column, index) => { sheet.getColumn(index + 1).width = Math.min(35, Math.max(14, columnLabel(column, title).length + 3)); });
   const buffer = await workbook.xlsx.writeBuffer();
   return new Uint8Array(buffer as unknown as ArrayBuffer);
 }
@@ -143,8 +154,8 @@ export async function buildPdf(title: string, columns: string[], rows: Record<st
   pdf.setFontSize(9);
   pdf.text(`${rows.length} entries`, 10, 19);
   autoTable(pdf, {
-    startY: 23, head: [columns.map(columnLabel)],
-    body: rows.map((row) => columns.map((column) => row[column] == null ? "" : String(row[column]))),
+    startY: 23, head: [columns.map((column) => columnLabel(column, title))],
+    body: rows.map((row) => columns.map((column) => displayCell(row[column]))),
     styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak" },
     headStyles: { fillColor: [45, 106, 57] },
     horizontalPageBreak: true, horizontalPageBreakRepeat: 0,
@@ -155,7 +166,7 @@ export async function buildPdf(title: string, columns: string[], rows: Record<st
 
 export async function exportRows(filename: string, title: string, columns: string[], rows: Record<string, unknown>[], format: ExportFormat): Promise<void> {
   if (format === "csv") {
-    downloadFile(`${filename}.csv`, toCsv(columns, rows), "text/csv;charset=utf-8");
+    downloadFile(`${filename}.csv`, toCsv(columns, rows, title), "text/csv;charset=utf-8");
   } else if (format === "xlsx") {
     downloadBlob(`${filename}.xlsx`, new Blob([await buildXlsx(title, columns, rows)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
   } else {

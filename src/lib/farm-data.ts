@@ -27,10 +27,10 @@ export type Customer = { id: string; name: string; phone: string | null; kind: s
 export type CustomerRate = { id: string; customer_id: string; rate: number; effective_from: string };
 export type MilkShift = { id: string; milk_date: string; shift: "morning" | "evening"; total_litres: number; mode: "total" | "per_animal" };
 export type MilkDelivery = { id: string; delivery_date: string; shift: "morning" | "evening"; customer_id: string; litres: number; rate: number | null; amount: number };
-export type Payment = { id: string; customer_id: string; payment_date: string; amount: number; kind: string; method: string | null; account_id: string | null; note: string | null };
+export type Payment = { id: string; customer_id: string; payment_date: string; amount: number; kind: string; method: string | null; account_id: string | null; delivery_id: string | null; note: string | null; revision: number };
 export type ExpenseCategory = { id: string; name: string; is_farm_cost: boolean; active: boolean; sort_order: number };
 export type Expense = { id: string; expense_date: string; category_id: string; amount: number; account_id: string; note: string | null };
-export type Account = { id: string; name: string; is_farm_cash: boolean; active: boolean };
+export type Account = { id: string; name: string; kind: string; is_farm_cash: boolean; active: boolean };
 export type CompanyBill = { id: string; customer_id: string; from_date: string; to_date: string; litres: number; amount: number };
 export type OtherIncome = { id: string; income_date: string; amount: number };
 export type CustomerReport = { customer_id: string; name: string; kind: string; litres: number; amount: number; previous_balance: number; paid: number; discount: number; balance: number };
@@ -181,17 +181,25 @@ export async function updateCustomerProfile(id: string, input: CustomerProfile):
   if (!data) throw new Error("CUSTOMER_STALE");
 }
 
-export async function recordCustomerPayment(customerId: string, input: CustomerPayment): Promise<void> {
+export async function recordCustomerPayment(customerId: string, input: CustomerPayment, id = crypto.randomUUID()): Promise<void> {
   const { error } = await getSupabase().from("payments").insert({
-    customer_id: customerId, payment_date: input.date, amount: input.amount,
+    id, customer_id: customerId, payment_date: input.date, amount: input.amount,
     kind: "payment", method: input.method, account_id: input.accountId,
   });
-  if (error) throw error;
+  if (!error) return;
+  if (error.code !== "23505") throw error;
+  const { data, error: lookupError } = await getSupabase().from("payments").select("*").eq("id", id).maybeSingle();
+  if (lookupError) throw lookupError;
+  if (!data || data.customer_id !== customerId || data.payment_date !== input.date ||
+      Number(data.amount) !== input.amount || data.kind !== "payment" || data.method !== input.method ||
+      data.account_id !== input.accountId) throw error;
 }
 
 export async function customerMonthReport(customerId: string, month: string): Promise<CustomerReport | null> {
-  const rows = await report<CustomerReport>("customer_month_report", { p_month: `${month}-01` });
-  return rows.find((row) => row.customer_id === customerId) ?? null;
+  const { data, error } = await getSupabase().rpc("customer_month_report", { p_month: `${month}-01` })
+    .eq("customer_id", customerId).maybeSingle();
+  if (error) throw error;
+  return data;
 }
 
 export async function saveCustomerRate(customerId: string, rate: number, effectiveFrom: string) {

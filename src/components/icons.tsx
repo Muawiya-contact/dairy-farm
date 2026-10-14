@@ -19,6 +19,7 @@ export const CowIcon = (p: P) => <svg {...base(p)}>
 export const CanIcon = (p: P) => <svg {...base(p)}><path d="M9 3h6" /><path d="M10 3v3l-3 3v11a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V9l-3-3V3" /><path d="M7 13h10" /></svg>;
 export const BookIcon = (p: P) => <svg {...base(p)}><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z" /><path d="M5 17a3 3 0 0 1 3-3h11" /></svg>;
 export const WalletIcon = (p: P) => <svg {...base(p)}><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18" /><path d="M15 15h3" /></svg>;
+export const CoinsIcon = (p: P) => <svg {...base(p)}><circle cx="9" cy="9" r="5" /><path d="M9 6v6M7 7.5h3a1.5 1.5 0 0 1 0 3H8M16 7a5 5 0 1 1-1 9.9" /></svg>;
 export const BackIcon = (p: P) => <svg {...base(p)}><path d="M15 5l-7 7 7 7" /></svg>;
 export const SearchIcon = (p: P) => <svg {...base(p)}><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>;
 export const PlusIcon = (p: P) => <svg {...base(p)}><path d="M12 5v14M5 12h14" /></svg>;

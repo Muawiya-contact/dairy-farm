@@ -256,6 +256,39 @@ export type Database = {
           },
         ]
       }
+      cash_counts: {
+        Row: {
+          account_id: string
+          count_date: string
+          counted_amount: number
+          created_at: string
+          difference: number
+          expected_balance: number
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          account_id: string
+          count_date: string
+          counted_amount: number
+          created_at?: string
+          difference?: number
+          expected_balance?: number
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          account_id?: string
+          count_date?: string
+          counted_amount?: number
+          created_at?: string
+          difference?: number
+          expected_balance?: number
+          id?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
       company_bills: {
         Row: {
           amount: number
@@ -781,6 +814,42 @@ export type Database = {
           },
         ]
       }
+      payment_audit: {
+        Row: {
+          action: string
+          actor_id: string | null
+          after_row: Json | null
+          before_row: Json
+          changed_at: string
+          customer_id: string
+          id: string
+          payment_id: string
+          reason: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          after_row?: Json | null
+          before_row: Json
+          changed_at?: string
+          customer_id: string
+          id?: string
+          payment_id: string
+          reason: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          after_row?: Json | null
+          before_row?: Json
+          changed_at?: string
+          customer_id?: string
+          id?: string
+          payment_id?: string
+          reason?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           account_id: string | null
@@ -793,6 +862,7 @@ export type Database = {
           method: string | null
           note: string | null
           payment_date: string
+          revision: number
         }
         Insert: {
           account_id?: string | null
@@ -805,6 +875,7 @@ export type Database = {
           method?: string | null
           note?: string | null
           payment_date: string
+          revision?: number
         }
         Update: {
           account_id?: string | null
@@ -817,6 +888,7 @@ export type Database = {
           method?: string | null
           note?: string | null
           payment_date?: string
+          revision?: number
         }
         Relationships: [
           {
@@ -1039,6 +1111,10 @@ export type Database = {
       }
     }
     Functions: {
+      account_balance_on: {
+        Args: { p_account: string; p_date: string }
+        Returns: number
+      }
       account_entries: {
         Args: { p_account: string }
         Returns: {
@@ -1062,6 +1138,18 @@ export type Database = {
           name: string
           opening: number
         }[]
+      }
+      correct_manual_payment: {
+        Args: {
+          p_account: string | null
+          p_amount: number
+          p_date: string
+          p_id: string
+          p_method: string | null
+          p_reason: string
+          p_revision: number
+        }
+        Returns: number
       }
       close_animal: {
         Args: {
@@ -1185,6 +1273,10 @@ export type Database = {
           p_total: number
         }
         Returns: string
+      }
+      void_manual_payment: {
+        Args: { p_id: string; p_revision: number; p_reason: string }
+        Returns: undefined
       }
     }
     Enums: {

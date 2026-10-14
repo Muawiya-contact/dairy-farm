@@ -17,6 +17,7 @@ The staging and real-data databases are separate projects. During the demo phase
 - `/janwar/`: search, add animal, details, health and breeding entries (`?id=<uuid>`)
 - `/doodh/`: morning and evening milk production, animal quantities and customer deliveries
 - `/khata/`: add and edit customers, view monthly database balances and detailed PDF bills, record payments and company bills, download or share payment receipts (`?id=<uuid>`)
+- `/galla/`: account ledger, manual transfers, cash counts and reconciliation
 - `/kharcha/`: expense and profit report, categories, accounts and entries
 - `/settings/`: shared farm settings, breeding-day offsets and account controls
 
@@ -38,11 +39,11 @@ Import `Muawiya-contact/dairy-farm` from Git. Leave Base directory and Functions
 
 ## Database
 
-Twenty migrations in `supabase/migrations/` are recorded on both projects as of 2026-10-14. Apply future schema changes with the Supabase CLI so migration history stays in sync. Staging alone contains the invented records from `supabase/seed/dev-demo.sql`; no demo seed was applied to production. Database triggers and report functions calculate delivery amounts, customer balances and profit. The staging access switch is `private.demo_access.enabled = true`; production keeps it `false`.
+Twenty-three migrations in `supabase/migrations/` are recorded on both projects as of 2026-10-14. Apply future schema changes with the Supabase CLI so migration history stays in sync. Staging alone contains the invented records from `supabase/seed/dev-demo.sql`; no demo seed was applied to production. Database triggers and report functions calculate delivery amounts, customer balances and profit. The staging access switch is `private.demo_access.enabled = true`; production keeps it `false`. Step 6 implementation and money rules are described in [docs/steps/step-6-galla.md](docs/steps/step-6-galla.md).
 
 Set the optional farm contact number in Settings before sending customer documents. A statement PDF includes the selected month's saved deliveries, company bills and payments; a receipt PDF confirms one payment. On phones that support file sharing, the PDF opens the system share sheet. When file sharing is unavailable and the customer has a valid phone number, the PDF downloads and the customer's WhatsApp chat opens with a prefilled message; the owner still attaches the PDF and presses Send. Sharing is always initiated by the owner.
 
-The animal page records semen details, checkups and calving against existing Supabase tables. Settings offers CSV, Excel and PDF exports for all 19 public tables, a joined breeding register, and monthly customer, expense, milk and profit reports. It also offers an all-table JSON snapshot. The `/reports/` page displays a printable monthly report; browser print can save it as PDF. Export files are generated in the browser from the currently connected project and are not backups of Supabase users, storage or Auth configuration.
+The animal page records semen details, checkups and calving against existing Supabase tables. Settings offers CSV, Excel and PDF exports for all 21 public tables, a joined breeding register, and monthly customer, expense, milk and profit reports. It also offers an all-table JSON snapshot. The `/reports/` page displays a printable monthly report; browser print can save it as PDF. Export files are generated in the browser from the currently connected project and are not backups of Supabase users, storage or Auth configuration.
 
 `npm run db:types` refreshes TypeScript database types from staging. It requires Supabase CLI login. CI runs tests, lint, typecheck and the static export build on pushes and pull requests.
 

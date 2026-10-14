@@ -1,12 +1,12 @@
 # Dairy Farm: implementation and acceptance plan
 
-Checked against `main` after [PR #8](https://github.com/Muawiya-contact/dairy-farm/pull/8) merged on 2026-10-14. The [roadmap](ROADMAP.md) defines eight steps. Update this document as each feature changes; the status below is based on code, not a claim that every workflow has passed an end-to-end audit.
+Updated during [Step 6 PR #10](https://github.com/Muawiya-contact/dairy-farm/pull/10) on 2026-10-14. The [roadmap](ROADMAP.md) defines eight steps. Update this document as each feature changes; the status below is based on code, not a claim that every workflow has passed an end-to-end audit.
 
 ## Architecture and environments
 
 Next.js builds a static site on Netlify. React Query and the Supabase browser client read and write PostgreSQL records. The browser gets only a publishable key. Tables, constraints, triggers, RLS, and database report functions are the source of truth for financial records. Stored money uses PostgreSQL `numeric(12,2)` and business dates use `date` and the database `farm_today()` rule; browser timezone and floating-point sums must not redefine balances.
 
-Netlify main and Deploy Previews currently connect to **staging**, which contains invented demo data and allows shared access. A separate **production** Supabase project has the same 20 migrations, owner-only access, and no demo seed. Production is reserved for real client data. Switching the live site to production requires a planned release; there is no browser database toggle.
+Netlify main and Deploy Previews currently connect to **staging**, which contains invented demo data and allows shared access. A separate **production** Supabase project has the same 23 migrations, owner-only access, and no demo seed. Production is reserved for real client data. Switching the live site to production requires a planned release; there is no browser database toggle.
 
 ## Definition of done for every step
 
@@ -26,11 +26,11 @@ Netlify main and Deploy Previews currently connect to **staging**, which contain
 | **3. Nasl kashi** | Breeding entries and due dates on animal details. | Complete the breeding register and calving workflow; test dates and status transitions. |
 | **4. Customers** | Types, opening balances, dated rates, profiles, and monthly views. | Verify rate history and opening-date calculations across all customer types. |
 | **5. Doodh** | Morning/evening production, deliveries, historical shift editing, and Naqd auto payment. | Test full daily operations, corrections, totals, and locked months. |
-| **6. Wusooli / galla** | Payments, monthly bills, company bills, PDFs/share; database ledger functions. **Galla UI, corrections, and reconciliation remain.** | Complete the Step 6 scope and evidence below. |
+| **6. Wusooli / galla** | Payments, monthly bills, company bills, PDFs/share, Galla UI, manual transfers, cash counts, and audited corrections are implemented in PR #10. | Verify the live preview on phone and laptop, especially device sharing and real owner workflows. |
 | **7. Kharcha** | Basic expenses, categories, accounts, and profit screens. The schema already distinguishes farm costs from personal costs. | Add a clear **Ghar ka kharcha** option and separate home-expense view, then complete staff/salary and other income; test account and profit effects. |
 | **8. Reports / launch** | Dashboard, monthly reports, CSV/Excel/PDF exports, and JSON data snapshot. | Finish month-lock controls, backup/restore plan, real-data import, monitoring, and production launch checks. |
 
-Earlier unfinished work stays tracked while Step 6 progresses.
+Earlier unfinished work stays tracked in the roadmap and future step PRs.
 
 ## Step 6: Wusooli and galla
 
@@ -38,11 +38,11 @@ Earlier unfinished work stays tracked while Step 6 progresses.
 
 Customer profile editing, dated rates, monthly reports/registers, payment entry with amount/date/method/account validation, company bills, farm contact number, statement PDFs, receipt PDFs, and Share buttons. A supported phone opens its native share sheet so the owner can choose WhatsApp. On unsupported devices the PDF downloads and, with a valid customer number, a WhatsApp chat can open with prefilled text; the owner attaches the PDF manually. A web page cannot guarantee the WhatsApp recipient or automatic attachment.
 
-The schema already has `payments`, `transfers`, `accounts`, `month_locks`, and `company_bills`. `customer_month_report(date)` calculates monthly charges, payments, discounts, and balance. `account_entries(uuid)` unions payments, other income, transfers in/out, and expenses. `account_month_summary(date)` calculates opening, in, out, and closing per account. A milk-delivery trigger manages Naqd auto payments. These database primitives do **not** mean the full galla workflow is available in the UI.
+The schema has `payments`, `transfers`, `accounts`, `cash_counts`, `payment_audit`, `month_locks`, and `company_bills`. `customer_month_report(date)` calculates monthly charges, payments, discounts, and balance. `account_entries(uuid)` unions payments, other income, transfers in/out, and expenses. `account_month_summary(date)` calculates opening, in, out, and closing per account; an account opened midmonth contributes its starting balance on its actual opening date. A milk-delivery trigger manages Naqd auto payments. The owner-facing Galla screen and operating rules are documented in [Step 6 Galla](steps/step-6-galla.md).
 
 Main code: [`FarmCustomers.tsx`](../src/components/FarmCustomers.tsx), [`farm-data.ts`](../src/lib/farm-data.ts), [`customer-forms.ts`](../src/lib/customer-forms.ts), [`customer-documents.ts`](../src/lib/customer-documents.ts), and [`supabase/migrations/`](../supabase/migrations/). PR #8 reported 50 passing tests, lint, typecheck, build, and a Netlify preview. Real-phone sharing and the remaining Step 6 flows are not verified by that result.
 
-### Required next work
+### Step 6 scope and acceptance checks
 
 1. **Galla screen:** Account and month selectors, opening/in/out/closing cards, dated ledger, empty state, and negative-balance warning. Use the existing report functions. Filter or paginate large ledgers server-side; avoid loading every report row to find one customer or account.
 2. **Transfers:** One row with source, destination, date, positive amount, and optional note. Reject same-account transfers, inactive accounts, excessive decimal precision, future dates, and locked months. Its two ledger effects must preserve combined farm money. Handle an uncertain retry without duplicate transfer.
@@ -59,7 +59,7 @@ Main code: [`FarmCustomers.tsx`](../src/components/FarmCustomers.tsx), [`farm-da
 - New tables/functions need owner-only production RLS and explicit function grants. Shared staging access is intentional for disposable demo data, not a production policy.
 - Clarify backdated payment and correction rules before changing the schema; existing month-lock triggers must remain authoritative.
 
-### Acceptance evidence before the Step 6 implementation PR
+### Step 6 acceptance checks
 
 | Area | Automated checks | Staging preview check |
 |---|---|---|

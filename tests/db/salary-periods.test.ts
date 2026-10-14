@@ -70,6 +70,18 @@ describe("salary periods and payments", () => {
     expect(Number(pnlAfter.profit) - Number(pnlBefore.profit)).toBe(-1000);
     expect((await db.query("select entry_kind, money_out from account_entries($1) where ref_id = $2", [accountId, first])).rows)
       .toEqual([{ entry_kind: "expense", money_out: "400.00" }]);
+    await expect(db.query("update expenses set amount = 1 where id = $1", [first]))
+      .rejects.toThrow(/SALARY_PAYMENT_IMMUTABLE/);
+    await expect(db.query("delete from expenses where id = $1", [first]))
+      .rejects.toThrow(/SALARY_PAYMENT_IMMUTABLE/);
+    await expect(db.query("update expense_categories set is_salary = false where id = $1", [salaryCategoryId]))
+      .rejects.toThrow(/SALARY_CATEGORY_FIXED/);
+    const ordinary = (await db.query<{ id: string }>(
+      "select id from expenses where salary_period_id is null limit 1",
+    )).rows[0].id;
+    expect((await db.query<{ note: string }>(
+      "update expenses set note = 'ordinary correction' where id = $1 returning note", [ordinary],
+    )).rows).toEqual([{ note: "ordinary correction" }]);
     await expect(db.query(`
       insert into expenses(expense_date, category_id, account_id, staff_id, salary_period_id, amount)
       values (farm_today(), $1, $2, $3, $4, 0.01)

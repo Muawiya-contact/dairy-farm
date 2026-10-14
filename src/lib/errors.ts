@@ -7,6 +7,8 @@ const messages: [RegExp, string][] = [
   [/SALARY_OVERPAID/i, "Baqi tankhwah se zyada raqam hai. Page dobara load karein."],
   [/SALARY_BELOW_PAID/i, "Tay shuda tankhwah ada shuda raqam se kam nahi ho sakti."],
   [/SALARY_PERIOD_PAID/i, "Adaigi ke baad tay shuda tankhwah nahi badal sakte. Correction ke liye alag record chahiye."],
+  [/SALARY_PAYMENT_IMMUTABLE/i, "Tankhwah ki adaigi seedha nahi badal sakte. Correction ke liye alag record chahiye."],
+  [/SALARY_CATEGORY_FIXED/i, "Purani entries wali category ki salary qism nahi badal sakte."],
   [/SALARY_FUTURE_MONTH|SALARY_ADVANCE_NOT_ENABLED/i, "Aane wale mahine ki tankhwah abhi ada nahi kar sakte."],
   [/SALARY_LINK_REQUIRED|SALARY_STAFF_MISMATCH|SALARY_CATEGORY_REQUIRED/i, "Mulazim aur tankhwah ka maheena dobara chunein."],
   [/SALARY_PERIOD_STALE|STAFF_STALE/i, "Mulazim ya tankhwah ka record badal chuka hai. Page dobara load karein."],

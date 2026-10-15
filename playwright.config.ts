@@ -1,5 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// Keep the emulated screen and viewport in sync; a desktop screen with a phone
+// viewport can mask mobile overflow and shift taps on fixed navigation.
+const mobileDevice = { ...devices["Pixel 5"], viewport: { width: 360, height: 780 }, screen: { width: 360, height: 780 } };
+
 export default defineConfig({
   testDir: "./e2e",
   testMatch: "*.spec.ts",
@@ -16,7 +20,7 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [
-    { name: "mobile", use: { ...devices["Pixel 5"], viewport: { width: 360, height: 780 }, screen: { width: 360, height: 780 } } },
+    { name: "mobile", use: mobileDevice },
     { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1366, height: 900 } } },
   ],
   webServer: {

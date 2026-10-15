@@ -8,6 +8,7 @@ const migrationDir = resolve("supabase/migrations");
 const lifecycleMigrations = [
   "20261015000029_animal_lifecycle.sql",
   "20261015000030_guard_animal_sale_ledger.sql",
+  "20261015000031_breeding_register_offspring.sql",
 ];
 
 beforeAll(async () => {

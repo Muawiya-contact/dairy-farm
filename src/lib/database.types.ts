@@ -186,36 +186,106 @@ export type Database = {
           },
         ]
       }
+      calving_offspring: {
+        Row: {
+          animal_id: string | null
+          birth_order: number
+          birth_weight_kg: number | null
+          calving_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          outcome: string
+          sex: string | null
+          tag_at_birth: string | null
+        }
+        Insert: {
+          animal_id?: string | null
+          birth_order: number
+          birth_weight_kg?: number | null
+          calving_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          outcome: string
+          sex?: string | null
+          tag_at_birth?: string | null
+        }
+        Update: {
+          animal_id?: string | null
+          birth_order?: number
+          birth_weight_kg?: number | null
+          calving_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          outcome?: string
+          sex?: string | null
+          tag_at_birth?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calving_offspring_animal_id_fkey"
+            columns: ["animal_id"]
+            isOneToOne: true
+            referencedRelation: "animal_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calving_offspring_animal_id_fkey"
+            columns: ["animal_id"]
+            isOneToOne: true
+            referencedRelation: "animals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calving_offspring_calving_id_fkey"
+            columns: ["calving_id"]
+            isOneToOne: false
+            referencedRelation: "calvings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calvings: {
         Row: {
           animal_id: string
           calf_id: string | null
           calving_date: string
           created_at: string
+          ease_score: number | null
           id: string
           insemination_id: string | null
           notes: string | null
           outcome: string
+          request_hash: string | null
+          request_id: string | null
         }
         Insert: {
           animal_id: string
           calf_id?: string | null
           calving_date: string
           created_at?: string
+          ease_score?: number | null
           id?: string
           insemination_id?: string | null
           notes?: string | null
           outcome?: string
+          request_hash?: string | null
+          request_id?: string | null
         }
         Update: {
           animal_id?: string
           calf_id?: string | null
           calving_date?: string
           created_at?: string
+          ease_score?: number | null
           id?: string
           insemination_id?: string | null
           notes?: string | null
           outcome?: string
+          request_hash?: string | null
+          request_id?: string | null
         }
         Relationships: [
           {
@@ -293,7 +363,15 @@ export type Database = {
           id?: string
           reason?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cash_counts_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       company_bills: {
         Row: {
@@ -605,6 +683,7 @@ export type Database = {
           dry_off_due: string
           id: string
           notes: string | null
+          semen_batch: string | null
           semen_name: string | null
           semen_type: string
           service_date: string
@@ -627,6 +706,7 @@ export type Database = {
           dry_off_due: string
           id?: string
           notes?: string | null
+          semen_batch?: string | null
           semen_name?: string | null
           semen_type?: string
           service_date: string
@@ -649,6 +729,7 @@ export type Database = {
           dry_off_due?: string
           id?: string
           notes?: string | null
+          semen_batch?: string | null
           semen_name?: string | null
           semen_type?: string
           service_date?: string
@@ -864,7 +945,22 @@ export type Database = {
           payment_id?: string
           reason?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "payment_audit_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_balances"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "payment_audit_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payments: {
         Row: {
@@ -1190,6 +1286,17 @@ export type Database = {
           opening: number
         }[]
       }
+      close_animal: {
+        Args: {
+          p_account_id: string
+          p_animal_id: string
+          p_exit_date: string
+          p_reason: string
+          p_sale_price: number
+          p_status: string
+        }
+        Returns: string
+      }
       correct_manual_payment: {
         Args: {
           p_account: string | null
@@ -1201,17 +1308,6 @@ export type Database = {
           p_revision: number
         }
         Returns: number
-      }
-      close_animal: {
-        Args: {
-          p_account_id: string
-          p_animal_id: string
-          p_exit_date: string
-          p_reason: string
-          p_sale_price: number
-          p_status: string
-        }
-        Returns: string
       }
       create_customer: {
         Args: {
@@ -1301,6 +1397,17 @@ export type Database = {
         }
         Returns: string
       }
+      record_calving_with_offspring: {
+        Args: {
+          p_calving_date: string
+          p_ease_score?: number | null
+          p_insemination_id: string
+          p_notes?: string | null
+          p_offspring: Json
+          p_request_id: string
+        }
+        Returns: string
+      }
       record_health_event: {
         Args: {
           p_account_id: string
@@ -1326,7 +1433,7 @@ export type Database = {
         Returns: string
       }
       void_manual_payment: {
-        Args: { p_id: string; p_revision: number; p_reason: string }
+        Args: { p_id: string; p_reason: string; p_revision: number }
         Returns: undefined
       }
     }

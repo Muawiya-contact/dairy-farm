@@ -16,7 +16,7 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [
-    { name: "mobile", use: { ...devices["Desktop Chrome"], viewport: { width: 360, height: 780 }, isMobile: true, hasTouch: true } },
+    { name: "mobile", use: { ...devices["Pixel 5"], viewport: { width: 360, height: 780 }, screen: { width: 360, height: 780 } } },
     { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1366, height: 900 } } },
   ],
   webServer: {

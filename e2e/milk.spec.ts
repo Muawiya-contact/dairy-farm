@@ -17,6 +17,18 @@ test("a Naqd shift refreshes Home, Khata and Galla through client navigation", a
   await go(page, "Doodh");
   const morning = info.project.name === "mobile";
   await page.getByRole("tab", { name: morning ? "Subah" : "Shaam" }).click();
+  if (morning) {
+    const layout = await page.evaluate(() => ({
+      width: window.innerWidth,
+      screen: window.screen.width,
+      scroll: document.documentElement.scrollWidth,
+      offenders: [...document.querySelectorAll<HTMLElement>("body *")]
+        .filter((element) => element.getBoundingClientRect().right > 361)
+        .reverse().slice(0, 15)
+        .map((element) => ({ tag: element.tagName, className: element.className, width: Math.round(element.getBoundingClientRect().width), right: Math.round(element.getBoundingClientRect().right) })),
+    }));
+    expect(layout.width, JSON.stringify(layout)).toBeLessThanOrEqual(360);
+  }
   await page.getByRole("spinbutton", { name: "Kul doodh" }).fill("200");
   await expect(page.getByRole("spinbutton", { name: "Naqd litres" })).toHaveValue(morning ? "3" : "2");
   await page.getByRole("button", { name: "Entry save karein" }).click();

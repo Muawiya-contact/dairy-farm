@@ -11,7 +11,7 @@ Supabase plan change is included.
 ## Month close
 
 In Settings, select a past month and close it after reconciling the reports.
-The database rejects dated milk, delivery, payment, expense, transfer, income,
+The database rejects dated milk (including direct per-animal rows), delivery, payment, expense, transfer, income,
 cash-count, and salary writes for a closed month. Changing an account opening
 balance/date, a customer opening balance/date, or farm-versus-home expense
 classification cannot silently rewrite a closed balance or profit. Reopening

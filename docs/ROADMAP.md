@@ -1,7 +1,7 @@
 # Dairy Farm roadmap
 
 This adapts the supplied `ROADMAP.md` to the current repository. The app
-now reads and saves farm records through Supabase. Forty migrations are recorded
+now reads and saves farm records through Supabase. Forty-one migrations are recorded
 on staging and production as of the Step 8 PR. Staging has invented demo records;
 production has schema and generic defaults and requires the owner login.
 The table below remains a plan for fuller workflows and launch readiness.

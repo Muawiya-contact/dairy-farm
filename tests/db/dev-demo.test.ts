@@ -245,6 +245,14 @@ describe("owner month closing", () => {
       const customer = (await db.query<{ id: string }>(
         "insert into public.customers(name, kind, opening_balance, opening_date) values ('Month close QA', 'regular', 100, $1) returning id", [month],
       )).rows[0].id;
+      const shift = (await db.query<{ id: string }>(
+        "insert into public.milk_shifts(milk_date, shift, total_litres, mode) values ($1, 'morning', 0, 'total') returning id", [month],
+      )).rows[0].id;
+      const animal = (await db.query<{ id: string }>("select id from public.animals where tag = '101'")).rows[0].id;
+      const secondAnimal = (await db.query<{ id: string }>("select id from public.animals where tag = '102'")).rows[0].id;
+      const animalMilk = (await db.query<{ id: string }>(
+        "insert into public.animal_milk(shift_id, animal_id, litres) values ($1, $2, 1) returning id", [shift, animal],
+      )).rows[0].id;
       await db.query("insert into public.expenses(expense_date, category_id, amount, account_id) values ($1, $2, 1, $3)",
         [month, category, account]);
       await db.exec("set request.jwt.claim.sub = '9fb34167-f97d-4938-be7f-ca9a45ef509d'");
@@ -253,6 +261,9 @@ describe("owner month closing", () => {
       expect((await db.query<{ changed: boolean }>("select public.close_farm_month($1, null) as changed", [month])).rows[0].changed).toBe(false);
       await expectRejected("update public.accounts set opening_balance = 200 where id = $1", [account], /MONTH_LOCKED/);
       await expectRejected("update public.customers set opening_balance = 200 where id = $1", [customer], /MONTH_LOCKED/);
+      await expectRejected("update public.animal_milk set litres = 2 where id = $1", [animalMilk], /MONTH_LOCKED/);
+      await expectRejected("delete from public.animal_milk where id = $1", [animalMilk], /MONTH_LOCKED/);
+      await expectRejected("insert into public.animal_milk(shift_id, animal_id, litres) values ($1, $2, 1)", [shift, secondAnimal], /MONTH_LOCKED/);
       await expectRejected("update public.expense_categories set is_farm_cost = false where id = $1", [category], /MONTH_LOCKED/);
       await expectRejected("delete from public.month_locks where month = $1", [month], /permission denied/);
       await expectRejected("select public.reopen_farm_month($1, 'no')", [month], /MONTH_REASON_REQUIRED/);

@@ -9,11 +9,12 @@ function value(form: FormData, key: string): string {
   return raw?.trim() ?? "";
 }
 
-function date(form: FormData, today: string): string {
+function date(form: FormData, today: string, openingDate?: string): string {
   const day = value(form, "date");
   try { addDays(day, 0); }
   catch { throw new RangeError("Sahi tareekh chunein."); }
   if (day > today) throw new RangeError("Aaj se aage ki tareekh nahi ho sakti.");
+  if (openingDate && day < openingDate) throw new RangeError("Tareekh customer ke pichle hisaab se pehle nahi ho sakti.");
   return day;
 }
 
@@ -51,13 +52,13 @@ export function parseCashCount(form: FormData, today: string, accounts: GallaAcc
     counted, reason: value(form, "reason") || null };
 }
 
-export function parseDiscount(form: FormData, today: string) {
+export function parseDiscount(form: FormData, today: string, openingDate?: string) {
   const reason = value(form, "reason");
   if (!reason) throw new RangeError("Riayat ki wajah likhein.");
-  return { date: date(form, today), amount: positive(form), reason };
+  return { date: date(form, today, openingDate), amount: positive(form), reason };
 }
 
-export function parsePaymentCorrection(form: FormData, today: string, kind: string, accounts: GallaAccount[]) {
+export function parsePaymentCorrection(form: FormData, today: string, kind: string, accounts: GallaAccount[], openingDate?: string) {
   const reason = value(form, "reason");
   if (!reason) throw new RangeError("Correction ki wajah likhein.");
   const method = kind === "discount" ? null : value(form, "method");
@@ -65,7 +66,7 @@ export function parsePaymentCorrection(form: FormData, today: string, kind: stri
   if (kind !== "discount" && !["cash", "bank", "easypaisa", "jazzcash", "cheque"].includes(method!)) {
     throw new RangeError("Wusooli ka tareeqa chunein.");
   }
-  return { date: date(form, today), amount: positive(form), method, accountId, reason };
+  return { date: date(form, today, openingDate), amount: positive(form), method, accountId, reason };
 }
 
 export function parseVoidReason(form: FormData): string {

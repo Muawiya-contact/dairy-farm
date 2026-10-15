@@ -5,7 +5,7 @@ import { getSupabase } from "./supabase";
 import { getSettings, type FarmSettings } from "./settings";
 import { formatDay, todayPK } from "./dates";
 import { rs } from "./format";
-import type { CustomerPayment, CustomerProfile, NewCustomer } from "./customer-forms";
+import type { CustomerKind, CustomerPayment, CustomerProfile, FreeReason, NewCustomer } from "./customer-forms";
 import type { Database } from "./database.types";
 
 export type Animal = {
@@ -25,7 +25,7 @@ export type Insemination = Database["public"]["Tables"]["inseminations"]["Row"];
 export type Calving = Database["public"]["Tables"]["calvings"]["Row"];
 export type CalvingOffspring = Database["public"]["Tables"]["calving_offspring"]["Row"];
 export type AnimalMilk = { id: string; shift_id: string; animal_id: string; litres: number };
-export type Customer = { id: string; name: string; phone: string | null; kind: string; default_morning: number; default_evening: number; opening_balance: number; opening_date: string; active: boolean; sort_order: number };
+export type Customer = { id: string; name: string; phone: string | null; kind: CustomerKind; free_reason: FreeReason | null; default_morning: number; default_evening: number; opening_balance: number; opening_date: string; active: boolean; sort_order: number };
 export type CustomerRate = { id: string; customer_id: string; rate: number; effective_from: string };
 export type MilkShift = { id: string; milk_date: string; shift: "morning" | "evening"; total_litres: number; mode: "total" | "per_animal" };
 export type MilkDelivery = { id: string; delivery_date: string; shift: "morning" | "evening"; customer_id: string; litres: number; rate: number | null; amount: number };
@@ -171,6 +171,7 @@ export async function createCustomer(input: NewCustomer) {
     p_name: input.name, p_kind: input.kind, p_phone: input.phone,
     p_morning: input.morning, p_evening: input.evening, p_rate: input.rate,
     p_opening_balance: input.openingBalance, p_opening_date: input.openingDate,
+    p_free_reason: input.freeReason,
   });
   if (error) throw error;
 }
@@ -179,6 +180,7 @@ export async function updateCustomerProfile(id: string, input: CustomerProfile):
   const { data, error } = await getSupabase().from("customers").update({
     name: input.name, phone: input.phone || null,
     default_morning: input.morning, default_evening: input.evening, active: input.active,
+    free_reason: input.freeReason,
   }).eq("id", id).select("id").maybeSingle();
   if (error) throw error;
   if (!data) throw new Error("CUSTOMER_STALE");

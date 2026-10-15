@@ -1309,19 +1309,34 @@ export type Database = {
         }
         Returns: number
       }
-      create_customer: {
-        Args: {
-          p_evening: number
-          p_kind: string
-          p_morning: number
-          p_name: string
-          p_opening_balance: number
-          p_opening_date: string
-          p_phone: string
-          p_rate: number
-        }
-        Returns: string
-      }
+      create_customer:
+        | {
+            Args: {
+              p_evening: number
+              p_kind: string
+              p_morning: number
+              p_name: string
+              p_opening_balance: number
+              p_opening_date: string
+              p_phone: string
+              p_rate: number
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_evening: number
+              p_free_reason: string | null
+              p_kind: string
+              p_morning: number
+              p_name: string
+              p_opening_balance: number
+              p_opening_date: string
+              p_phone: string
+              p_rate: number
+            }
+            Returns: string
+          }
       customer_month_report: {
         Args: { p_month: string }
         Returns: {

@@ -35,6 +35,8 @@ describe("galla form validation", () => {
     expect(parsePaymentCorrection(form({ date: today, amount: "20", method: "cash", account: "cash", reason: "  Typo  " }), today, "payment", accounts)).toMatchObject({ amount: 20, accountId: "cash", reason: "Typo" });
     expect(() => parsePaymentCorrection(form({ date: today, amount: "20", method: "cash", account: "closed", reason: "Typo" }), today, "payment", accounts)).toThrow();
     expect(parsePaymentCorrection(form({ date: today, amount: "20", reason: "Typo" }), today, "discount", accounts)).toMatchObject({ method: null, accountId: null });
+    expect(() => parseDiscount(form({ date: "2026-10-01", amount: "10", reason: "Typo" }), today, "2026-10-02")).toThrow(/pehle/);
+    expect(() => parsePaymentCorrection(form({ date: "2026-10-01", amount: "20", method: "cash", account: "cash", reason: "Typo" }), today, "payment", accounts, "2026-10-02")).toThrow(/pehle/);
     expect(() => parseVoidReason(form({ reason: " " }))).toThrow();
   });
 });

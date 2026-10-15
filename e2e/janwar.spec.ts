@@ -28,7 +28,7 @@ test("a new cow is sold only after confirmation, leaves active list, and credits
   await expect(section(page, "Janwar ka ikhtitam")).toContainText("Farokht");
 
   await go(page, "Janwar");
-  await page.getByRole("textbox", { name: "Tag ya nasal" }).fill(tag);
+  await page.getByPlaceholder("Tag ya nasal").fill(tag);
   await expect(page.getByText("Koi janwar nahi mila.")).toBeVisible();
   await page.getByRole("button", { name: "Farokht", exact: true }).click();
   await expect(page.getByRole("link").filter({ hasText: tag })).toBeVisible();

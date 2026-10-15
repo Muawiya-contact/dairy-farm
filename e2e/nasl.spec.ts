@@ -41,6 +41,6 @@ test("insemination becomes pregnant, then calving creates a tagged calf", async 
   await dialog.getByRole("button", { name: "Paidaish darj karein" }).click();
   await expect(breeding.getByRole("link", { name: `Tag: ${calf}` })).toBeVisible();
   await go(page, "Janwar");
-  await page.getByRole("textbox", { name: "Tag ya nasal" }).fill(calf);
+  await page.getByPlaceholder("Tag ya nasal").fill(calf);
   await expect(page.getByRole("link").filter({ hasText: calf })).toBeVisible();
 });

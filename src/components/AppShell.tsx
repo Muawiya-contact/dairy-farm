@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getSettings } from "@/lib/settings";
 import { getSupabase } from "@/lib/supabase";
 import LogoMark from "./LogoMark";
+import SubscriptionNotice from "./SubscriptionNotice";
 
 const NAV = [
   { href: "/", label: "Home", Icon: HomeIcon },
@@ -70,14 +71,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <SettingsIcon width={19} height={19} />
           </Link>
           {process.env.NEXT_PUBLIC_REQUIRE_AUTH === "true" && <button type="button" onClick={() => void getSupabase().auth.signOut()} aria-label="Sign out" title={sidebarCollapsed ? "Sign out" : undefined} className={`flex min-h-10 items-center gap-2 rounded-xl text-sm font-semibold text-berseem hover:bg-berseem-soft ${sidebarCollapsed ? "w-10 justify-center" : "px-2"}`}><SignOutIcon width={19} height={19} />{!sidebarCollapsed && "Sign out"}</button>}
-          {!sidebarCollapsed && <p className="text-xs text-muted">Data Supabase se aa raha hai.</p>}
+          {!sidebarCollapsed && <p className="text-xs text-muted">Farm ka hisaab</p>}
         </div>
       </aside>
 
       <main className="min-w-0 flex-1 pb-28 lg:pb-12">
         {process.env.NEXT_PUBLIC_APP_ENV === "staging" && <div role="status" className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-center text-sm font-semibold text-amber-950">DEMO: yeh asli data nahi. Asli maloomat yahan na likhein.</div>}
         <div className="flex items-center justify-between gap-3 px-4 pt-2 lg:hidden"><div className="flex min-w-0 items-center gap-2"><LogoMark size={32} /><span className="truncate font-display text-sm font-bold">{settings.data?.farm_name || "Dairy Farm"}</span></div><div className="flex shrink-0 items-center gap-2"><Link href="/settings/" aria-label="Settings" title="Settings" className="flex min-h-11 min-w-11 items-center justify-center text-berseem"><SettingsIcon width={21} height={21} /></Link>{process.env.NEXT_PUBLIC_REQUIRE_AUTH === "true" && <button onClick={() => void getSupabase().auth.signOut()} className="text-sm font-semibold text-berseem underline">Sign out</button>}</div></div>
-        <div className="mx-auto w-full max-w-5xl">{children}</div>
+        <div className="mx-auto w-full max-w-5xl"><SubscriptionNotice>{children}</SubscriptionNotice></div>
       </main>
 
       {/* Phone: bottom menu */}

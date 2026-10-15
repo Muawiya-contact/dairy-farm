@@ -1445,6 +1445,10 @@ export type Database = {
           total_income: number
         }[]
       }
+      subscription_status: {
+        Args: never
+        Returns: { expires_on: string | null; farm_date: string; days_remaining: number | null; read_only: boolean }[]
+      }
       rate_on: { Args: { p_customer: string; p_day: string }; Returns: number }
       record_calving: {
         Args: {

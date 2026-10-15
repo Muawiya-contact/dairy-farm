@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, test } from "vitest";
 
-test("production never grants anonymous access to write RPCs", async () => {
+test("production denies anonymous execution of every public function", async () => {
   const db = new PGlite();
   try {
     await db.exec(`
@@ -20,39 +20,14 @@ test("production never grants anonymous access to write RPCs", async () => {
     for (const file of readdirSync(resolve("supabase/migrations")).filter((name) => name.endsWith(".sql")).sort()) {
       await db.exec(readFileSync(resolve("supabase/migrations", file), "utf8"));
     }
-    const signatures = [
-      "public.save_milk_entry(date,text,numeric,text,jsonb,jsonb)",
-      "public.save_milk_entry_checked(date,text,numeric,text,jsonb,jsonb,timestamp with time zone,text)",
-      "public.create_customer(text,text,text,numeric,numeric,numeric,numeric,date,text)",
-      "public.create_customer_once(uuid,text,text,text,numeric,numeric,numeric,numeric,date,text)",
-      "public.correct_expense(uuid,uuid,integer,date,uuid,uuid,numeric,text,text)",
-      "public.record_health_event(uuid,date,text,text,numeric,date,uuid,uuid)",
-      "public.close_animal(uuid,text,date,text,numeric,uuid)",
-      "public.record_calving(uuid,date,text,text)",
-      "public.record_calving_with_offspring(uuid,uuid,date,jsonb,smallint,text)",
-    ];
-    for (const signature of signatures) {
-      const { rows } = await db.query<{ allowed: boolean }>(
-        "select has_function_privilege('anon', $1, 'EXECUTE') as allowed", [signature]);
-      expect(rows[0].allowed, signature).toBe(false);
-      const { rows: ownerRows } = await db.query<{ allowed: boolean }>(
-        "select has_function_privilege('authenticated', $1, 'EXECUTE') as allowed", [signature]);
-      expect(ownerRows[0].allowed, signature).toBe(true);
-    }
-    const appRpcs = [
-      "farm_today", "account_month_summary", "account_entries", "account_balance_on",
-      "correct_manual_payment", "void_manual_payment", "milk_month_summary", "pnl_month",
-      "close_farm_month", "reopen_farm_month", "save_milk_entry_checked", "close_animal",
-      "create_customer", "customer_month_report", "record_health_event",
-      "create_customer_once", "correct_expense", "subscription_status",
-      "record_calving_with_offspring", "expense_month_report", "herd_alerts", "rate_on",
-    ];
-    const { rows: inaccessibleRpcs } = await db.query<{ proname: string }>(`
-      select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-      where n.nspname = 'public' and p.proname = any($1::text[])
-        and not has_function_privilege('authenticated', p.oid, 'EXECUTE')
-    `, [appRpcs]);
-    expect(inaccessibleRpcs).toEqual([]);
+    const { rows: publicFunctions } = await db.query<{ signature: string; anon_execute: boolean }>(`
+      select p.oid::regprocedure::text as signature,
+             has_function_privilege('anon', p.oid, 'EXECUTE') as anon_execute
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' order by signature
+    `);
+    expect(publicFunctions.length).toBeGreaterThan(0);
+    expect(publicFunctions.filter((fn) => fn.anon_execute).map((fn) => fn.signature)).toEqual([]);
     const { rows: exposedTables } = await db.query<{ table_name: string }>(`
       select c.relname as table_name from pg_class c
       join pg_namespace n on n.oid = c.relnamespace

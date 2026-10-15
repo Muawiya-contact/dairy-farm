@@ -1,7 +1,7 @@
 # Dairy Farm roadmap
 
 This adapts the supplied `ROADMAP.md` to the current repository. The app
-now reads and saves farm records through Supabase. Thirty-two migrations are recorded
+now reads and saves farm records through Supabase. Thirty-five migrations are recorded
 on staging and production as of 2026-10-15. Staging has invented demo records;
 production has schema and generic defaults and requires the owner login.
 The table below remains a plan for fuller workflows and launch readiness.
@@ -11,7 +11,7 @@ The table below remains a plan for fuller workflows and launch readiness.
 | 1. Foundation | Staging database, typed data access, login decision, settings | Schema PR |
 | 2. Janwar | Animal records, arrival/age, health, sale/death/other departure, import | 1 |
 | 3. Nasl kashi | [Breeding register, due dates, individual calves](steps/step-3-breeding.md) | 2 |
-| 4. Customers | Rates, customer types, opening balances | 1 |
+| 4. Customers | [Rates, customer types, opening balances, and opening-date guards](steps/step-4-customers.md) | 1 |
 | 5. Doodh | Daily production and deliveries | 2, 4 |
 | 6. Wusooli / galla | Payments, bills, account transfers | 5 |
 | 7. Kharcha | Expenses, salary, other income | 6 |

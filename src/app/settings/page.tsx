@@ -12,6 +12,7 @@ import { ExportPanel } from "@/components/ExportPanel";
 import { estimatedHijriDate, nextGyarhwinDate } from "@/lib/gyarhwin";
 import { MonthCloseSection } from "@/components/MonthCloseSection";
 import { ImportPreviewSection } from "@/components/ImportPreviewSection";
+import { ConnectionCheckSection } from "@/components/ConnectionCheckSection";
 
 const inputClass = "mt-1 min-h-12 w-full rounded-xl border border-line bg-paper px-3 outline-none focus:border-berseem";
 
@@ -175,6 +176,7 @@ export default function SettingsPage() {
         <AccountsSection />
         <MonthCloseSection />
         <ImportPreviewSection />
+        <ConnectionCheckSection />
         <ExportPanel />
       </Body>
     </>

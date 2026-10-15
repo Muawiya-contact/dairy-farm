@@ -2,7 +2,8 @@ import type { QueryClient } from "@tanstack/react-query";
 
 const affectedKeys = {
   milk: ["farm-data", "galla", "customer-report"],
-  animal: ["farm-data", "galla"],
+  animal: ["farm-data", "galla", "customer-report"],
+  salary: ["salary", "farm-data", "galla", "customer-report"],
 } as const;
 
 /** Mark related screens stale immediately after a confirmed database write. */

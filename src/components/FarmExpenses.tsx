@@ -154,7 +154,7 @@ export default function FarmExpenses() {
           <label className="text-sm sm:col-span-2">Tafseel (optional)<input name="note" placeholder="Misal: ghar ka rashan" className={field} /></label>
           <button disabled={busy || !canSave} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50 sm:col-span-2">{modeNames[mode]} save karein</button>
         </form>
-        {!canSave && <p className="mt-2 text-sm text-udhaar" role="alert">Pehle active account aur is qism ki category chahiye. Migration apply hui hai ya nahi, check karein.</p>}
+        {!canSave && <p className="mt-2 text-sm text-udhaar" role="alert">Pehle istemal ke qabil account aur is qism ka kharcha chunein.</p>}
         <p className="mt-2 text-xs text-muted">Ghar ka kharcha chunein to raqam account se niklegi; farm munafa nahi badlega. Save ke baad entry Galla mein bhi dikhegi.</p>
       </Panel>
       {editing && <div id="expense-correction" className="lg:col-span-2"><Panel title="Kharcha durust karein"><p className="mb-3 text-sm text-muted">Purani entry: {shortDate(editing.expense_date)} · {money(editing.amount)}. Band maheene ki entry pehle Settings mein kholni hogi.</p>

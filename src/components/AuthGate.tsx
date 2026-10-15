@@ -137,7 +137,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   if (!signedIn) return (
     <main className="mx-auto max-w-sm px-5 py-16">
       <h1 className="flex items-center gap-3 font-display text-3xl font-bold"><LogoMark size={48} />Dairy Farm</h1>
-      <p className="mt-2 text-muted">{forgotPassword ? "Apna email likhein; password badalne ka link bheja jayega." : "Production data ke liye apne farm account se sign in karein."}</p>
+      <p className="mt-2 text-muted">{forgotPassword ? "Apna email likhein; password badalne ka link bheja jayega." : "Farm ke asal data ke liye apne account se sign in karein."}</p>
       {forgotPassword ? (
         <form onSubmit={sendPasswordReset} className="mt-6 grid gap-3 rounded-2xl border border-line bg-paper p-5">
           <label className="grid gap-1 font-semibold">Email<input type="email" autoComplete="email" required placeholder="name@example.com" value={email} onChange={(event) => { setEmail(event.target.value); setResetSent(false); }} className="min-h-12 rounded-xl border border-line px-3" /></label>

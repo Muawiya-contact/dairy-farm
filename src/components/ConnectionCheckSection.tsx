@@ -19,15 +19,15 @@ async function checkConnection() {
 
 export function ConnectionCheckSection() {
   const query = useQuery({ queryKey: ["connection-check"], queryFn: checkConnection, enabled: false });
-  const project = process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("dlirssfoazlxzyamsltv") ? "Staging demo"
-    : process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("ylipnghdygpyqlptqazx") ? "Production"
-      : "Custom project";
+  const project = process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("dlirssfoazlxzyamsltv") ? "aazmaishi"
+    : process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("ylipnghdygpyqlptqazx") ? "asli"
+      : "maujooda";
   return <section className="max-w-2xl rounded-2xl border border-line bg-paper p-5">
-    <h2 className="font-display text-xl font-bold">Connection check</h2>
-    <p className="mt-1 text-sm text-muted">Yeh site {project} Supabase se jurti hai. Check sirf data parhta hai; koi record nahi badalta.</p>
-    <button type="button" disabled={query.isFetching} onClick={() => void query.refetch()} className="mt-3 min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem disabled:opacity-50">{query.isFetching ? "Check ho raha hai…" : "Connection check karein"}</button>
-    {query.isSuccess && <p role="status" className="mt-2 text-sm text-berseem-deep">Supabase se data mila. {query.data.animals} janwar, {query.data.customers} customers.</p>}
-    {query.isError && <p role="alert" className="mt-2 text-sm text-udhaar">Connection ya access mein masla: {friendlyError(query.error)}</p>}
-    <p className="mt-2 text-xs text-muted">Yeh read check hai; writes, migration history, aur phone sharing ko release se pehle alag test karein.</p>
+    <h2 className="font-display text-xl font-bold">Data rabtay ki jaanch</h2>
+    <p className="mt-1 text-sm text-muted">Yeh site {project} farm ke data se jurti hai. Jaanch sirf record parhti hai; kuch nahi badalti.</p>
+    <button type="button" disabled={query.isFetching} onClick={() => void query.refetch()} className="mt-3 min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem disabled:opacity-50">{query.isFetching ? "Jaanch ho rahi hai…" : "Data rabta jaanchein"}</button>
+    {query.isSuccess && <p role="status" className="mt-2 text-sm text-berseem-deep">Data mil gaya. {query.data.animals} janwar, {query.data.customers} gahak.</p>}
+    {query.isError && <p role="alert" className="mt-2 text-sm text-udhaar">Data kholne mein masla: {friendlyError(query.error)}</p>}
+    <p className="mt-2 text-xs text-muted">Yeh jaanch sirf data parhti hai; nayi entry ki tasdeeq alag se karein.</p>
   </section>;
 }

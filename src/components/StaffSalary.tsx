@@ -39,7 +39,7 @@ export default function StaffSalary() {
           qc.invalidateQueries({ queryKey: ["galla"] }, { throwOnError: true }),
         ]);
         setSuccess(message);
-      } catch { setSuccess("Supabase mein save ho gaya. Naye totals load nahi hue; page reload karein."); }
+      } catch { setSuccess("farm ke data mein save ho gaya. Naye totals load nahi hue; page reload karein."); }
     } catch (issue) {
       setError(friendlyError(issue));
       void qc.invalidateQueries({ queryKey: ["salary"] });
@@ -77,7 +77,7 @@ export default function StaffSalary() {
       setStaffId(staffPending.current.id);
       staffPending.current = null;
       form.reset();
-    }, "Mulazim Supabase mein save ho gaya.");
+    }, "Mulazim farm ke data mein save ho gaya.");
   };
 
   const onOpenPeriod = (event: FormEvent<HTMLFormElement>) => {

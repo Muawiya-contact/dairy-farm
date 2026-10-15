@@ -41,7 +41,7 @@ export function ExportPanel() {
   return <section className="max-w-4xl rounded-2xl border border-line bg-paper p-5">
     <h2 className="font-display text-xl font-bold">Data ki copy aur export</h2>
     <p className="mt-1 text-sm text-muted">Farm ke abhi wale records download karein. Har report aur table CSV, Excel ya PDF mein milti hai. JSON copy mein tamam farm tables aur har table ki entries ki ginti hoti hai.</p>
-    <p className="mt-2 text-xs text-muted">Is copy ko apni mehfooz jagah rakhein. Is mein login accounts, database ka dhacha aur files shamil nahi. Wapas dalne ka button abhi nahi hai.</p>
+    <p className="mt-2 text-xs text-muted">Is copy ko apni mehfooz jagah rakhein. Is mein login accounts, app ki banawat aur alag se rakhi files shamil nahi. Wapas dalne ka button abhi nahi hai.</p>
     <div className="mt-5 flex flex-wrap items-end gap-3">
       <label className="text-sm font-semibold">Report ka maheena<input type="month" value={month} onChange={(event) => setMonth(event.target.value)} className="mt-1 block min-h-11 rounded-xl border border-line bg-paper px-3" /></label>
       <label className="text-sm font-semibold">File ki qism<select value={format} onChange={(event) => setFormat(event.target.value as ExportFormat)} className="mt-1 block min-h-11 rounded-xl border border-line bg-paper px-3"><option value="csv">CSV</option><option value="xlsx">Excel (.xlsx)</option><option value="pdf">PDF</option></select></label>

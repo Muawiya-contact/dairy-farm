@@ -22,4 +22,12 @@ describe("static build environment", () => {
       .toContain("https://dlirssfoazlxzyamsltv.supabase.co");
     expect(validateBuildEnv({ ...staging, NEXT_PUBLIC_APP_ENV: "production", NEXT_PUBLIC_REQUIRE_AUTH: "false" })).not.toBeNull();
   });
+  it("permits test mode only for a localhost stack with sign-in", () => {
+    const local = { ...staging, NEXT_PUBLIC_APP_ENV: "test", NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321", NEXT_PUBLIC_REQUIRE_AUTH: "true" };
+    expect(validateBuildEnv(local)).toBeNull();
+    for (const url of ["https://dlirssfoazlxzyamsltv.supabase.co", "http://localhost.evil.test:54321", "http://192.168.1.4:54321", "http://localhost:54321@evil.test/"]) {
+      expect(validateBuildEnv({ ...local, NEXT_PUBLIC_SUPABASE_URL: url })).toMatch(/localhost/);
+    }
+    expect(validateBuildEnv({ ...local, NEXT_PUBLIC_REQUIRE_AUTH: "false" })).toMatch(/REQUIRE_AUTH/);
+  });
 });

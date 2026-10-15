@@ -49,3 +49,14 @@ The animal page records semen details, checkups and calving against existing Sup
 `npm run db:types` refreshes TypeScript database types from staging. It requires Supabase CLI login. CI runs tests, lint, typecheck and the static export build on pushes and pull requests.
 
 Run `npm run check` before pushing. The database tests use PGlite and cover owner access, staging preview access and demo data. The [roadmap](docs/ROADMAP.md) and [implementation documentation](docs/DOCUMENTATION.md) track each step and its acceptance criteria.
+
+## How to run tests
+
+```bash
+npm test
+npx supabase start
+npx playwright install chromium
+npm run e2e
+```
+
+The browser suite requires Docker or another Docker-compatible runtime. `npm run e2e` **resets only the local Supabase database** with every migration, then loads the fictional `dev-demo.sql` and E2E fixtures after checking the local database URL. Configured Supabase seeding is disabled so a linked reset cannot load those fixtures. The runner creates a temporary local owner login, builds the static export with `NEXT_PUBLIC_APP_ENV=test`, and serves it at `http://127.0.0.1:4173`. The build guard accepts test mode only with a localhost Supabase URL. Never point this suite at a linked or hosted project. The local login is regenerated for each run and ignored by Git. CI runs the same mobile and desktop Chromium flows and keeps traces when a test fails.

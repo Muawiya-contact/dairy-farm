@@ -5,13 +5,15 @@ import { estimatedHijriDate, gyarhwinReminder, nextGyarhwinDate } from "../../sr
 const day = nextGyarhwinDate("2026-10-15", 0)!;
 
 describe("Gyarhwin advisory", () => {
-  it("finds the next 11th Hijri day and the preceding preparation day", () => {
+  it("shows early preparation on the 9th, preparation on the 10th, and the 11th reminder", () => {
     expect(day).toBeTruthy();
     expect(estimatedHijriDate(day)?.day).toBe(11);
     expect(estimatedHijriDate(addDays(day, -1))?.day).toBe(10);
+    expect(estimatedHijriDate(addDays(day, -2))?.day).toBe(9);
+    expect(gyarhwinReminder(addDays(day, -2), true, 0)?.phase).toBe("early");
     expect(gyarhwinReminder(addDays(day, -1), true, 0)?.phase).toBe("prepare");
     expect(gyarhwinReminder(day, true, 0)?.phase).toBe("today");
-    expect(gyarhwinReminder(addDays(day, -2), true, 0)).toBeNull();
+    expect(gyarhwinReminder(addDays(day, -3), true, 0)).toBeNull();
     expect(gyarhwinReminder(addDays(day, 1), true, 0)).toBeNull();
   });
 

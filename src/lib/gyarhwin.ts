@@ -1,7 +1,7 @@
 import { addDays } from "./dates";
 
 export type HijriDate = { year: number; month: number; day: number };
-export type GyarhwinReminder = { phase: "prepare" | "today"; hijri: HijriDate; title: string; message: string };
+export type GyarhwinReminder = { phase: "early" | "prepare" | "today"; hijri: HijriDate; title: string; message: string };
 
 export function gyarhwinDismissalKey(pakistanDay: string, phase: GyarhwinReminder["phase"], adjustmentDays: number): string {
   return `dairy-farm:gyarhwin:dismissed:${pakistanDay}:${phase}:${adjustmentDays}`;
@@ -33,8 +33,13 @@ export function estimatedHijriDate(pakistanDay: string, adjustmentDays = 0): Hij
 export function gyarhwinReminder(pakistanDay: string, enabled: boolean, adjustmentDays: number): GyarhwinReminder | null {
   if (!enabled) return null;
   const hijri = estimatedHijriDate(pakistanDay, adjustmentDays);
-  if (!hijri || (hijri.day !== 10 && hijri.day !== 11)) return null;
-  return hijri.day === 10
+  if (!hijri || hijri.day < 9 || hijri.day > 11) return null;
+  return hijri.day === 9
+    ? {
+      phase: "early", hijri, title: "Gyarhwin qareeb hai",
+      message: "Khairaat ke liye doodh ki zaroorat ho to pehle se plan karein.",
+    }
+    : hijri.day === 10
     ? {
       phase: "prepare", hijri, title: "Gyarhwin ki tayyari",
       message: "Maghrib ke baad 11win raat. Zaroorat ho to kal ka doodh plan karein.",

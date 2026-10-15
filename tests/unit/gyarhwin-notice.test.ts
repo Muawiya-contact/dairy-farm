@@ -14,6 +14,9 @@ const settings: FarmSettings = {
 const eleventh = nextGyarhwinDate("2026-10-15", 0)!;
 
 it("shows a concise Gyarhwin cue only on the relevant estimated day", () => {
+  const early = renderToStaticMarkup(createElement(GyarhwinNotice, { today: addDays(eleventh, -2), settings }));
+  expect(early).toContain("Gyarhwin qareeb hai");
+  expect(early).toContain("pehle se plan karein");
   const preparation = renderToStaticMarkup(createElement(GyarhwinNotice, { today: addDays(eleventh, -1), settings }));
   expect(preparation).toContain("Gyarhwin ki tayyari");
   expect(preparation).toContain("Maghrib");

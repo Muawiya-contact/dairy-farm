@@ -65,7 +65,7 @@ function SettingsForm({ initial }: { initial: FarmSettings }) {
         <div className="grid gap-4 sm:grid-cols-2">{breedingFields.map(({ key, label, min, max }) => <label key={key} className="font-semibold">{label} (din)<input required disabled={mutation.isPending} type="number" min={min} max={max} step="1" placeholder={`${min}–${max} din`} value={days[key]} onChange={(event) => { edit(); setDays((current) => ({ ...current, [key]: event.target.value })); }} className={inputClass} /></label>)}</div>
       </fieldset>
       <fieldset className="mt-5 border-t border-line pt-5"><legend className="font-display text-lg font-bold">Gyarhwin doodh reminder</legend>
-        <label className="mt-2 flex items-center gap-2 font-semibold"><input type="checkbox" disabled={mutation.isPending} checked={gyarhwinEnabled} onChange={(event) => { edit(); setGyarhwinEnabled(event.target.checked); }} /> Har Hijri maheene ki 10 aur 11 tareekh par yaad dilayein</label>
+        <label className="mt-2 flex items-center gap-2 font-semibold"><input type="checkbox" disabled={mutation.isPending} checked={gyarhwinEnabled} onChange={(event) => { edit(); setGyarhwinEnabled(event.target.checked); }} /> Har Hijri maheene ki 9, 10 aur 11 tareekh par yaad dilayein</label>
         <p className="mt-2 text-sm text-muted">Yeh sirf yaad-dihani hai. Doodh ki miktar ya customer delivery khud se nahi badlegi.</p>
         <label className="mt-3 block max-w-xs font-semibold">Hijri tareekh adjust (din)
           <select disabled={mutation.isPending} value={hijriAdjustment} onChange={(event) => { edit(); setHijriAdjustment(event.target.value); }} className={inputClass}>

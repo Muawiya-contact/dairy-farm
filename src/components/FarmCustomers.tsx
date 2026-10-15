@@ -87,7 +87,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
     event.preventDefault();
     const form = event.currentTarget;
     void save(async () => {
-      const input = parseDiscount(new FormData(form), data.today);
+      const input = parseDiscount(new FormData(form), data.today, c.opening_date);
       const signature = JSON.stringify(input);
       if (discountPending.current?.signature !== signature) discountPending.current = { id: crypto.randomUUID(), signature };
       await recordDiscount(discountPending.current.id, c.id, input);
@@ -100,7 +100,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
     if (!payment) return;
     const values = new FormData(event.currentTarget);
     void save(() => correctPayment(payment.id, payment.revision,
-      parsePaymentCorrection(values, data.today, payment.kind, data.accounts)),
+      parsePaymentCorrection(values, data.today, payment.kind, data.accounts, c.opening_date)),
     "Entry durust ho gayi. Purani raqam audit mein mehfooz hai.").then((saved) => { if (saved) setEditingPaymentId(null); });
   };
   const onVoid = (event: FormEvent<HTMLFormElement>, paymentId: string) => {
@@ -262,7 +262,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
             {paymentEntry?.delivery_id && <p className="w-full text-xs text-muted">Naqd sale: is entry ko doodh ki shift se durust karein.</p>}
             {paymentEntry && !paymentEntry.delivery_id && <div className="flex w-full gap-2 sm:justify-end"><button type="button" disabled={busy} onClick={() => { setEditingPaymentId(editingPaymentId === paymentEntry.id ? null : paymentEntry.id); setVoidPaymentId(null); }} className="min-h-10 rounded-lg border border-line px-3 font-semibold">Durust karein</button><button type="button" disabled={busy} onClick={() => { setVoidPaymentId(voidPaymentId === paymentEntry.id ? null : paymentEntry.id); setEditingPaymentId(null); }} className="min-h-10 rounded-lg border border-udhaar px-3 font-semibold text-udhaar">Radd karein</button></div>}
             {paymentEntry && editingPaymentId === paymentEntry.id && <form key={`${paymentEntry.id}-${paymentEntry.revision}`} onSubmit={(event) => onCorrection(event, paymentEntry.id)} className="grid w-full gap-2 rounded-xl bg-ground p-3 sm:grid-cols-2">
-              <label className="text-sm">Tareekh<input name="date" type="date" max={data.today} defaultValue={paymentEntry.payment_date} required className={field} /></label>
+              <label className="text-sm">Tareekh<input name="date" type="date" min={c.opening_date} max={data.today} defaultValue={paymentEntry.payment_date} required className={field} /></label>
               <label className="text-sm">Raqam<input name="amount" type="number" min="0.01" step="0.01" defaultValue={paymentEntry.amount} required className={field} /></label>
               {paymentEntry.kind === "payment" && <><label className="text-sm">Tareeqa<select name="method" defaultValue={paymentEntry.method ?? "cash"} className={field}><option value="cash">Cash</option><option value="bank">Bank</option><option value="easypaisa">Easypaisa</option><option value="jazzcash">JazzCash</option><option value="cheque">Cheque</option></select></label><label className="text-sm">Account<select name="account" defaultValue={paymentEntry.account_id ?? ""} required className={field}><option value="" disabled>Account chunein</option>{data.accounts.filter((item) => item.active || item.id === paymentEntry.account_id).map((item) => <option key={item.id} value={item.id}>{item.name}{item.active ? "" : " (band)"}</option>)}</select></label></>}
               <input name="reason" required placeholder="Correction ki wajah" aria-label="Correction ki wajah" className={`${field} sm:col-span-2`} />

@@ -74,6 +74,16 @@ export async function allRows<T>(table: Table, key = "id", filters: RowFilter[] 
   }
 }
 
+/** Keep PostgREST URLs bounded when a long animal history has many related IDs. */
+async function rowsForIds<T>(table: Table, column: string, ids: string[]): Promise<T[]> {
+  const unique = [...new Set(ids)];
+  const chunks: Promise<T[]>[] = [];
+  for (let from = 0; from < unique.length; from += 100) {
+    chunks.push(allRows<T>(table, "id", [{ column, op: "in", value: `(${unique.slice(from, from + 100).join(",")})` }]));
+  }
+  return (await Promise.all(chunks)).flat();
+}
+
 async function allViewRows<T>(view: View, key: string, filters: RowFilter[] = []): Promise<T[]> {
   const result: T[] = [];
   for (let from = 0; ; from += 1000) {
@@ -139,11 +149,11 @@ export async function loadFarmData(scope: FarmScope, id = "", date = farmToday()
     only(detail, async () => {
       const related = await allRows<CalvingOffspring>("calving_offspring", "id", eq("animal_id", id));
       if (!calvings.length) return related;
-      const children = await allRows<CalvingOffspring>("calving_offspring", "id", [{ column: "calving_id", op: "in", value: `(${calvings.map((c) => c.id).join(",")})` }]);
+      const children = await rowsForIds<CalvingOffspring>("calving_offspring", "calving_id", calvings.map((c) => c.id));
       return [...new Map([...related, ...children].map((child) => [child.id, child])).values()];
     }),
   ]);
-  const relevantShifts = detail && animalMilk.length ? await allRows<MilkShift>("milk_shifts", "id", [{ column: "id", op: "in", value: `(${animalMilk.map((r) => r.shift_id).join(",")})` }]) : shifts;
+  const relevantShifts = detail && animalMilk.length ? await rowsForIds<MilkShift>("milk_shifts", "id", animalMilk.map((r) => r.shift_id)) : shifts;
   return { today, settings, animals, animalStatus, health, inseminations, calvings, calvingOffspring, animalMilk,
     customers, rates, shifts: relevantShifts, deliveries, payments, categories, expenses, accounts,
     companyBills, otherIncome, reports, balances, alerts, monthlyPnl: pnl };

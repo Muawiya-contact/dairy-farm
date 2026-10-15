@@ -1075,6 +1075,8 @@ export type Database = {
           farm_name: string
           fresh_days: number
           go_live_date: string
+          gyarhwin_reminder_enabled: boolean
+          hijri_date_adjustment: number
           id: number
           owner_name: string
           ultrasound_days: number
@@ -1089,6 +1091,8 @@ export type Database = {
           farm_name?: string
           fresh_days?: number
           go_live_date?: string
+          gyarhwin_reminder_enabled?: boolean
+          hijri_date_adjustment?: number
           id?: number
           owner_name?: string
           ultrasound_days?: number
@@ -1103,6 +1107,8 @@ export type Database = {
           farm_name?: string
           fresh_days?: number
           go_live_date?: string
+          gyarhwin_reminder_enabled?: boolean
+          hijri_date_adjustment?: number
           id?: number
           owner_name?: string
           ultrasound_days?: number

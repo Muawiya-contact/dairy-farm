@@ -5,7 +5,8 @@ import type { Database } from "./database.types";
 type SettingsRow = Database["public"]["Tables"]["settings"]["Row"];
 export type FarmSettings = Pick<SettingsRow,
   "farm_name" | "owner_name" | "contact_phone" | "default_milk_rate" | "ultrasound_days" |
-  "checkup_days" | "dry_off_days" | "calving_days" | "fresh_days" | "whatsapp_footer"> & { id: 1 };
+  "checkup_days" | "dry_off_days" | "calving_days" | "fresh_days" | "whatsapp_footer" |
+  "gyarhwin_reminder_enabled" | "hijri_date_adjustment"> & { id: 1 };
 
 export const breedingFields = [
   { key: "ultrasound_days", label: "Ultrasound", min: 1, max: 400 },
@@ -30,10 +31,13 @@ export function validateSettings(input: Omit<FarmSettings, "id">): string | null
       return `${field.label} ke din ${field.min} se ${field.max} tak likhein.`;
     }
   }
+  if (!Number.isInteger(input.hijri_date_adjustment) || input.hijri_date_adjustment < -2 || input.hijri_date_adjustment > 2) {
+    return "Hijri tareekh ki adjustment -2 se +2 din tak likhein.";
+  }
   return null;
 }
 
-const columns = "id,farm_name,owner_name,contact_phone,default_milk_rate,ultrasound_days,checkup_days,dry_off_days,calving_days,fresh_days,whatsapp_footer";
+const columns = "id,farm_name,owner_name,contact_phone,default_milk_rate,ultrasound_days,checkup_days,dry_off_days,calving_days,fresh_days,whatsapp_footer,gyarhwin_reminder_enabled,hijri_date_adjustment";
 
 export async function getSettings(): Promise<FarmSettings> {
   const { data, error } = await getSupabase().from("settings").select(columns).eq("id", 1).single();

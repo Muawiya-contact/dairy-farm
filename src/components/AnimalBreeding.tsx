@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
-import { insertRow, shortDate, type Animal, type Calving, type Insemination } from "@/lib/farm-data";
+import { insertRow, shortDate, type Animal, type Calving, type CalvingOffspring, type Insemination } from "@/lib/farm-data";
+import { parseCalving } from "@/lib/breeding-register";
 import { Panel } from "./ui";
 
 const field = "mt-1 min-h-11 w-full rounded-xl border border-line bg-paper px-3";
@@ -10,15 +12,31 @@ const statusNames: Record<string, string> = { pending: "Nateeja baqi", pregnant:
 const semenNames: Record<string, string> = { normal: "Normal", sexed: "Sexed", bull: "Bull" };
 const optional = (form: FormData, key: string) => String(form.get(key) ?? "").trim() || null;
 
-export function AnimalBreeding({ animal, records, calvings, today, busy, run }: {
-  animal: Animal; records: Insemination[]; calvings: Calving[]; today: string; busy: boolean;
+function NewbornFields({ index, busy }: { index: number; busy: boolean }) {
+  const [outcome, setOutcome] = useState<"alive" | "stillborn">("alive");
+  return <fieldset className="grid gap-3 rounded-xl border border-line p-3 sm:col-span-2 sm:grid-cols-2"><legend className="px-1 font-semibold">Bacha {index + 1}</legend>
+    <label className="text-sm font-semibold">Nateeja<select name={`outcome_${index}`} value={outcome} onChange={(event) => setOutcome(event.target.value as typeof outcome)} disabled={busy} className={field}><option value="alive">Zinda</option><option value="stillborn">Paidaish par wafat</option></select></label>
+    <label className="text-sm font-semibold">Jins {outcome === "alive" ? "(zaroori)" : "(optional)"}<select name={`sex_${index}`} defaultValue="" required={outcome === "alive"} disabled={busy} className={field}><option value="">Maloom nahi</option><option value="female">Mada</option><option value="male">Nar</option></select></label>
+    {outcome === "alive" && <><label className="text-sm font-semibold">Tag (optional)<input name={`tag_${index}`} maxLength={60} placeholder="Khali ho to temporary ID" disabled={busy} className={field} /></label>
+      <label className="text-sm font-semibold">Naam (optional)<input name={`name_${index}`} placeholder="Bachay ka naam" disabled={busy} className={field} /></label></>}
+    <label className="text-sm font-semibold">Paidaish ka wazan, kg (optional)<input name={`weight_${index}`} type="number" min="0.01" max="999.99" step="0.01" placeholder="Misal: 32.5" disabled={busy} className={field} /></label>
+    <label className="text-sm font-semibold">Bachay ka note (optional)<input name={`child_notes_${index}`} placeholder="Zaroori tafseel" disabled={busy} className={field} /></label>
+  </fieldset>;
+}
+
+export function AnimalBreeding({ animal, animals, records, calvings, offspring, today, busy, run }: {
+  animal: Animal; animals: Animal[]; records: Insemination[]; calvings: Calving[]; offspring: CalvingOffspring[]; today: string; busy: boolean;
   run: (task: () => Promise<void>) => Promise<void>;
 }) {
   const [editId, setEditId] = useState<string | null>(null);
   const [editStatus, setEditStatus] = useState("pending");
   const [validation, setValidation] = useState("");
+  const [calvingValidation, setCalvingValidation] = useState("");
+  const [calfCount, setCalfCount] = useState<1 | 2>(1);
+  const requests = useRef(new Map<string, string>());
   const editing = records.find((record) => record.id === editId);
   const active = animal.life_status === "active" && animal.sex === "female";
+  const hasOpenService = records.some((record) => record.status === "pending" || record.status === "pregnant");
 
   const add = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -28,6 +46,7 @@ export function AnimalBreeding({ animal, records, calvings, today, busy, run }: 
       await insertRow("inseminations", {
         animal_id: animal.id, service_date: String(values.get("service_date")),
         semen_type: String(values.get("semen_type")), semen_name: optional(values, "semen_name"),
+        semen_batch: optional(values, "semen_batch"),
         technician: optional(values, "technician"), notes: optional(values, "notes"),
       });
       form.reset();
@@ -53,7 +72,7 @@ export function AnimalBreeding({ animal, records, calvings, today, busy, run }: 
     void run(async () => {
       const { data, error } = await getSupabase().from("inseminations").update({
         service_date: String(values.get("service_date")), semen_type: String(values.get("semen_type")),
-        semen_name: optional(values, "semen_name"), technician: optional(values, "technician"),
+        semen_name: optional(values, "semen_name"), semen_batch: optional(values, "semen_batch"), technician: optional(values, "technician"),
         ultrasound_date: ultrasoundDate, ultrasound_result: ultrasoundResult,
         checkup_date: checkupDate, checkup_result: checkupResult,
         dry_off_date: optional(values, "dry_off_date"),
@@ -68,24 +87,33 @@ export function AnimalBreeding({ animal, records, calvings, today, busy, run }: 
   const calve = (event: FormEvent<HTMLFormElement>, record: Insemination) => {
     event.preventDefault();
     const form = event.currentTarget;
-    const values = new FormData(form);
+    let values: ReturnType<typeof parseCalving>;
+    try { values = parseCalving(new FormData(form), calfCount, record.service_date, today); }
+    catch (error) { setCalvingValidation(error instanceof Error ? error.message : "Paidaish ka form dobara dekhein."); return; }
+    setCalvingValidation("");
+    const requestId = requests.current.get(record.id) ?? crypto.randomUUID();
+    requests.current.set(record.id, requestId);
     void run(async () => {
-      const { error } = await getSupabase().rpc("record_calving", {
-        p_insemination_id: record.id, p_calving_date: String(values.get("calving_date")),
-        p_outcome: String(values.get("outcome")), p_notes: optional(values, "notes") ?? undefined,
+      const { error } = await getSupabase().rpc("record_calving_with_offspring", {
+        p_request_id: requestId, p_insemination_id: record.id, p_calving_date: values.date,
+        p_offspring: values.offspring, p_ease_score: values.ease, p_notes: values.notes,
       });
       if (error) throw error;
+      requests.current.delete(record.id);
       form.reset();
+      setCalfCount(1);
     });
   };
 
   return <Panel title="Nasl kashi aur bachay ki paidaish" className="lg:col-span-2">
     {animal.sex === "male" && <p className="text-sm text-muted">Nasl kashi aur paidaish ki entries sirf mada janwar ke liye hain.</p>}
-    {active && <form onSubmit={add} className="grid gap-3 rounded-xl border border-line p-3 sm:grid-cols-2 lg:grid-cols-3">
+    {active && hasOpenService && <p className="text-sm text-muted">Nayi tukhm rezi se pehle khuli entry ka nateeja darj karein.</p>}
+    {active && !hasOpenService && <form onSubmit={add} className="grid gap-3 rounded-xl border border-line p-3 sm:grid-cols-2 lg:grid-cols-3">
       <h3 className="font-semibold sm:col-span-2 lg:col-span-3">Nayi tukhm rezi</h3>
-      <label className="text-sm font-semibold">Tukhm rezi ki tareekh<input name="service_date" type="date" required max={today} defaultValue={today} disabled={busy} className={field} /></label>
+      <label className="text-sm font-semibold">Tukhm rezi ki tareekh<input name="service_date" type="date" required min={animal.arrival_date ?? animal.birth_date ?? undefined} max={today} defaultValue={today} disabled={busy} className={field} /></label>
       <label className="text-sm font-semibold">Semen ki qism<select name="semen_type" disabled={busy} className={field}><option value="normal">Normal</option><option value="sexed">Sexed</option><option value="bull">Bull</option></select></label>
       <label className="text-sm font-semibold">Semen ka naam<input name="semen_name" placeholder="Misal: Irishman" disabled={busy} className={field} /></label>
+      <label className="text-sm font-semibold">Semen batch / bull ID (optional)<input name="semen_batch" maxLength={100} placeholder="Misal: Batch 42" disabled={busy} className={field} /></label>
       <label className="text-sm font-semibold">Technician<input name="technician" placeholder="Technician ka naam" disabled={busy} className={field} /></label>
       <label className="text-sm font-semibold sm:col-span-2">Notes<input name="notes" placeholder="Zaroori tafseel" disabled={busy} className={field} /></label>
       <button disabled={busy} className="min-h-11 rounded-xl bg-berseem px-4 font-bold text-white disabled:opacity-50 sm:col-span-2 lg:col-span-3">Tukhm rezi save karein</button>
@@ -102,15 +130,19 @@ export function AnimalBreeding({ animal, records, calvings, today, busy, run }: 
           <div><dt className="text-muted">Khushk tareekh</dt><dd>{record.dry_off_date ? shortDate(record.dry_off_date) : `Mutawaqqa ${shortDate(record.dry_off_due)}`}</dd></div>
           <div><dt className="text-muted">Bachay ki mutawaqqa tareekh</dt><dd>{shortDate(record.calving_due)}</dd></div>
           {record.technician && <div><dt className="text-muted">Technician</dt><dd>{record.technician}</dd></div>}
+          {record.semen_batch && <div><dt className="text-muted">Semen batch / bull ID</dt><dd>{record.semen_batch}</dd></div>}
           {record.abortion_date && <div><dt className="text-muted">Hamla zaya</dt><dd>{shortDate(record.abortion_date)}</dd></div>}
           {calving && <div><dt className="text-muted">Asal paidaish</dt><dd>{shortDate(calving.calving_date)} · {calving.outcome === "twins" ? "Joray" : calving.outcome === "alive" ? "Zinda" : "Wafat"}</dd></div>}
+          {calving?.ease_score && <div><dt className="text-muted">Paidaish ka score</dt><dd>{calving.ease_score} / 5</dd></div>}
         </dl>
+        {calving && offspring.filter((child) => child.calving_id === calving.id).length > 0 && <ol className="mt-3 grid gap-2 sm:grid-cols-2">{offspring.filter((child) => child.calving_id === calving.id).sort((a, b) => a.birth_order - b.birth_order).map((child) => { const currentTag = animals.find((entry) => entry.id === child.animal_id)?.tag ?? child.tag_at_birth; return <li key={child.id} className="rounded-lg border border-line p-2 text-sm"><strong>Bacha {child.birth_order}: {child.outcome === "alive" ? "Zinda" : "Paidaish par wafat"}</strong>{child.sex && <span> · {child.sex === "female" ? "Mada" : "Nar"}</span>}{child.birth_weight_kg && <span> · {child.birth_weight_kg} kg</span>}{child.animal_id ? <div><Link className="font-semibold text-berseem underline" href={`/janwar/?id=${child.animal_id}`}>{currentTag?.startsWith("TEMP-") ? "Temporary tag: " : "Tag: "}{currentTag}</Link>{currentTag?.startsWith("TEMP-") && <span className="ml-1 text-muted">Janwar ke form se baad mein tag badlein.</span>}</div> : null}{child.notes && <p className="text-muted">{child.notes}</p>}</li>; })}</ol>}
         {record.notes && <p className="mt-2 text-sm text-muted">{record.notes}</p>}
         {active && record.status !== "calved" && <button type="button" disabled={busy} onClick={() => { setEditId(editId === record.id ? null : record.id); setEditStatus(record.status); setValidation(""); }} className="mt-3 min-h-10 rounded-xl border border-berseem px-3 text-sm font-semibold text-berseem disabled:opacity-50">{editId === record.id ? "Form band karein" : "Record badlein"}</button>}
         {editing?.id === record.id && active && <form key={record.updated_at} onSubmit={save} className="mt-3 grid gap-3 border-t border-line pt-3 sm:grid-cols-2 lg:grid-cols-3">
-          <label className="text-sm font-semibold">Tukhm rezi ki tareekh<input name="service_date" type="date" required max={today} defaultValue={record.service_date} disabled={busy} className={field} /></label>
+          <label className="text-sm font-semibold">Tukhm rezi ki tareekh<input name="service_date" type="date" required min={animal.arrival_date ?? animal.birth_date ?? undefined} max={today} defaultValue={record.service_date} disabled={busy} className={field} /></label>
           <label className="text-sm font-semibold">Semen ki qism<select name="semen_type" defaultValue={record.semen_type} disabled={busy} className={field}><option value="normal">Normal</option><option value="sexed">Sexed</option><option value="bull">Bull</option></select></label>
           <label className="text-sm font-semibold">Semen ka naam<input name="semen_name" defaultValue={record.semen_name ?? ""} placeholder="Semen ka naam" disabled={busy} className={field} /></label>
+          <label className="text-sm font-semibold">Semen batch / bull ID (optional)<input name="semen_batch" maxLength={100} defaultValue={record.semen_batch ?? ""} placeholder="Misal: Batch 42" disabled={busy} className={field} /></label>
           <label className="text-sm font-semibold">Technician<input name="technician" defaultValue={record.technician ?? ""} placeholder="Technician ka naam" disabled={busy} className={field} /></label>
           <label className="text-sm font-semibold">Ultrasound ki tareekh<input name="ultrasound_date" type="date" defaultValue={record.ultrasound_date ?? ""} disabled={busy} className={field} /></label>
           <label className="text-sm font-semibold">Ultrasound ka nateeja<select name="ultrasound_result" defaultValue={record.ultrasound_result ?? ""} disabled={busy} className={field}><option value="">Abhi nahi</option><option value="pregnant">Gaabhan</option><option value="empty">Khali</option></select></label>
@@ -124,11 +156,16 @@ export function AnimalBreeding({ animal, records, calvings, today, busy, run }: 
           {validation && <p role="alert" className="text-sm text-udhaar sm:col-span-2 lg:col-span-3">{validation}</p>}
           <button disabled={busy} className="min-h-11 rounded-xl bg-berseem px-4 font-bold text-white disabled:opacity-50 sm:col-span-2 lg:col-span-3">Badla hua record save karein</button>
         </form>}
-        {active && open && <form onSubmit={(event) => calve(event, record)} className="mt-3 flex flex-wrap items-end gap-3 border-t border-line pt-3">
+        {active && open && <form onSubmit={(event) => calve(event, record)} className="mt-3 grid gap-3 border-t border-line pt-3 sm:grid-cols-2">
+          <h4 className="font-semibold sm:col-span-2">Paidaish darj karein</h4>
           <label className="text-sm font-semibold">Asal paidaish ki tareekh<input name="calving_date" type="date" required min={record.service_date} max={today} defaultValue={today} disabled={busy} className={field} /></label>
-          <label className="text-sm font-semibold">Bachay ka nateeja<select name="outcome" disabled={busy} className={field}><option value="alive">Zinda</option><option value="dead">Wafat</option><option value="twins">Joray</option></select></label>
-          <label className="text-sm font-semibold">Notes<input name="notes" placeholder="Bachay ki tafseel" disabled={busy} className={field} /></label>
-          <button disabled={busy} className="min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem disabled:opacity-50">Paidaish darj karein</button>
+          <label className="text-sm font-semibold">Kitne bachay?<select value={calfCount} onChange={(event) => setCalfCount(Number(event.target.value) as 1 | 2)} disabled={busy} className={field}><option value={1}>Aik</option><option value={2}>Joray (2)</option></select></label>
+          {Array.from({ length: calfCount }, (_, index) => <NewbornFields key={index} index={index} busy={busy} />)}
+          <label className="text-sm font-semibold">Paidaish ki mushkil, 1 asaan se 5 mushkil (optional)<select name="ease_score" disabled={busy} className={field}><option value="">Darj nahi</option>{[1,2,3,4,5].map((score) => <option key={score} value={score}>{score}</option>)}</select></label>
+          <label className="text-sm font-semibold">Notes (optional)<input name="notes" placeholder="Maa ya paidaish ki tafseel" disabled={busy} className={field} /></label>
+          <p className="text-sm text-muted sm:col-span-2">Zinda bachay ki jins zaroori hai. Tag na ho to temporary ID banegi; baad mein janwar ke record se badal sakte hain.</p>
+          {calvingValidation && <p role="alert" className="text-sm text-udhaar sm:col-span-2">{calvingValidation}</p>}
+          <button disabled={busy} className="min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem disabled:opacity-50 sm:col-span-2">Paidaish aur bachay save karein</button>
         </form>}
       </article>;
     })}</div>

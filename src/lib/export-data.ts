@@ -7,8 +7,9 @@ type Table = keyof Database["public"]["Tables"];
 
 export const DATASETS: { table: Table; label: string; key: string; columns: string[] }[] = [
   { table: "animals", label: "Janwar", key: "id", columns: ["id", "tag", "name", "species", "breed", "sex", "category", "birth_date", "arrival_date", "estimated_age_months_at_arrival", "mother_id", "sire", "source", "purchase_date", "purchase_price", "milking_status", "life_status", "exit_date", "exit_reason", "sale_price", "notes", "created_at", "updated_at"] },
-  { table: "inseminations", label: "Nasl kashi", key: "id", columns: ["id", "animal_id", "service_date", "semen_type", "semen_name", "technician", "ultrasound_due", "ultrasound_date", "ultrasound_result", "checkup_due", "checkup_date", "checkup_result", "dry_off_due", "dry_off_date", "calving_due", "status", "abortion_date", "notes", "created_at", "updated_at"] },
-  { table: "calvings", label: "Bachay ki paidaish", key: "id", columns: ["id", "animal_id", "calving_date", "insemination_id", "outcome", "calf_id", "notes", "created_at"] },
+  { table: "inseminations", label: "Nasl kashi", key: "id", columns: ["id", "animal_id", "service_date", "semen_type", "semen_name", "semen_batch", "technician", "ultrasound_due", "ultrasound_date", "ultrasound_result", "checkup_due", "checkup_date", "checkup_result", "dry_off_due", "dry_off_date", "calving_due", "status", "abortion_date", "notes", "created_at", "updated_at"] },
+  { table: "calvings", label: "Bachay ki paidaish", key: "id", columns: ["id", "animal_id", "calving_date", "insemination_id", "outcome", "calf_id", "ease_score", "notes", "created_at"] },
+  { table: "calving_offspring", label: "Har bacha", key: "id", columns: ["id", "calving_id", "birth_order", "outcome", "animal_id", "sex", "tag_at_birth", "birth_weight_kg", "notes", "created_at"] },
   { table: "health_events", label: "Sehat", key: "id", columns: ["id", "animal_id", "event_date", "kind", "title", "medicine", "vet", "cost", "next_due_date", "expense_id", "notes", "created_at"] },
   { table: "milk_shifts", label: "Doodh ki shifts", key: "id", columns: ["id", "milk_date", "shift", "total_litres", "mode", "notes", "created_at", "updated_at"] },
   { table: "animal_milk", label: "Har janwar ka doodh", key: "id", columns: ["id", "shift_id", "animal_id", "litres"] },
@@ -37,11 +38,12 @@ export const REPORTS = [
   { name: "pnl_month", label: "Aamdani aur kharcha", columns: ["milk_income", "other_income", "total_income", "farm_expenses", "personal_expenses", "profit"] },
 ] as const;
 
-export const BREEDING_COLUMNS = ["tag", "name", "service_date", "semen_type", "semen_name", "technician", "ultrasound_date", "ultrasound_result", "checkup_date", "checkup_result", "dry_off_date", "dry_off_due", "calving_due", "calving_date", "status", "abortion_date", "notes"];
+export const BREEDING_COLUMNS = ["tag", "name", "service_date", "semen_type", "semen_name", "semen_batch", "technician", "ultrasound_date", "ultrasound_result", "checkup_date", "checkup_result", "dry_off_date", "dry_off_due", "calving_due", "calving_date", "offspring_summary", "ease_score", "status", "abortion_date", "notes"];
 
 const COLUMN_LABELS: Record<string, string> = {
   id: "ID", tag: "Tag", name: "Naam", animal_id: "Janwar ID", customer_id: "Customer ID",
-  service_date: "Tukhm rezi ki tareekh", semen_type: "Semen qism", semen_name: "Semen naam",
+  service_date: "Tukhm rezi ki tareekh", semen_type: "Semen qism", semen_name: "Semen naam", semen_batch: "Semen batch / bull ID",
+  offspring_summary: "Bachon ka record", birth_order: "Paidaish ka number", outcome: "Nateeja", tag_at_birth: "Paidaish ka tag", birth_weight_kg: "Paidaish ka wazan (kg)", ease_score: "Paidaish ki mushkil (1-5)",
   checkup_due: "Checkup ki mutawaqqa tareekh", checkup_date: "Checkup ki tareekh",
   dry_off_due: "Khushk hone ki mutawaqqa tareekh", dry_off_date: "Asal khushk hone ki tareekh", calving_due: "Bachay ki mutawaqqa tareekh",
   calving_date: "Bachay ki paidaish ki tareekh", ultrasound_date: "Ultrasound ki tareekh",
@@ -108,19 +110,45 @@ export async function fetchReport(name: (typeof REPORTS)[number]["name"], month:
   return (data ?? []) as Record<string, unknown>[];
 }
 
+export function offspringSummary(children: Record<string, unknown>[], animalById: Map<unknown, Record<string, unknown>>): string {
+  return children.map((child) => {
+    const birthTag = String(child.tag_at_birth ?? "");
+    const currentTag = animalById.get(child.animal_id)?.tag;
+    const tag = typeof currentTag === "string" ? currentTag : birthTag;
+    const details = [child.outcome === "alive" ? "Zinda" : "Paidaish par wafat"];
+    if (child.sex === "female" || child.sex === "male") details.push(child.sex === "female" ? "Mada" : "Nar");
+    if (tag) details.push(`Tag: ${tag}${birthTag && birthTag !== tag ? ` (paidaish: ${birthTag})` : ""}`);
+    if (child.birth_weight_kg != null) details.push(`${child.birth_weight_kg} kg`);
+    if (child.notes) details.push(String(child.notes));
+    return `${child.birth_order}: ${details.join(" · ")}`;
+  }).join("; ");
+}
+
 export async function fetchBreedingRegister(): Promise<Record<string, unknown>[]> {
   const animalTable = DATASETS.find((item) => item.table === "animals")!;
   const breedingTable = DATASETS.find((item) => item.table === "inseminations")!;
   const calvingTable = DATASETS.find((item) => item.table === "calvings")!;
-  const [animals, breedings, calvings] = await Promise.all([
-    fetchDataset(animalTable), fetchDataset(breedingTable), fetchDataset(calvingTable),
+  const offspringTable = DATASETS.find((item) => item.table === "calving_offspring")!;
+  const [animals, breedings, calvings, offspring] = await Promise.all([
+    fetchDataset(animalTable), fetchDataset(breedingTable), fetchDataset(calvingTable), fetchDataset(offspringTable),
   ]);
   const animalById = new Map(animals.map((animal) => [animal.id, animal]));
   const calvingByBreeding = new Map(calvings.map((calving) => [calving.insemination_id, calving]));
+  const offspringByCalving = new Map<string, Record<string, unknown>[]>();
+  for (const child of offspring) {
+    const key = String(child.calving_id);
+    const group = offspringByCalving.get(key) ?? [];
+    group.push(child);
+    offspringByCalving.set(key, group);
+  }
   return breedings.map((breeding) => {
     const animal = animalById.get(breeding.animal_id);
     const calving = calvingByBreeding.get(breeding.id);
-    return { ...breeding, tag: animal?.tag ?? "", name: animal?.name ?? "", calving_date: calving?.calving_date ?? null };
+    const children = (calving ? offspringByCalving.get(String(calving.id)) ?? [] : []).sort((a, b) => Number(a.birth_order) - Number(b.birth_order));
+    return { ...breeding, tag: animal?.tag ?? "", name: animal?.name ?? "", calving_date: calving?.calving_date ?? null,
+      ease_score: calving?.ease_score ?? null,
+      offspring_summary: offspringSummary(children, animalById),
+    };
   });
 }
 

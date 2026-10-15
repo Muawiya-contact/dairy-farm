@@ -23,6 +23,7 @@ export type AnimalStatus = { id: string; breeding_status: string; service_date: 
 export type HealthEvent = { id: string; animal_id: string; event_date: string; kind: string; title: string; notes: string | null; cost: number; next_due_date: string | null };
 export type Insemination = Database["public"]["Tables"]["inseminations"]["Row"];
 export type Calving = Database["public"]["Tables"]["calvings"]["Row"];
+export type CalvingOffspring = Database["public"]["Tables"]["calving_offspring"]["Row"];
 export type AnimalMilk = { id: string; shift_id: string; animal_id: string; litres: number };
 export type Customer = { id: string; name: string; phone: string | null; kind: string; default_morning: number; default_evening: number; opening_balance: number; opening_date: string; active: boolean; sort_order: number };
 export type CustomerRate = { id: string; customer_id: string; rate: number; effective_from: string };
@@ -41,7 +42,7 @@ export type Pnl = { milk_income: number; other_income: number; total_income: num
 
 export type FarmData = {
   today: string; settings: FarmSettings; animals: Animal[]; animalStatus: AnimalStatus[];
-  health: HealthEvent[]; inseminations: Insemination[]; calvings: Calving[]; animalMilk: AnimalMilk[];
+  health: HealthEvent[]; inseminations: Insemination[]; calvings: Calving[]; calvingOffspring: CalvingOffspring[]; animalMilk: AnimalMilk[];
   customers: Customer[]; rates: CustomerRate[]; shifts: MilkShift[]; deliveries: MilkDelivery[];
   payments: Payment[]; categories: ExpenseCategory[]; expenses: Expense[]; accounts: Account[];
   companyBills: CompanyBill[]; otherIncome: OtherIncome[]; reports: CustomerReport[];
@@ -87,11 +88,12 @@ async function report<T>(name: Report, args: Record<string, string>): Promise<T[
 export async function loadFarmData(): Promise<FarmData> {
   const today = farmToday();
   const months = Array.from({ length: Number(today.slice(5, 7)) }, (_, i) => `${today.slice(0, 4)}-${String(i + 1).padStart(2, "0")}-01`);
-  const [settings, animals, animalStatus, health, inseminations, calvings, animalMilk,
+  const [settings, animals, animalStatus, health, inseminations, calvings, calvingOffspring, animalMilk,
     customers, rates, shifts, deliveries, payments, categories, expenses, accounts,
     companyBills, otherIncome, reports, balances, alerts, pnl] = await Promise.all([
     getSettings(), allRows<Animal>("animals"), allViewRows<AnimalStatus>("animal_status", "id"),
     allRows<HealthEvent>("health_events"), allRows<Insemination>("inseminations"), allRows<Calving>("calvings"),
+    allRows<CalvingOffspring>("calving_offspring"),
     allRows<AnimalMilk>("animal_milk"), allRows<Customer>("customers"),
     allRows<CustomerRate>("customer_rates"), allRows<MilkShift>("milk_shifts"),
     allRows<MilkDelivery>("milk_deliveries"), allRows<Payment>("payments"),
@@ -101,7 +103,7 @@ export async function loadFarmData(): Promise<FarmData> {
     allViewRows<CustomerBalance>("customer_balances", "customer_id"), report<HerdAlert>("herd_alerts", { p_today: today }),
     Promise.all(months.map(async (month) => ({ month, data: (await report<Pnl>("pnl_month", { p_month: month }))[0] }))),
   ]);
-  return { today, settings, animals, animalStatus, health, inseminations, calvings, animalMilk,
+  return { today, settings, animals, animalStatus, health, inseminations, calvings, calvingOffspring, animalMilk,
     customers, rates, shifts, deliveries, payments, categories, expenses, accounts,
     companyBills, otherIncome, reports, balances, alerts, monthlyPnl: pnl };
 }

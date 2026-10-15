@@ -13,8 +13,8 @@ const label = "grid gap-1 text-sm text-muted";
 const text = (value: FormDataEntryValue | null) => String(value ?? "").trim();
 const optional = (value: FormDataEntryValue | null) => text(value) || null;
 
-export function AnimalManagement({ animal, animals, accounts, today }: {
-  animal: Animal; animals: Animal[]; accounts: Account[]; today: string;
+export function AnimalManagement({ animal, animals, accounts, today, linkedBirth = false }: {
+  animal: Animal; animals: Animal[]; accounts: Account[]; today: string; linkedBirth?: boolean;
 }) {
   const qc = useQueryClient();
   const [mode, setMode] = useState<"edit" | "exit" | null>(null);
@@ -57,31 +57,32 @@ export function AnimalManagement({ animal, animals, accounts, today }: {
       e.preventDefault(); const f = new FormData(e.currentTarget);
       void run(() => updateAnimal(animal.id, editVersion, {
         tag: text(f.get("tag")), name: optional(f.get("name")), breed: optional(f.get("breed")),
-        species: text(f.get("species")), sex, category: text(f.get("category")),
+        category: text(f.get("category")),
         milking_status: sex === "male" ? "none" : text(f.get("milking")),
-        ...parseAnimalDates({ source, arrival: text(f.get("arrival")), birth: text(f.get("birth")),
+        ...(!linkedBirth ? { species: text(f.get("species")), sex,
+          ...parseAnimalDates({ source, arrival: text(f.get("arrival")), birth: text(f.get("birth")),
           estimatedYears: text(f.get("ageYears")), estimatedMonths: text(f.get("ageMonths")),
           purchaseDate: text(f.get("purchaseDate")), today }),
-        mother_id: optional(f.get("mother")),
-        sire: optional(f.get("sire")), source,
-        purchase_price: source !== "purchased" || !text(f.get("purchasePrice")) ? null : parseAmount(text(f.get("purchasePrice"))),
+          mother_id: optional(f.get("mother")), source,
+          purchase_price: source !== "purchased" || !text(f.get("purchasePrice")) ? null : parseAmount(text(f.get("purchasePrice"))) } : {}),
+        sire: optional(f.get("sire")),
         notes: optional(f.get("notes")),
       }));
     }}>
       <label className={label}>Tag number<input name="tag" required defaultValue={animal.tag} className={field} /></label>
       <label className={label}>Naam<input name="name" defaultValue={animal.name ?? ""} placeholder="Naam (optional)" className={field} /></label>
       <label className={label}>Nasl<input name="breed" defaultValue={animal.breed ?? ""} placeholder="Nasl" className={field} /></label>
-      <label className={label}>Qism<select name="species" defaultValue={animal.species} className={field}><option value="cow">Gaye</option><option value="buffalo">Bhains</option></select></label>
-      <label className={label}>Jins<select name="sex" value={sex} onChange={(e) => setSex(e.target.value as Animal["sex"])} className={field}><option value="female">Female</option><option value="male">Male</option></select></label>
+      {linkedBirth ? <p className="text-sm text-muted sm:col-span-2">Is bachay ki jins, qism, paidaish ki tareekh, maa aur farm par paida hone ka record paidaish entry se jura hai. Tag, naam aur baqi maloomat yahan badal sakte hain.</p> : <><label className={label}>Qism<select name="species" defaultValue={animal.species} className={field}><option value="cow">Gaye</option><option value="buffalo">Bhains</option></select></label>
+      <label className={label}>Jins<select name="sex" value={sex} onChange={(e) => setSex(e.target.value as Animal["sex"])} className={field}><option value="female">Female</option><option value="male">Male</option></select></label></>}
       <label className={label}>Umar ka group<select name="category" defaultValue={animal.category} className={field}><option value="cow">Bari</option><option value="heifer">Heifer</option><option value="calf">Bacha</option><option value="bull">Bull</option></select></label>
       <label className={label}>Doodh ki haalat<select name="milking" defaultValue={animal.milking_status} disabled={sex === "male"} className={field}><option value="none">Doodh nahi</option><option value="milking">Doodh de rahi</option><option value="dry">Khushk</option></select></label>
-      <label className={label}>Paidaish ki tareekh {source === "born" ? "(zaroori)" : "(agar maloom ho)"}<input name="birth" type="date" required={source === "born"} max={today} defaultValue={animal.birth_date ?? ""} className={field} /></label>
-      <label className={label}>Maa<select name="mother" defaultValue={animal.mother_id ?? ""} className={field}><option value="">Darj nahi</option>{animals.filter((a) => a.id !== animal.id && a.sex === "female").map((a) => <option value={a.id} key={a.id}>{a.tag}{a.name ? ` · ${a.name}` : ""}</option>)}</select></label>
+      {!linkedBirth && <><label className={label}>Paidaish ki tareekh {source === "born" ? "(zaroori)" : "(agar maloom ho)"}<input name="birth" type="date" required={source === "born"} max={today} defaultValue={animal.birth_date ?? ""} className={field} /></label>
+      <label className={label}>Maa<select name="mother" defaultValue={animal.mother_id ?? ""} className={field}><option value="">Darj nahi</option>{animals.filter((a) => a.id !== animal.id && a.sex === "female").map((a) => <option value={a.id} key={a.id}>{a.tag}{a.name ? ` · ${a.name}` : ""}</option>)}</select></label></>}
       <label className={label}>Baap / semen<input name="sire" defaultValue={animal.sire ?? ""} placeholder="Naam (optional)" className={field} /></label>
-      <label className={label}>Farm mein aane ka zariya<select name="source" value={source} onChange={(e) => setSource(e.target.value as Animal["source"])} className={field}><option value="purchased">Kharida</option><option value="born">Farm par paida hua</option><option value="gift">Tohfa</option><option value="transfer">Transfer</option><option value="other">Doosra</option></select></label>
+      {!linkedBirth && <><label className={label}>Farm mein aane ka zariya<select name="source" value={source} onChange={(e) => setSource(e.target.value as Animal["source"])} className={field}><option value="purchased">Kharida</option><option value="born">Farm par paida hua</option><option value="gift">Tohfa</option><option value="transfer">Transfer</option><option value="other">Doosra</option></select></label>
       {source !== "born" && <label className={label}>Farm mein aane ki tareekh<input name="arrival" type="date" required max={today} defaultValue={animal.arrival_date ?? ""} className={field} /></label>}
       {source !== "born" && <div className="grid gap-2 sm:col-span-2"><p className="text-sm text-muted">Agar paidaish maloom nahi, aane ke waqt ki taqreebi umar likhein. Dono khali bhi rakh sakte hain.</p><div className="grid grid-cols-2 gap-2"><label className={label}>Umar saal<input name="ageYears" type="number" min="0" max="50" step="1" defaultValue={animal.estimated_age_months_at_arrival == null ? "" : Math.floor(animal.estimated_age_months_at_arrival / 12)} placeholder="Saal" className={field} /></label><label className={label}>Umar maheene<input name="ageMonths" type="number" min="0" max="11" step="1" defaultValue={animal.estimated_age_months_at_arrival == null ? "" : animal.estimated_age_months_at_arrival % 12} placeholder="Maheene" className={field} /></label></div></div>}
-      {source === "purchased" && <><label className={label}>Kharid ki tareekh (optional)<input name="purchaseDate" type="date" max={today} defaultValue={animal.purchase_date ?? ""} className={field} /></label><label className={label}>Kharid qeemat<input name="purchasePrice" type="number" min="0" step="0.01" defaultValue={animal.purchase_price ?? ""} placeholder="Rs (optional)" className={field} /></label></>}
+      {source === "purchased" && <><label className={label}>Kharid ki tareekh (optional)<input name="purchaseDate" type="date" max={today} defaultValue={animal.purchase_date ?? ""} className={field} /></label><label className={label}>Kharid qeemat<input name="purchasePrice" type="number" min="0" step="0.01" defaultValue={animal.purchase_price ?? ""} placeholder="Rs (optional)" className={field} /></label></>}</>}
       <label className={`${label} sm:col-span-2`}>Notes<textarea name="notes" defaultValue={animal.notes ?? ""} placeholder="Mazeed maloomat" className={`${field} min-h-24 py-2`} /></label>
       <div className="flex gap-2 sm:col-span-2"><button disabled={busy} className="min-h-11 rounded-xl bg-berseem px-4 font-semibold text-white disabled:opacity-50">Tabdeeli save karein</button><button type="button" disabled={busy} onClick={() => setMode(null)} className="min-h-11 rounded-xl border border-line px-4 disabled:opacity-50">Cancel</button></div>
     </form>}

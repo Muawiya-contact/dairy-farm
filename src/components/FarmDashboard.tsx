@@ -62,7 +62,7 @@ export default function FarmDashboard() {
       <FarmObservances today={d.today} settings={d.settings} className="lg:col-span-3" />
       <MonthCloseReminder today={d.today} />
       <section className="rounded-3xl bg-berseem-deep p-5 text-white lg:col-span-2 lg:p-7"><div className="flex items-end justify-between gap-4"><div className="min-w-0">
-        <p className="text-[15px] text-[#cfe3cf]">Aaj ka doodh</p><p className="font-display text-[64px] font-extrabold leading-[0.95] tracking-[-0.03em] tnum lg:text-[84px]">{todayMilk}<span className="ml-2 text-[24px] font-bold tracking-normal text-[#cfe3cf]">litre</span></p>
+        <p className="text-[15px] text-[#cfe3cf]">Aaj ka doodh</p><p className="font-display text-[64px] font-extrabold leading-[0.95] tracking-[-0.03em] tnum lg:text-[84px]">{litres(todayMilk).replace(/ L$/, "")}<span className="ml-2 text-[24px] font-bold tracking-normal text-[#cfe3cf]">litre</span></p>
         <p className="mt-2 text-[15px] text-[#cfe3cf]">Kal se {litres(Math.abs(remainingMilk(todayMilk, yMilk)))} {todayMilk < yMilk ? "kam" : "zyada"}</p>
         <dl className="mt-5 flex gap-6"><div><dt className="text-[14px] text-[#cfe3cf]">Subah</dt><dd className="font-display text-[24px] font-bold tnum">{litres(morning)}</dd></div><div><dt className="text-[14px] text-[#cfe3cf]">Shaam</dt><dd className="font-display text-[24px] font-bold tnum">{litres(evening)}</dd></div></dl>
       </div><MilkCan morning={morning} evening={evening} /></div></section>

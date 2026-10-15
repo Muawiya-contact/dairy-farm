@@ -10,7 +10,7 @@
 
 ## Technical design
 
-- `FarmMilk.tsx` keeps incomplete fields blank and validates each entered quantity. `milk-entry.ts` sums hundredths of a litre for the on-screen balance; PostgreSQL `numeric(…,2)` is authoritative for saved totals and money. The form supports direct animal input, negative/precision/range errors, a 500-character note, busy state, and a clear save error.
+- `FarmMilk.tsx` keeps incomplete fields blank and validates each entered quantity. `milk-entry.ts` sums hundredths of a litre for the on-screen balance; PostgreSQL `numeric(…,2)` is authoritative for saved totals and money. The form supports direct animal input, negative/precision/range errors, a 500-character note, busy state, and a clear save error. Backdated entries hide cows that had not arrived yet and omit blank/zero animal rows.
 - Migration `20261015000037_milk_entry_guards.sql` adds `save_milk_entry_checked`. It validates the date, mode, total, per-animal and delivery arrays, duplicate IDs, ranges, precision, and sum before writing. It checks `milk_shifts.updated_at` while holding the shift row; creating a new shift uses a unique insert so two sessions cannot both create it. The existing six-argument RPC remains during rollout. A failed RPC rolls back the whole operation, including Naqd auto payments.
 - A delivery insert/update/delete touches its parent shift version. This makes a direct delivery correction visible to the next checked save. Future production or delivery dates are rejected at the table boundary, including writes that bypass the app. Existing month-lock triggers remain in force.
 - The new RPC runs with caller permissions. It is executable by authenticated users, and by anonymous users only when staging demo access is enabled. Production stays owner restricted. Neither project gets real data from this migration.
@@ -24,3 +24,9 @@ PostgreSQL documents [row locking for application consistency](https://www.postg
 - This step does not classify unallocated milk into inventory or financial waste; the optional note records context only. Rate changes for already billed periods and an audited milk-correction history need a separate policy before implementation.
 
 The project-wide [definition of done](../DOCUMENTATION.md#definition-of-done-for-every-step) applies here.
+
+## Validation on 2026-10-15
+
+- The initial `npm run check` passed with 118 tests across 26 files, TypeScript, and a static build. ESLint reported no errors and one existing font warning in `src/app/layout.tsx`. After the phone review, 13 focused tests passed for exact quantities and backdated animals; targeted ESLint passed. GitHub CI checks the final branch again.
+- Supabase CLI recorded migration 37 on staging and owner-only production with no seed. It was relinked to staging afterward; staging types were regenerated and typechecked.
+- The PR #19 Netlify preview loaded staging data at desktop and phone widths. The exact `0.25 L` animal input updated the visible total; a negative input showed a validation error and disabled Save. Existing demo data was left unchanged during this UI check. A physical-phone test and a live write through the hosted form remain unverified; database tests exercise the save path.

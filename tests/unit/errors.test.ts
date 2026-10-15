@@ -16,6 +16,12 @@ describe("friendly database errors", () => {
     expect(friendlyError(new Error("Supabase URL aur publishable key set nahi hain."))).toContain("settings missing");
   });
 
+  it("explains invitation and password setup failures", () => {
+    expect(friendlyError({ code: "weak_password" })).toContain("Mazboot password");
+    expect(friendlyError({ code: "otp_expired" })).toContain("link expire");
+    expect(friendlyError({ code: "email_address_not_authorized" })).toContain("SMTP");
+  });
+
   it("hides unknown database details and logs once", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     const error = new Error("private database details");

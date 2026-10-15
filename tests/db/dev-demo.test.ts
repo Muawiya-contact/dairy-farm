@@ -194,6 +194,17 @@ describe("customer opening dates and price history", () => {
         values ($1, public.farm_today() - 8, public.farm_today() - 1, 10, 1500)`, [company], /CUSTOMER_BEFORE_OPENING/);
       await expectRejected(`insert into public.customer_rates (customer_id, rate, effective_from)
         values ($1, 200, public.farm_today() - 8)`, [regular], /RATE_BEFORE_CUSTOMER_OPENING/);
+      const payment = (await db.query<{ id: string }>(`insert into public.payments
+        (customer_id, payment_date, amount, method, account_id)
+        values ($1, public.farm_today(), 100, 'cash', $2) returning id`, [regular, account])).rows[0].id;
+      await expectRejected(`select public.correct_manual_payment($1, 1, public.farm_today() - 8,
+        100, 'cash', $2, 'Wrong date')`, [payment, account], /CUSTOMER_BEFORE_OPENING/);
+      await expectRejected("update public.customers set opening_balance = 25 where id = $1",
+        [regular], /CUSTOMER_BALANCE_IN_USE/);
+      await db.query(`insert into public.company_bills (customer_id, from_date, to_date, litres, amount)
+        values ($1, public.farm_today() - 1, public.farm_today(), 10, 1500)`, [company]);
+      await expectRejected("update public.customers set opening_balance = 25 where id = $1",
+        [company], /CUSTOMER_BALANCE_IN_USE/);
     } finally { await db.exec("rollback"); }
   });
 

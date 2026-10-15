@@ -31,16 +31,16 @@ insert into customer_rates (customer_id, rate, effective_from)
 select id, 150, farm_today() - 60 from customers where kind in ('regular','cash','contractor');
 
 -- ── Animals ────────────────────────────────────────────────────────
-insert into animals (tag, breed, category, milking_status, source, purchase_date, purchase_price, birth_date)
-select t::text, 'Holstein', 'cow', 'milking', 'purchased', farm_today() - 400, 350000, farm_today() - 365 * 4
+insert into animals (tag, breed, category, milking_status, source, arrival_date, purchase_date, purchase_price, birth_date)
+select t::text, 'Holstein', 'cow', 'milking', 'purchased', farm_today() - 400, farm_today() - 400, 350000, farm_today() - 365 * 4
 from generate_series(101, 110) t;
 
-insert into animals (tag, breed, category, milking_status, source, birth_date) values
-  ('201', 'Holstein', 'heifer', 'none', 'born', farm_today() - 450),
-  ('202', 'Holstein', 'heifer', 'none', 'born', farm_today() - 420);
+insert into animals (tag, breed, category, milking_status, source, birth_date, arrival_date) values
+  ('201', 'Holstein', 'heifer', 'none', 'born', farm_today() - 450, farm_today() - 450),
+  ('202', 'Holstein', 'heifer', 'none', 'born', farm_today() - 420, farm_today() - 420);
 
-insert into animals (tag, breed, sex, category, milking_status, source, birth_date, mother_id)
-select v.tag, 'Holstein', v.sex, 'calf', 'none', 'born', farm_today() - v.age, m.id
+insert into animals (tag, breed, sex, category, milking_status, source, birth_date, arrival_date, mother_id)
+select v.tag, 'Holstein', v.sex, 'calf', 'none', 'born', farm_today() - v.age, farm_today() - v.age, m.id
 from (values ('301', 'female', 90, '101'), ('302', 'male', 60, '102')) v(tag, sex, age, mother)
 join animals m on m.tag = v.mother;
 

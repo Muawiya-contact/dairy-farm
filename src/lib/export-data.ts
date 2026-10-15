@@ -6,7 +6,7 @@ import { getSettings } from "./settings";
 type Table = keyof Database["public"]["Tables"];
 
 export const DATASETS: { table: Table; label: string; key: string; columns: string[] }[] = [
-  { table: "animals", label: "Janwar", key: "id", columns: ["id", "tag", "name", "species", "breed", "sex", "category", "birth_date", "mother_id", "sire", "source", "purchase_date", "purchase_price", "milking_status", "life_status", "exit_date", "exit_reason", "sale_price", "notes", "created_at", "updated_at"] },
+  { table: "animals", label: "Janwar", key: "id", columns: ["id", "tag", "name", "species", "breed", "sex", "category", "birth_date", "arrival_date", "estimated_age_months_at_arrival", "mother_id", "sire", "source", "purchase_date", "purchase_price", "milking_status", "life_status", "exit_date", "exit_reason", "sale_price", "notes", "created_at", "updated_at"] },
   { table: "inseminations", label: "Nasl kashi", key: "id", columns: ["id", "animal_id", "service_date", "semen_type", "semen_name", "technician", "ultrasound_due", "ultrasound_date", "ultrasound_result", "checkup_due", "checkup_date", "checkup_result", "dry_off_due", "dry_off_date", "calving_due", "status", "abortion_date", "notes", "created_at", "updated_at"] },
   { table: "calvings", label: "Bachay ki paidaish", key: "id", columns: ["id", "animal_id", "calving_date", "insemination_id", "outcome", "calf_id", "notes", "created_at"] },
   { table: "health_events", label: "Sehat", key: "id", columns: ["id", "animal_id", "event_date", "kind", "title", "medicine", "vet", "cost", "next_due_date", "expense_id", "notes", "created_at"] },

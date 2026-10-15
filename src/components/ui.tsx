@@ -38,7 +38,7 @@ export function Panel({ title, aside, children, className = "" }: { title?: stri
   );
 }
 
-const statusLabel: Record<string, string> = { milking: "Doodh de rahi", dry: "Khushk", pregnant: "Gaabhan", sick: "Beemar", calf: "Bacha", none: "Doodh nahi", active: "Active", sold: "Farokht", dead: "Wafat" };
+const statusLabel: Record<string, string> = { milking: "Doodh de rahi", dry: "Khushk", pregnant: "Gaabhan", sick: "Beemar", calf: "Bacha", none: "Doodh nahi", active: "Active", sold: "Farokht", dead: "Wafat", removed: "Farm se nikla" };
 const tagStyle: Record<string, string> = {
   milking: "bg-berseem-soft text-berseem-deep", dry: "bg-[#ebece6] text-[#4a524c]",
   pregnant: "bg-haldi-soft text-haldi-ink", sick: "bg-udhaar-soft text-udhaar",

@@ -82,6 +82,7 @@ const messages: [RegExp, string][] = [
   [/weak_password|password should be at least|password.*too short/i, "Mazboot password likhein; kam az kam 8 characters rakhein."],
   [/same_password/i, "Naya password purane password se mukhtalif rakhein."],
   [/otp_expired|email link is invalid|link.*expired/i, "Email ka link expire ho gaya. Farm admin se naya link mangain."],
+  [/email_address_not_authorized/i, "Is email par reset link nahi bhej sakte. Farm admin se Supabase SMTP set karne ko kahein."],
   [/rate limit|too many requests/i, "Thori der baad koshish karein."],
 ];
 

@@ -14,3 +14,7 @@ export function passwordSetupError(password: string, confirmation: string): stri
   if (password !== confirmation) return "Dono passwords aik jaisay likhein.";
   return null;
 }
+
+export function passwordRecoveryRedirect(href: string): string {
+  return new URL("/", href).toString();
+}

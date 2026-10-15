@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { isPasswordSetupLink, passwordSetupError } from "../src/lib/auth-password";
+import { isPasswordSetupLink, passwordRecoveryRedirect, passwordSetupError } from "../src/lib/auth-password";
 
 test("recognizes invite and recovery redirects without treating a normal page as setup", () => {
   expect(isPasswordSetupLink("https://farm.example/#access_token=token&type=invite")).toBe(true);
@@ -13,4 +13,9 @@ test("rejects short or mismatched passwords before calling Auth", () => {
   expect(passwordSetupError("short", "short")).toMatch(/8 characters/);
   expect(passwordSetupError("long-enough", "different")).toMatch(/aik jaisay/);
   expect(passwordSetupError("long-enough", "long-enough")).toBeNull();
+});
+
+test("sends recovery links to the current site's root, not a record URL", () => {
+  expect(passwordRecoveryRedirect("https://farm.example/khata/?id=private-record")).toBe("https://farm.example/");
+  expect(passwordRecoveryRedirect("http://localhost:3000/settings/")).toBe("http://localhost:3000/");
 });

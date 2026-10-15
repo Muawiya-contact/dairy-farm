@@ -74,10 +74,13 @@ const COLUMN_LABELS: Record<string, string> = {
   changed_at: "Badalne ka waqt", actor_id: "Badalne wala user ID",
 };
 
-export const columnLabel = (column: string, title = "") =>
-  column === "difference" && title === "Cash counts" ? "Farq (Rs)" :
-  column === "difference" && title === "Doodh ka khulasa" ? "Farq (L)" :
-  COLUMN_LABELS[column] ?? column.replaceAll("_", " ");
+export function columnLabel(column: string, title = ""): string {
+  const auditLabels: Record<string, string> = { month: "Maheena", action: "Faisla", reason: "Wajah", created_at: "Waqt" };
+  if (title === "Maheena band faislay" && auditLabels[column]) return auditLabels[column];
+  if (column === "difference" && title === "Cash counts") return "Farq (Rs)";
+  if (column === "difference" && title === "Doodh ka khulasa") return "Farq (L)";
+  return COLUMN_LABELS[column] ?? column.replaceAll("_", " ");
+}
 
 export const displayCell = (value: unknown): string =>
   value == null ? "" : typeof value === "object" ? JSON.stringify(value) : String(value);

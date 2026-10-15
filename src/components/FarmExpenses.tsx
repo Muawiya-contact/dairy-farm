@@ -109,6 +109,7 @@ export default function FarmExpenses() {
       </section>
       {personalTotal > 0 && <p className="text-sm text-muted lg:col-span-2">Doosray zaati kharchay: {money(personalTotal)}. Ghar aur doosray zaati kharchay account se nikalte hain, farm munafay se nahi.</p>}
       <Link href="/salary/" className="rounded-xl border border-berseem bg-berseem-soft px-4 py-3 font-semibold text-berseem-deep lg:col-span-2">Mulazim aur tankhwah →</Link>
+      <Link href="/aamdani/" className="rounded-xl border border-berseem bg-berseem-soft px-4 py-3 font-semibold text-berseem-deep lg:col-span-2">Gobar aur doosri aamdani →</Link>
       <Panel title="Naya kharcha" className="lg:col-span-2">
         <div className="mb-3 grid gap-2 sm:grid-cols-3" role="group" aria-label="Kharcha ki qism">
           {(["farm", "home", "personal"] as const).map((choice) => <button key={choice} type="button" disabled={busy} onClick={() => { setMode(choice); setError(""); setSuccess(""); }}

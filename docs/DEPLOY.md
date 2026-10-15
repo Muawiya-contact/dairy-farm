@@ -31,7 +31,14 @@ Set Supabase Auth's Site URL and allowed redirect URLs to the final production a
 
 ## Three production users
 
-The existing owner account remains the first user. After migration `20261015000043_farm_editors.sql` is applied to **production**, invite two more people in that project's **Authentication → Users → Add user → Send invitation**. Each person uses their own email and password; they do not need access to the Supabase dashboard. Configure the production Auth Site URL and redirect URLs before sending invitations. Never send passwords or secret keys to the development team.
+The owner account is the first user. In the **production** SQL Editor, check `select user_id from private.app_owner;`. If it returns no rows, insert the intended owner's **production Auth User UID** before testing their login:
+
+```sql
+insert into private.app_owner (singleton, user_id)
+values (true, '<owner-user-uid>'::uuid);
+```
+
+After migration `20261015000043_farm_editors.sql` is applied to **production**, invite two more people in that project's **Authentication → Users → Add user → Send invitation**. Each person uses their own email and password; they do not need access to the Supabase dashboard. Configure the production Auth Site URL and redirect URLs before sending invitations. Never send passwords or secret keys to the development team.
 
 Copy the two new **User UIDs** from the production Auth user list. In the **production** SQL Editor, add exactly those IDs to the private allowlist:
 

@@ -28,7 +28,7 @@ insert into customers (name, kind, free_reason, phone, default_morning, default_
   ('Bachhre',      'free',       'calves', null,          4,  4,  0,     farm_today() - 30, 7);
 
 insert into customer_rates (customer_id, rate, effective_from)
-select id, 150, farm_today() - 60 from customers where kind in ('regular','cash','contractor');
+select id, 150, farm_today() - 30 from customers where kind in ('regular','cash','contractor');
 
 -- ── Animals ────────────────────────────────────────────────────────
 insert into animals (tag, breed, category, milking_status, source, arrival_date, purchase_date, purchase_price, birth_date)

@@ -134,7 +134,10 @@ describe("Step 6 database money rules", () => {
     expect((await db.query("select ref_id from account_entries($1) where ref_id = $2", [farmCash, discount])).rows).toEqual([]);
     await expect(db.query("insert into payments (customer_id,payment_date,amount,kind,method,account_id) values ($1,farm_today(),10,'discount','cash',$2)", [ahmed, farmCash])).rejects.toThrow(/DISCOUNT_ACCOUNT/);
     const oldDate = (await db.query<{ day: string }>("select (farm_today() - interval '2 months')::date as day")).rows[0].day;
-    const oldPayment = (await db.query<{ id: string }>("insert into payments (customer_id,payment_date,amount,method,account_id) values ($1,$2,10,'cash',$3) returning id", [ahmed, oldDate, farmCash])).rows[0].id;
+    const oldCustomer = (await db.query<{ create_customer: string }>(
+      "select create_customer('Old lock QA', 'regular', '', 0, 0, 150, 0, $1::date - 1) as create_customer", [oldDate],
+    )).rows[0].create_customer;
+    const oldPayment = (await db.query<{ id: string }>("insert into payments (customer_id,payment_date,amount,method,account_id) values ($1,$2,10,'cash',$3) returning id", [oldCustomer, oldDate, farmCash])).rows[0].id;
     await db.query("insert into month_locks (month, note) values (date_trunc('month',$1::date)::date,'Test lock')", [oldDate]);
     await expect(db.query("select void_manual_payment($1,1,'Wrong')", [oldPayment])).rejects.toThrow(/MONTH_LOCKED/);
     await expect(db.query("insert into cash_counts (account_id,count_date,counted_amount,reason) values ($1,$2,0,'Test')", [farmCash, oldDate])).rejects.toThrow(/MONTH_LOCKED/);

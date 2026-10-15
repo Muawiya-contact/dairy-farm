@@ -25,6 +25,15 @@ beforeAll(async () => {
 
 afterAll(async () => { await db?.close(); });
 
+async function expectRejected(sql: string, params: unknown[], reason: RegExp) {
+  await db.exec("savepoint invalid_customer_entry");
+  try { await expect(db.query(sql, params)).rejects.toThrow(reason); }
+  finally {
+    await db.exec("rollback to savepoint invalid_customer_entry");
+    await db.exec("release savepoint invalid_customer_entry");
+  }
+}
+
 describe("staging demo seed", () => {
   it("exports only real columns from every public data table", async () => {
     const result = await db.query<{ table_name: string; column_name: string }>(`
@@ -132,5 +141,75 @@ describe("staging demo seed", () => {
     expect((await db.query<{ total_litres: string }>("select total_litres from milk_shifts where milk_date = $1 and shift = 'morning'", [date])).rows[0].total_litres).toBe("8.00");
     await expect(db.query("select save_milk_entry($1::date, 'evening', 1, 'total', '[]'::jsonb, $2::jsonb)",
       [date, JSON.stringify([{ customer_id: animals[0].id, litres: -1 }])])).rejects.toThrow(/negative/);
+  });
+});
+
+describe("customer opening dates and price history", () => {
+  it("keeps used prices fixed while allowing an unchanged retry and a scheduled future rate", async () => {
+    await db.exec("begin");
+    try {
+      const customer = (await db.query<{ create_customer: string }>(`
+        select public.create_customer('Price history QA', 'regular', '', 0, 0, 150, 0,
+                                      public.farm_today() - 7, null)`, [])).rows[0].create_customer;
+      await db.query("update public.customers set opening_balance = 25 where id = $1", [customer]);
+      await db.query(`insert into public.milk_deliveries (delivery_date, shift, customer_id, litres)
+                      values (public.farm_today() - 2, 'morning', $1, 2)`, [customer]);
+      await db.query(`insert into public.customer_rates (customer_id, rate, effective_from)
+                      values ($1, 150, public.farm_today() - 7)
+                      on conflict (customer_id, effective_from) do update set rate = excluded.rate`, [customer]);
+      await expectRejected(`insert into public.customer_rates (customer_id, rate, effective_from)
+        values ($1, 175, public.farm_today() - 3)`, [customer], /RATE_ALREADY_USED/);
+      await expectRejected(`insert into public.customer_rates (customer_id, rate, effective_from)
+        values ($1, 175, public.farm_today() - 7)
+        on conflict (customer_id, effective_from) do update set rate = excluded.rate`, [customer], /RATE_ALREADY_USED/);
+      await db.query(`insert into public.customer_rates (customer_id, rate, effective_from)
+                      values ($1, 180, public.farm_today() + 1)`, [customer]);
+      const result = await db.query<{ today_rate: string; tomorrow_rate: string; saved_amount: string }>(`
+        select public.rate_on($1, public.farm_today()) today_rate,
+               public.rate_on($1, public.farm_today() + 1) tomorrow_rate,
+               (select amount from public.milk_deliveries where customer_id = $1) saved_amount`, [customer]);
+      expect(result.rows[0]).toMatchObject({ today_rate: "150.00", tomorrow_rate: "180.00", saved_amount: "300.00" });
+      await expectRejected(`update public.customers set opening_date = public.farm_today() - 10
+                            where id = $1`, [customer], /CUSTOMER_OPENING_IN_USE/);
+      await expectRejected("update public.customers set opening_balance = 50 where id = $1", [customer], /CUSTOMER_BALANCE_IN_USE/);
+      await expectRejected("update public.customers set kind = 'company' where id = $1", [customer], /CUSTOMER_KIND_IMMUTABLE/);
+    } finally { await db.exec("rollback"); }
+  });
+
+  it("rejects entries before opening for deliveries, payments, and company slips", async () => {
+    await db.exec("begin");
+    try {
+      const regular = (await db.query<{ create_customer: string }>(`
+        select public.create_customer('Opening QA', 'regular', '', 0, 0, 150, 0,
+                                      public.farm_today() - 7)`, [])).rows[0].create_customer;
+      const company = (await db.query<{ create_customer: string }>(`
+        select public.create_customer('Company opening QA', 'company', '', 0, 0, 0, 0,
+                                      public.farm_today() - 7)`, [])).rows[0].create_customer;
+      const account = (await db.query<{ id: string }>("select id from public.accounts where is_farm_cash")).rows[0].id;
+      await expectRejected(`insert into public.milk_deliveries (delivery_date, shift, customer_id, litres)
+        values (public.farm_today() - 8, 'morning', $1, 1)`, [regular], /CUSTOMER_BEFORE_OPENING/);
+      await expectRejected(`insert into public.payments (customer_id, payment_date, amount, method, account_id)
+        values ($1, public.farm_today() - 8, 100, 'cash', $2)`, [regular, account], /CUSTOMER_BEFORE_OPENING/);
+      await expectRejected(`insert into public.company_bills (customer_id, from_date, to_date, litres, amount)
+        values ($1, public.farm_today() - 8, public.farm_today() - 1, 10, 1500)`, [company], /CUSTOMER_BEFORE_OPENING/);
+      await expectRejected(`insert into public.customer_rates (customer_id, rate, effective_from)
+        values ($1, 200, public.farm_today() - 8)`, [regular], /RATE_BEFORE_CUSTOMER_OPENING/);
+    } finally { await db.exec("rollback"); }
+  });
+
+  it("stores a chosen free reason atomically and rejects invalid ones", async () => {
+    await db.exec("begin");
+    try {
+      const customer = (await db.query<{ create_customer: string }>(`
+        select public.create_customer('Free reason QA', 'free', '', 1, 1, 0, 0,
+                                      public.farm_today(), 'owner')`, [])).rows[0].create_customer;
+      const reason = (await db.query<{ free_reason: string }>(
+        "select free_reason from public.customers where id = $1", [customer])).rows[0].free_reason;
+      expect(reason).toBe("owner");
+      await expectRejected(`select public.create_customer('Invalid reason QA', 'free', '', 1, 1, 0, 0,
+        public.farm_today(), 'invalid')`, [], /CUSTOMER_FREE_REASON/);
+      expect(Number((await db.query<{ count: string }>(
+        "select count(*) from public.customers where name = 'Invalid reason QA'")).rows[0].count)).toBe(0);
+    } finally { await db.exec("rollback"); }
   });
 });

@@ -1,7 +1,7 @@
 // Runs only against a local Supabase stack. Never resets or accesses a linked project.
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { createReadStream, existsSync, statSync, writeFileSync } from "node:fs";
+import { createReadStream, existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { resolve, sep } from "node:path";
 import { createClient } from "@supabase/supabase-js";
@@ -40,6 +40,8 @@ if (created.error || !created.data.user) throw created.error ?? new Error("Local
 const db = new pg.Client({ connectionString: keys.DB_URL });
 try {
   await db.connect();
+  await db.query(readFileSync(resolve(root, "supabase/seed/dev-demo.sql"), "utf8"));
+  await db.query(readFileSync(resolve(root, "supabase/seed/e2e.sql"), "utf8"));
   await db.query("insert into private.app_owner (singleton, user_id) values (true, $1) on conflict (singleton) do update set user_id = excluded.user_id", [created.data.user.id]);
 } finally { await db.end(); }
 writeFileSync(resolve(root, "e2e/.local-auth.json"), JSON.stringify({ email, password }), { mode: 0o600 });

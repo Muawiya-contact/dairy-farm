@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { animalMilkRows, milkLitres, remainingMilk, sumMilkLitres } from "../src/lib/milk-entry";
+import { animalMilkRows, fillCompanyMilk, milkLitres, remainingMilk, sumMilkLitres } from "../src/lib/milk-entry";
 import { litres } from "../src/lib/format";
 
 describe("daily milk entry quantities", () => {
@@ -15,6 +15,11 @@ describe("daily milk entry quantities", () => {
     expect(remainingMilk(12.3, sumMilkLitres([5.1, 4.1]))).toBe(3.1);
     expect(String(sumMilkLitres([0, 3.1]))).toBe("3.1");
     expect(litres(sumMilkLitres([1.1, 2.2]))).toBe("3.3 L");
+  });
+  it("fills the company only once even when tapped twice before a render", () => {
+    const first = fillCompanyMilk(12.3, { customer: "5.1", company: "4.1" }, "company");
+    expect(first.company).toBe("7.2");
+    expect(fillCompanyMilk(12.3, first, "company")).toEqual(first);
   });
   it.each(["-1", "1.001", "1e2", "61", "", "not milk"])("rejects invalid animal quantity %s", (raw) => {
     expect(() => milkLitres(raw, 60)).toThrow(RangeError);

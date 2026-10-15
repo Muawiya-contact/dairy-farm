@@ -35,6 +35,20 @@ async function expectRejected(sql: string, params: unknown[], reason: RegExp) {
 }
 
 describe("staging demo seed", () => {
+  it("leaves Pakistan Eid dates unconfirmed and rejects overlapping saved dates", async () => {
+    const { rows } = await db.query<{ eid_fitr_start_date: string | null; eid_adha_start_date: string | null }>(
+      "select eid_fitr_start_date, eid_adha_start_date from public.settings where id = 1",
+    );
+    expect(rows[0]).toEqual({ eid_fitr_start_date: null, eid_adha_start_date: null });
+    await db.exec("begin");
+    try {
+      await expectRejected(
+        "update public.settings set eid_fitr_start_date = $1::date, eid_adha_start_date = $2::date where id = 1",
+        ["2027-03-10", "2027-03-11"], /settings_eid_dates_separate/,
+      );
+    } finally { await db.exec("rollback"); }
+  });
+
   it("exports only real columns from every public data table", async () => {
     const result = await db.query<{ table_name: string; column_name: string }>(`
       select table_name, column_name from information_schema.columns

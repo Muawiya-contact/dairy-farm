@@ -1072,6 +1072,8 @@ export type Database = {
           contact_phone: string
           default_milk_rate: number
           dry_off_days: number
+          eid_adha_start_date: string | null
+          eid_fitr_start_date: string | null
           farm_name: string
           fresh_days: number
           go_live_date: string
@@ -1088,6 +1090,8 @@ export type Database = {
           contact_phone?: string
           default_milk_rate?: number
           dry_off_days?: number
+          eid_adha_start_date?: string | null
+          eid_fitr_start_date?: string | null
           farm_name?: string
           fresh_days?: number
           go_live_date?: string
@@ -1104,6 +1108,8 @@ export type Database = {
           contact_phone?: string
           default_milk_rate?: number
           dry_off_days?: number
+          eid_adha_start_date?: string | null
+          eid_fitr_start_date?: string | null
           farm_name?: string
           fresh_days?: number
           go_live_date?: string

@@ -19,6 +19,7 @@ export default function SubscriptionNotice({ children }: { children: React.React
       </div>
     </section>}
     {readOnly && dismissed && <p role="status" className="mx-4 mt-3 rounded-xl bg-amber-50 px-4 py-2 text-sm text-amber-950 sm:mx-6">Saalana muddat khatam · Sirf data dekh sakte hain.</p>}
-    <fieldset disabled={readOnly} className="min-w-0 border-0 p-0">{children}</fieldset>
+    {status.isError && <p role="alert" className="mx-4 mt-3 rounded-xl bg-amber-50 px-4 py-2 text-sm text-amber-950 sm:mx-6">Fee ki haalat abhi maloom nahi ho saki. Page dobara kholein.</p>}
+    <div className="min-w-0">{children}</div>
   </>;
 }

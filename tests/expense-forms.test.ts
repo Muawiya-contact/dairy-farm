@@ -30,6 +30,8 @@ describe("expense entry form", () => {
     expect(() => parseExpenseCorrection(form({ category: "farm", reason: "no" }), today, accounts, categories)).toThrow(/5 se 500/);
     expect(() => parseExpenseCorrection(form({ category: "salary", reason: "Raqam ghalat thi" }), today, accounts, categories)).toThrow(/Tankhwah/);
     expect(() => parseExpenseCorrection(form({ category: "farm", amount: "-5", reason: "Raqam ghalat thi" }), today, accounts, categories)).toThrow(/Raqam/);
+    expect(() => parseExpenseCorrection(form({ category: "inactive", reason: "Raqam ghalat thi" }), today, accounts, categories)).toThrow(/category/);
+    expect(() => parseExpenseCorrection(form({ category: "farm", account: "closed", reason: "Raqam ghalat thi" }), today, accounts, categories)).toThrow(/Active account/);
   });
   it("selects the dedicated home category and keeps other personal costs distinct", () => {
     expect(parseExpenseEntry(form({ note: "  ghar ke liye  " }), "home", today, accounts, categories))

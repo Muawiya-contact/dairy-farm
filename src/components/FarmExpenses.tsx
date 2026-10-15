@@ -70,6 +70,7 @@ export default function FarmExpenses() {
   const farmCategories = d.categories.filter((category) => category.active && category.is_farm_cost && !category.is_salary).sort(categoryOrder);
   const personalCategories = d.categories.filter((category) => category.active && expenseMode(category) === "personal").sort(categoryOrder);
   const activeAccounts = d.accounts.filter((account) => account.active);
+  const correctionCategories = d.categories.filter((category) => category.active && !category.is_salary);
   const availableCategories = mode === "farm" ? farmCategories : personalCategories;
   const defaultCategoryId = mode === "farm"
     ? farmCategories.find((category) => category.name === "Farm ka kharcha")?.id ?? farmCategories[0]?.id ?? ""
@@ -158,10 +159,11 @@ export default function FarmExpenses() {
         <p className="mt-2 text-xs text-muted">Ghar ka kharcha chunein to raqam account se niklegi; farm munafa nahi badlega. Save ke baad entry Galla mein bhi dikhegi.</p>
       </Panel>
       {editing && <div id="expense-correction" className="lg:col-span-2"><Panel title="Kharcha durust karein"><p className="mb-3 text-sm text-muted">Purani entry: {shortDate(editing.expense_date)} · {money(editing.amount)}. Band maheene ki entry pehle Settings mein kholni hogi.</p>
+        {(!correctionCategories.some((category) => category.id === editing.category_id) || !activeAccounts.some((account) => account.id === editing.account_id)) && <p role="alert" className="mb-3 text-sm text-udhaar">Is entry ki purani qism ya account band hai. Durusti ke liye istemal ke qabil qism aur account khud chunein.</p>}
         <form key={editing.id} onSubmit={onCorrection} className="grid gap-3 sm:grid-cols-2">
           <label className="text-sm">Tareekh<input name="date" type="date" max={d.today} required defaultValue={editing.expense_date} className={field} /></label>
-          <label className="text-sm">Qism<select name="category" required defaultValue={editing.category_id} className={field}>{d.categories.filter((item) => item.active && !item.is_salary).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-          <label className="text-sm">Paisa kis account se nikla?<select name="account" required defaultValue={editing.account_id} className={field}>{activeAccounts.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+          <label className="text-sm">Qism<select name="category" required defaultValue={correctionCategories.some((item) => item.id === editing.category_id) ? editing.category_id : ""} className={field}><option value="" disabled>Qism chunein</option>{correctionCategories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+          <label className="text-sm">Paisa kis account se nikla?<select name="account" required defaultValue={activeAccounts.some((item) => item.id === editing.account_id) ? editing.account_id : ""} className={field}><option value="" disabled>Account chunein</option>{activeAccounts.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
           <label className="text-sm">Raqam (Rs)<input name="amount" type="number" min="0.01" step="0.01" required defaultValue={editing.amount} className={field} /></label>
           <label className="text-sm sm:col-span-2">Tafseel<input name="note" defaultValue={editing.note ?? ""} className={field} /></label>
           <label className="text-sm sm:col-span-2">Durusti ki wajah (zaroori)<input name="reason" required minLength={5} maxLength={500} placeholder="Misal: ghalat raqam likh di thi" className={field} /></label>

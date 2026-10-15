@@ -1,0 +1,26 @@
+# Step 5: Doodh production and deliveries
+
+## Owner workflow
+
+1. Open **Doodh**, choose the farm date and Subah or Shaam. A blank shift is new; an existing shift loads its saved production, deliveries and note.
+2. In **Kul**, enter the total milk to two decimal places, including `0` when nothing was produced. In **Har janwar**, type each animal's exact litres (up to 60 L), or use the half-litre buttons. The animal quantities determine the shift total. Animals with historical entries remain visible when their status later changes.
+3. Check customer quantities. A blank field means no delivery. Active customers appear, and a closed customer remains on a historical shift if it has a saved delivery. **Baqi collection center ko** assigns the remaining milk to the first company customer; otherwise leave it unallocated and add an optional note about its use or loss. This note does not create a financial entry.
+4. Review **Nikla**, **Diya**, **Baqi** and the estimated sale. The preview uses a saved delivery's rate snapshot when one exists; the database calculates final amounts and Naqd receipts. Save only when deliveries do not exceed production.
+5. For a correction, reopen the date and shift. Saving changes the existing delivery and cash receipt IDs where possible. If another session changed the shift, reload it before correcting. A locked month cannot be edited until the owner opens it in Settings.
+
+## Technical design
+
+- `FarmMilk.tsx` keeps incomplete fields blank and validates each entered quantity. `milk-entry.ts` sums hundredths of a litre for the on-screen balance; PostgreSQL `numeric(…,2)` is authoritative for saved totals and money. The form supports direct animal input, negative/precision/range errors, a 500-character note, busy state, and a clear save error.
+- Migration `20261015000037_milk_entry_guards.sql` adds `save_milk_entry_checked`. It validates the date, mode, total, per-animal and delivery arrays, duplicate IDs, ranges, precision, and sum before writing. It checks `milk_shifts.updated_at` while holding the shift row; creating a new shift uses a unique insert so two sessions cannot both create it. The existing six-argument RPC remains during rollout. A failed RPC rolls back the whole operation, including Naqd auto payments.
+- A delivery insert/update/delete touches its parent shift version. This makes a direct delivery correction visible to the next checked save. Future production or delivery dates are rejected at the table boundary, including writes that bypass the app. Existing month-lock triggers remain in force.
+- The new RPC runs with caller permissions. It is executable by authenticated users, and by anonymous users only when staging demo access is enabled. Production stays owner restricted. Neither project gets real data from this migration.
+
+PostgreSQL documents [row locking for application consistency](https://www.postgresql.org/docs/current/applevel-consistency.html) and [numeric constraints](https://www.postgresql.org/docs/current/ddl-constraints.html). Supabase recommends [security-invoker database functions](https://supabase.com/docs/guides/database/functions) when caller row-level permissions should apply. This design uses those rules so a stale screen cannot silently overwrite a later shift edit.
+
+## Acceptance and limits
+
+- Unit tests cover exact hundredths, fractional totals, negative/blank/exponent/malformed quantities, and animal/customer limits. Database tests cover atomic shift + delivery + Naqd receipt, saved notes, stale create/edit, direct delivery edits, invalid and duplicate payloads, over-delivery, future dates, closed months, and preservation of historical IDs. The full gate is `npm run check` (Vitest, ESLint, TypeScript, static build).
+- Apply migration 37 with recorded history to staging and production. Production gets only schema and guards, no demo records. Verify the Netlify preview at desktop and phone widths and leave it open for owner review.
+- This step does not classify unallocated milk into inventory or financial waste; the optional note records context only. Rate changes for already billed periods and an audited milk-correction history need a separate policy before implementation.
+
+The project-wide [definition of done](../DOCUMENTATION.md#definition-of-done-for-every-step) applies here.

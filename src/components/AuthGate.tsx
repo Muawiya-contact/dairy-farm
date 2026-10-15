@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/errors";
@@ -16,6 +16,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const previousUser = useRef<string | null>(null);
   const [ready, setReady] = useState(!requireAuth || missingConfig);
   const [signedIn, setSignedIn] = useState(!requireAuth);
+  const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [forgotPassword, setForgotPassword] = useState(false);
@@ -28,6 +29,16 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     ? friendlyError(new Error("Supabase URL aur publishable key set nahi hain."))
     : passwordLinkError(callbackUrl) ?? "");
   const [busy, setBusy] = useState(false);
+  const access = useQuery({
+    queryKey: ["farm-access", userId],
+    queryFn: async () => {
+      const { data, error: accessError } = await getSupabase().from("settings").select("id").eq("id", 1).maybeSingle();
+      if (accessError) throw accessError;
+      return Boolean(data);
+    },
+    enabled: requireAuth && !missingConfig && Boolean(userId) && !needsPassword,
+    retry: false,
+  });
 
   useEffect(() => {
     if (!requireAuth || missingConfig) return;
@@ -37,6 +48,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       if (previousUser.current !== userId) queryClient.clear();
       previousUser.current = userId;
       if (isPasswordSetupSession(callbackUrl, session?.access_token)) setNeedsPassword(true);
+      setUserId(userId);
       setSignedIn(Boolean(session));
       setReady(true);
     };
@@ -108,6 +120,19 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     }
   };
 
+  const signOut = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const { error: signOutError } = await getSupabase().auth.signOut();
+      if (signOutError) throw signOutError;
+    } catch (signOutError) {
+      setError(friendlyError(signOutError));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (!ready) return <main className="mx-auto max-w-sm p-8 text-muted">Account check ho raha hai…</main>;
   if (!signedIn) return (
     <main className="mx-auto max-w-sm px-5 py-16">
@@ -142,6 +167,19 @@ export default function AuthGate({ children }: { children: ReactNode }) {
         <button disabled={busy} className="min-h-12 rounded-xl bg-berseem font-bold text-white disabled:opacity-50">{busy ? "Save ho raha hai…" : "Password save karein"}</button>
         {error && <p role="alert" className="text-udhaar">{error}</p>}
       </form>
+    </main>
+  );
+  if (requireAuth && access.isPending) return <main className="mx-auto max-w-sm p-8 text-muted" role="status">Farm access check ho raha hai…</main>;
+  if (requireAuth && (access.isError || !access.data)) return (
+    <main className="mx-auto max-w-sm px-5 py-16">
+      <h1 className="flex items-center gap-3 font-display text-3xl font-bold"><LogoMark size={48} />Dairy Farm</h1>
+      <div className="mt-6 grid gap-4 rounded-2xl border border-line bg-paper p-5">
+        <h2 className="font-display text-xl font-bold">{access.isError ? "Farm access check nahi ho saka" : "Is account ko farm access nahi hai"}</h2>
+        <p className="text-muted">{access.isError ? friendlyError(access.error) : "Farm admin se rabta karein. Sirf manzoor shuda accounts farm ka data dekh sakte hain."}</p>
+        <button type="button" onClick={() => void access.refetch()} disabled={busy || access.isFetching} className="min-h-12 rounded-xl border border-line font-semibold text-berseem disabled:opacity-50">Dobara check karein</button>
+        <button type="button" onClick={() => void signOut()} disabled={busy} className="min-h-12 rounded-xl bg-berseem font-bold text-white disabled:opacity-50">{busy ? "Sign out ho raha hai…" : "Sign out"}</button>
+        {error && <p role="alert" className="text-udhaar">{error}</p>}
+      </div>
     </main>
   );
   return <>{children}</>;

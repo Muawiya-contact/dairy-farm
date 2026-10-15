@@ -13,15 +13,16 @@ const settings: FarmSettings = {
 };
 const eleventh = nextGyarhwinDate("2026-10-15", 0)!;
 
-it("shows only the relevant estimated Gyarhwin cue and its settings link", () => {
+it("shows a concise Gyarhwin cue only on the relevant estimated day", () => {
   const preparation = renderToStaticMarkup(createElement(GyarhwinNotice, { today: addDays(eleventh, -1), settings }));
   expect(preparation).toContain("Gyarhwin ki tayyari");
   expect(preparation).toContain("Maghrib");
-  expect(preparation).toContain('href="/settings');
+  expect(preparation).toContain("Zaroorat ho to kal ka doodh plan karein.");
+  expect(preparation).not.toContain("Tareekh adjust karein");
 
   const today = renderToStaticMarkup(createElement(GyarhwinNotice, { today: eleventh, settings }));
   expect(today).toContain("Aaj Gyarhwin hai");
-  expect(today).toContain("Muft customer");
+  expect(today).toContain("Khairaat ka diya hua doodh Muft customer ke naam darj karein.");
 
   expect(renderToStaticMarkup(createElement(GyarhwinNotice, { today: eleventh, settings: { ...settings, gyarhwin_reminder_enabled: false } }))).toBe("");
   expect(renderToStaticMarkup(createElement(GyarhwinNotice, { today: addDays(eleventh, 1), settings }))).toBe("");

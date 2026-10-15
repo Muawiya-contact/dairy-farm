@@ -33,11 +33,11 @@ export function gyarhwinReminder(pakistanDay: string, enabled: boolean, adjustme
   return hijri.day === 10
     ? {
       phase: "prepare", hijri, title: "Gyarhwin ki tayyari",
-      message: "Aaj 10 Hijri hai; Maghrib ke baad 11win raat shuru hogi. Agar khairaat ke liye doodh ki talab barhe to aaj ka doodh pehle se plan karein.",
+      message: "Maghrib ke baad 11win raat. Zaroorat ho to kal ka doodh plan karein.",
     }
     : {
       phase: "today", hijri, title: "Aaj Gyarhwin hai",
-      message: "Aaj 11 Hijri hai. Jo doodh waqai khairaat mein diya jaye, use Doodh entry mein Muft customer ke naam se darj karein.",
+      message: "Khairaat ka diya hua doodh Muft customer ke naam darj karein.",
     };
 }
 

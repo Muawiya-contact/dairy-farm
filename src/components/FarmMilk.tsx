@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { refreshFarmViews } from "@/lib/query-refresh";
 import { amount, customerRate, longDate, milkShiftAnimals, milkShiftCustomers, money, saveMilkEntry, useFarmData, type FarmData } from "@/lib/farm-data";
 import { animalMilkRows, fillCompanyMilk, milkLitres, remainingMilk, sumMilkLitres } from "@/lib/milk-entry";
 import { litres } from "@/lib/format";
@@ -73,7 +74,9 @@ function ShiftForm({ data, date, shift }: { data: FarmData; date: string; shift:
       const deliveries = active.filter((c) => (qty[c.id] ?? "").trim()).map((c) => ({ customer_id: c.id, litres: milkLitres(qty[c.id], 3000) })).filter((row) => row.litres > 0);
       const updatedAt = await saveMilkEntry({ date, shift, total: mode === "total" ? milkLitres(total, 5000) : milkTotal, mode, animals: mode === "per_animal" ? animalMilkRows(milkers, perAnimal) : [], deliveries, expectedUpdatedAt: version, notes });
       setVersion(updatedAt);
-      await qc.invalidateQueries({ queryKey: ["farm-data"] }); setSaved(true);
+      setSaved(true);
+      try { await refreshFarmViews(qc, "milk"); }
+      catch { setError("Entry save ho gayi, lekin naye hisaab nahi khulay. Page dobara kholein."); }
     } catch (e) { setError(friendlyError(e)); }
     finally { setBusy(false); }
   };

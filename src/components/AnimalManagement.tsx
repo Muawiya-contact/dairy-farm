@@ -6,6 +6,7 @@ import { closeAnimal, longDate, money, updateAnimal, type Account, type Animal }
 import { friendlyError } from "@/lib/errors";
 import { parseAmount, parsePositiveAmount } from "@/lib/format";
 import { parseAnimalDates, type AnimalExit } from "@/lib/animal-life";
+import { refreshFarmViews } from "@/lib/query-refresh";
 import { Panel } from "./ui";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
@@ -31,8 +32,9 @@ export function AnimalManagement({ animal, animals, accounts, today, linkedBirth
     setBusy(true); setError("");
     try {
       await save();
-      await qc.invalidateQueries({ queryKey: ["farm-data"] });
       setMode(null);
+      try { await refreshFarmViews(qc, "animal"); }
+      catch { setError("Record save ho gaya, lekin naye hisaab nahi khulay. Page dobara kholein."); }
     } catch (e) {
       if (e instanceof Error && e.message === "ANIMAL_STALE") {
         setMode(null);

@@ -8,6 +8,7 @@ import { amount, insertRow, longDate, money, recordHealthEvent, shortDate, useFa
 import { friendlyError } from "@/lib/errors";
 import { parseAmount } from "@/lib/format";
 import { animalAge, animalLifeEvents, matchesAnimalFilter, parseAnimalDates, type AnimalSource } from "@/lib/animal-life";
+import { refreshFarmViews } from "@/lib/query-refresh";
 import { Body, PageHeader, Panel, StatusTag } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
 import { PlusIcon, SearchIcon } from "./icons";
@@ -39,8 +40,9 @@ export default function FarmAnimals() {
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true); setError("");
-    try { await fn(); await qc.invalidateQueries({ queryKey: ["farm-data"] }); setAdd(false); }
-    catch (e) { setError(friendlyError(e)); if (e instanceof Error && /STALE/.test(e.message)) await qc.invalidateQueries({ queryKey: ["farm-data"] }); }
+    try { await fn(); setAdd(false); try { await refreshFarmViews(qc, "animal"); }
+      catch { setError("Record save ho gaya, lekin nayi list nahi khuli. Page dobara kholein."); } }
+    catch (e) { setError(friendlyError(e)); if (e instanceof Error && /STALE/.test(e.message)) await refreshFarmViews(qc, "animal"); }
     finally { busyRef.current = false; setBusy(false); }
   };
   if (selected) {

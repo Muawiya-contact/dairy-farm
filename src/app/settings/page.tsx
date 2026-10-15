@@ -7,10 +7,9 @@ import { breedingFields, getSettings, updateSettings, validateSettings, type Far
 import { parseAmount } from "@/lib/format";
 import { friendlyError } from "@/lib/errors";
 import { createAccount, getAccounts, updateAccount, validateAccount, type FarmAccount } from "@/lib/accounts";
-import { addDays, formatDay, todayPK } from "@/lib/dates";
+import { formatDay, todayPK } from "@/lib/dates";
 import { ExportPanel } from "@/components/ExportPanel";
 import { estimatedHijriDate, nextGyarhwinDate } from "@/lib/gyarhwin";
-import { GyarhwinNotice } from "@/components/GyarhwinNotice";
 
 const inputClass = "mt-1 min-h-12 w-full rounded-xl border border-line bg-paper px-3 outline-none focus:border-berseem";
 
@@ -28,7 +27,6 @@ function SettingsForm({ initial }: { initial: FarmSettings }) {
   const today = todayPK();
   const hijriToday = estimatedHijriDate(today, adjustmentDays);
   const nextGyarhwin = nextGyarhwinDate(today, adjustmentDays);
-  const sampleSettings: FarmSettings = { ...initial, gyarhwin_reminder_enabled: true, hijri_date_adjustment: adjustmentDays };
   const [validation, setValidation] = useState("");
   const mutation = useMutation({
     mutationFn: updateSettings,
@@ -75,11 +73,6 @@ function SettingsForm({ initial }: { initial: FarmSettings }) {
           </select>
         </label>
         <p className="mt-2 text-sm text-muted">Aaj ki andazi Hijri tareekh: {hijriToday ? `${hijriToday.day}/${hijriToday.month}/${hijriToday.year}` : "is browser mein dikhai nahi ja sakti"}. Agli Gyarhwin: {nextGyarhwin ? formatDay(nextGyarhwin) : "maloom nahi"}. Maqami Ruet-e-Hilal elaan se milayein; tareekh badalne par adjustment dobara dekhein.</p>
-        {nextGyarhwin && <details className="mt-4 rounded-xl border border-line p-3"><summary className="cursor-pointer font-semibold text-berseem-deep">Reminder ka namoona dekhein</summary>
-          <p className="mt-2 text-sm text-muted">Yeh sirf namoona hai. Doodh, customer ya setting save nahi hogi.</p>
-          <div className="mt-3 grid gap-3"><div><p className="mb-1 text-sm font-semibold">10 Hijri · {formatDay(addDays(nextGyarhwin, -1))}</p><GyarhwinNotice today={addDays(nextGyarhwin, -1)} settings={sampleSettings} /></div>
-            <div><p className="mb-1 text-sm font-semibold">11 Hijri · {formatDay(nextGyarhwin)}</p><GyarhwinNotice today={nextGyarhwin} settings={sampleSettings} /></div></div>
-        </details>}
       </fieldset>
       <button disabled={mutation.isPending} className="mt-5 min-h-12 rounded-xl bg-berseem px-5 font-bold text-white disabled:opacity-50">{mutation.isPending ? "Save ho raha hai…" : "Save karein"}</button>
       {validation && <p role="alert" className="mt-3 text-udhaar">{validation}</p>}

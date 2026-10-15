@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import ExcelJS from "exceljs";
-import { buildPdf, buildXlsx, columnLabel, DATASETS, displayCell, toCsv } from "../src/lib/export-data";
+import { buildPdf, buildXlsx, columnLabel, DATASETS, displayCell, offspringSummary, toCsv } from "../src/lib/export-data";
 
 beforeAll(() => vi.stubGlobal("fetch", async (url: string) =>
   url === "/brand/icon-192.png"
@@ -12,6 +12,17 @@ beforeAll(() => vi.stubGlobal("fetch", async (url: string) =>
 afterAll(() => vi.unstubAllGlobals());
 
 describe("CSV exports", () => {
+  it("exports the current calf tag and retains its birth tag, sex, weight and note", () => {
+    const animals = new Map<unknown, Record<string, unknown>>([["calf-1", { tag: "NEW-17" }]]);
+    const summary = offspringSummary([
+      { birth_order: 1, outcome: "alive", animal_id: "calf-1", tag_at_birth: "TEMP-123", sex: "female", birth_weight_kg: 32.5, notes: "Healthy" },
+      { birth_order: 2, outcome: "stillborn", animal_id: null, tag_at_birth: null, sex: "male", birth_weight_kg: 21, notes: "Vet informed" },
+    ], animals);
+    expect(summary).toContain("Tag: NEW-17 (paidaish: TEMP-123)");
+    expect(summary).toContain("Mada");
+    expect(summary).toContain("32.5 kg");
+    expect(summary).toContain("2: Paidaish par wafat · Nar · 21 kg · Vet informed");
+  });
   it("keeps labelled columns in an empty production table", () => {
     expect(toCsv(DATASETS[0].columns.slice(0, 3), [])).toBe('\uFEFF"ID","Tag","Naam"\r\n');
     expect(DATASETS.find((dataset) => dataset.table === "settings")?.columns).toContain("contact_phone");

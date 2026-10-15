@@ -110,6 +110,20 @@ export async function fetchReport(name: (typeof REPORTS)[number]["name"], month:
   return (data ?? []) as Record<string, unknown>[];
 }
 
+export function offspringSummary(children: Record<string, unknown>[], animalById: Map<unknown, Record<string, unknown>>): string {
+  return children.map((child) => {
+    const birthTag = String(child.tag_at_birth ?? "");
+    const currentTag = animalById.get(child.animal_id)?.tag;
+    const tag = typeof currentTag === "string" ? currentTag : birthTag;
+    const details = [child.outcome === "alive" ? "Zinda" : "Paidaish par wafat"];
+    if (child.sex === "female" || child.sex === "male") details.push(child.sex === "female" ? "Mada" : "Nar");
+    if (tag) details.push(`Tag: ${tag}${birthTag && birthTag !== tag ? ` (paidaish: ${birthTag})` : ""}`);
+    if (child.birth_weight_kg != null) details.push(`${child.birth_weight_kg} kg`);
+    if (child.notes) details.push(String(child.notes));
+    return `${child.birth_order}: ${details.join(" · ")}`;
+  }).join("; ");
+}
+
 export async function fetchBreedingRegister(): Promise<Record<string, unknown>[]> {
   const animalTable = DATASETS.find((item) => item.table === "animals")!;
   const breedingTable = DATASETS.find((item) => item.table === "inseminations")!;
@@ -133,7 +147,7 @@ export async function fetchBreedingRegister(): Promise<Record<string, unknown>[]
     const children = (calving ? offspringByCalving.get(String(calving.id)) ?? [] : []).sort((a, b) => Number(a.birth_order) - Number(b.birth_order));
     return { ...breeding, tag: animal?.tag ?? "", name: animal?.name ?? "", calving_date: calving?.calving_date ?? null,
       ease_score: calving?.ease_score ?? null,
-      offspring_summary: children.map((child) => `${child.birth_order}: ${child.outcome === "alive" ? "Zinda" : "Paidaish par wafat"}${child.tag_at_birth ? ` (${child.tag_at_birth})` : ""}`).join("; "),
+      offspring_summary: offspringSummary(children, animalById),
     };
   });
 }

@@ -174,13 +174,16 @@ export async function buildPaymentReceiptPdf(input: {
 }
 
 /** Native share can attach the PDF on supported phones. Desktop falls back to download. */
-export async function shareCustomerPdf(filename: string, bytes: Uint8Array<ArrayBuffer>, title: string, message: string): Promise<"shared" | "downloaded" | "cancelled"> {
+export async function shareCustomerPdf(filename: string, bytes: Uint8Array<ArrayBuffer>, title: string, message: string): Promise<"shared" | "downloaded" | "cancelled" | "retry"> {
   const blob = new Blob([bytes], { type: "application/pdf" });
   const file = new File([blob], filename, { type: "application/pdf" });
   if (navigator.share && navigator.canShare?.({ files: [file] })) {
     try { await navigator.share({ files: [file], title, text: message }); return "shared"; }
     catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return "cancelled";
+      // A slow PDF build can exhaust the click's transient activation. A second tap
+      // can share the already-built file without waiting for generation again.
+      if (error instanceof DOMException && error.name === "NotAllowedError") return "retry";
       // Browser share can fail when WhatsApp is unavailable; keep the PDF usable.
     }
   }

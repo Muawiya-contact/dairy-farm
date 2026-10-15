@@ -29,6 +29,7 @@ import { PlusIcon } from "./icons";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 type Save = (action: () => Promise<void>, message: string) => Promise<boolean>;
+type PdfAction = "download" | "share" | "whatsapp";
 
 function CustomerDetail({ data, customer, save, busy, error, success }: {
   data: FarmData; customer: Customer; save: Save; busy: boolean; error: string; success: string;
@@ -39,6 +40,9 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
   const [editing, setEditing] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfStatus, setPdfStatus] = useState("");
+  const [pdfTarget, setPdfTarget] = useState("");
+  const pdfBusyRef = useRef(false);
+  const pendingShare = useRef<{ key: string; bytes: Uint8Array<ArrayBuffer> } | null>(null);
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [voidPaymentId, setVoidPaymentId] = useState<string | null>(null);
   const paymentPending = useRef<{ id: string; signature: string } | null>(null);
@@ -52,6 +56,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
   const auditQuery = useQuery({ queryKey: ["payment-audit", c.id], queryFn: () => getCustomerPaymentAudit(c.id) });
   const balance = amount(data.balances.find((x) => x.customer_id === c.id)?.balance);
   const report = reportQuery.data;
+  useEffect(() => { pendingShare.current = null; }, [data, month, report]);
   const rate = customerRate(data, c.id);
   const ledger = statementLines(data, c.id, month);
   const phone = whatsappNumber(c.phone);
@@ -128,32 +133,42 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
     }, "Company bill save ho gaya.");
   };
 
-  const document = async (kind: "bill" | "receipt", paymentId: string | null, share: boolean) => {
-    setPdfBusy(true); setPdfStatus("");
+  const document = async (kind: "bill" | "receipt", paymentId: string | null, action: PdfAction) => {
+    if (pdfBusyRef.current) return;
+    pdfBusyRef.current = true;
+    const key = kind === "bill" ? `bill:${month}` : `receipt:${paymentId}`;
+    setPdfTarget(key);
+    setPdfBusy(true); setPdfStatus("PDF tayyar ho raha hai…");
     try {
       const payment = data.payments.find((item) => item.id === paymentId && item.customer_id === c.id);
       if (kind === "bill" && !report) throw new RangeError("Is maheene ka bill abhi load nahi hua.");
       if (kind === "receipt" && (!payment || payment.kind !== "payment")) throw new RangeError("Wusooli ka record nahi mila.");
-      const bytes = kind === "bill"
+      const cached = pendingShare.current?.key === key ? pendingShare.current : null;
+      const bytes = cached?.bytes ?? (kind === "bill"
         ? await buildCustomerStatementPdf({ farm: data.settings, customer: c, month, report: report!, lines: ledger })
-        : await buildPaymentReceiptPdf({ farm: data.settings, customer: c, payment: payment! });
+        : await buildPaymentReceiptPdf({ farm: data.settings, customer: c, payment: payment! }));
       const filename = documentFilename(c, kind, kind === "bill" ? month : payment!.id);
-      if (share) {
+      if (action === "share") {
         const message = kind === "bill" ? statementMessage(data.settings, c, month, report!) : receiptMessage(data.settings, c, payment!);
         const outcome = await shareCustomerPdf(filename, bytes, `${data.settings.farm_name} - ${c.name}`, message);
-        const chatUrl = whatsappChatUrl(c.phone, message);
-        if (outcome === "downloaded" && chatUrl) {
-          setPdfStatus("PDF download ho gaya. WhatsApp chat khul rahi hai; PDF attach karke bhejein.");
-          window.setTimeout(() => window.location.assign(chatUrl), 1200);
+        if (outcome === "retry" && !cached) {
+          pendingShare.current = { key, bytes };
+          setPdfStatus("Share sheet nahi khuli. Isi Share button ko dobara dabayein; PDF tayyar hai.");
+        } else if (outcome === "retry") {
+          pendingShare.current = null;
+          downloadBlob(filename, new Blob([bytes], { type: "application/pdf" }));
+          setPdfStatus("Is browser mein file share nahi hui. PDF download ho gaya; WhatsApp mein attach karein.");
         } else {
-          setPdfStatus(outcome === "downloaded" ? "PDF download ho gaya. WhatsApp ke liye customer ka phone darj karein." : outcome === "shared" ? "Share sheet band hui. WhatsApp mein bhejna check karein." : "Share cancel ho gaya.");
+          pendingShare.current = null;
+          setPdfStatus(outcome === "downloaded" ? "File share available nahi. PDF download ho gaya; WhatsApp mein attach karein." : outcome === "shared" ? "Share sheet band hui. WhatsApp mein file aur recipient check karein." : "Share cancel ho gaya.");
         }
       } else {
+        pendingShare.current = null;
         downloadBlob(filename, new Blob([bytes], { type: "application/pdf" }));
-        setPdfStatus("PDF download ho gaya.");
+        setPdfStatus(action === "whatsapp" ? "PDF download ho gaya. WhatsApp tab mein file attach karke Send dabayein." : "PDF download ho gaya.");
       }
     } catch (issue) { setPdfStatus(`PDF nahi bana: ${friendlyError(issue)}`); }
-    finally { setPdfBusy(false); }
+    finally { pdfBusyRef.current = false; setPdfBusy(false); }
   };
 
   return <>
@@ -187,12 +202,13 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
         </dl>}
         {report && <p className="mt-2 text-sm text-muted">Doodh delivery: {amount(report.litres)} L. Company parchi ki litres neeche register aur PDF mein hain.</p>}
         {report && <div className="mt-3 flex flex-wrap gap-2">
-          <button type="button" disabled={pdfBusy} onClick={() => void document("bill", null, false)} className="min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem disabled:opacity-50">Tafseeli PDF download</button>
-          <button type="button" disabled={pdfBusy} onClick={() => void document("bill", null, true)} className="min-h-11 rounded-xl bg-berseem px-4 font-semibold text-white disabled:opacity-50">Bill share karein</button>
-          {wa && <a href={wa} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center rounded-xl border border-line px-4 font-semibold">WhatsApp matn</a>}
+          <button type="button" disabled={pdfBusy} onClick={() => void document("bill", null, "download")} className="min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem disabled:opacity-50">Tafseeli PDF download</button>
+          <button type="button" disabled={pdfBusy} onClick={() => void document("bill", null, "share")} className="min-h-11 rounded-xl bg-berseem px-4 font-semibold text-white disabled:opacity-50">Bill PDF share karein</button>
+          {wa && <a href={wa} target="_blank" rel="noreferrer" aria-disabled={pdfBusy} onClick={(event) => { if (pdfBusyRef.current) event.preventDefault(); else void document("bill", null, "whatsapp"); }} className="inline-flex min-h-11 items-center rounded-xl border border-line px-4 font-semibold">WhatsApp chat + PDF</a>}
         </div>}
         {!phone && <p className="mt-2 text-sm text-muted">WhatsApp matn ke liye customer ka phone number likhein. PDF phir bhi download/share ho sakta hai.</p>}
-        <p className="mt-2 text-xs text-muted">{phone ? "Phone par share sheet se WhatsApp chunein. Desktop par PDF download ke baad customer ki WhatsApp chat khulegi; PDF attach karke Send dabayein." : "Phone par share sheet se WhatsApp chunein. Desktop par PDF download hoga; chat kholne ke liye customer ka phone darj karein."}</p>
+        <p className="mt-2 text-xs text-muted">{phone ? "Phone par PDF Share dabayein, phir share sheet se WhatsApp aur recipient chunein. Computer par WhatsApp chat + PDF dabane se chat nayi tab mein khulegi aur PDF download hoga; file attach karke Send dabayein." : "Phone par PDF Share dabayein aur share sheet se app chunein. WhatsApp chat ke liye customer ka phone darj karein."}</p>
+        {pdfTarget === `bill:${month}` && pdfStatus && <p role={pdfStatus.startsWith("PDF nahi") ? "alert" : "status"} className="mt-2 text-sm text-berseem-deep">{pdfStatus}</p>}
       </Panel>
       {c.kind !== "cash" && c.kind !== "free" && <Panel title="Wusooli likhein">
         <form onSubmit={onPayment} className="grid gap-2">
@@ -237,7 +253,8 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
           const payment = paymentEntry?.kind === "payment" ? paymentEntry : null;
           const receiptWa = payment ? whatsappChatUrl(c.phone, receiptMessage(data.settings, c, payment)) : null;
           return <li key={entry.id} className="flex flex-wrap items-center gap-2 py-3 text-sm"><span className="text-muted">{shortDate(entry.date)}</span><span className="min-w-32 flex-1">{entry.detail}{entry.litres != null ? ` · ${entry.litres} L` : ""}</span><strong className={entry.credit ? "text-berseem" : ""}>{entry.credit ? `− ${money(entry.credit)}` : money(entry.charge)}</strong>
-            {payment && <div className="flex w-full flex-wrap gap-2 sm:justify-end"><button type="button" disabled={pdfBusy} onClick={() => void document("receipt", payment.id, false)} className="min-h-10 rounded-lg border border-line px-3 font-semibold disabled:opacity-50">Receipt PDF</button><button type="button" disabled={pdfBusy} onClick={() => void document("receipt", payment.id, true)} className="min-h-10 rounded-lg border border-berseem px-3 font-semibold text-berseem disabled:opacity-50">Receipt share karein</button>{receiptWa && <a href={receiptWa} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center rounded-lg border border-line px-3 font-semibold">WhatsApp matn</a>}</div>}
+            {payment && <div className="flex w-full flex-wrap gap-2 sm:justify-end"><button type="button" disabled={pdfBusy} onClick={() => void document("receipt", payment.id, "download")} className="min-h-10 rounded-lg border border-line px-3 font-semibold disabled:opacity-50">Receipt PDF</button><button type="button" disabled={pdfBusy} onClick={() => void document("receipt", payment.id, "share")} className="min-h-10 rounded-lg border border-berseem px-3 font-semibold text-berseem disabled:opacity-50">Receipt share karein</button>{receiptWa && <a href={receiptWa} target="_blank" rel="noreferrer" aria-disabled={pdfBusy} onClick={(event) => { if (pdfBusyRef.current) event.preventDefault(); else void document("receipt", payment.id, "whatsapp"); }} className="inline-flex min-h-10 items-center rounded-lg border border-line px-3 font-semibold">WhatsApp chat + PDF</a>}</div>}
+            {payment && pdfTarget === `receipt:${payment.id}` && pdfStatus && <p role={pdfStatus.startsWith("PDF nahi") ? "alert" : "status"} className="w-full text-sm text-berseem-deep">{pdfStatus}</p>}
             {paymentEntry?.delivery_id && <p className="w-full text-xs text-muted">Naqd sale: is entry ko doodh ki shift se durust karein.</p>}
             {paymentEntry && !paymentEntry.delivery_id && <div className="flex w-full gap-2 sm:justify-end"><button type="button" disabled={busy} onClick={() => { setEditingPaymentId(editingPaymentId === paymentEntry.id ? null : paymentEntry.id); setVoidPaymentId(null); }} className="min-h-10 rounded-lg border border-line px-3 font-semibold">Durust karein</button><button type="button" disabled={busy} onClick={() => { setVoidPaymentId(voidPaymentId === paymentEntry.id ? null : paymentEntry.id); setEditingPaymentId(null); }} className="min-h-10 rounded-lg border border-udhaar px-3 font-semibold text-udhaar">Radd karein</button></div>}
             {paymentEntry && editingPaymentId === paymentEntry.id && <form key={`${paymentEntry.id}-${paymentEntry.revision}`} onSubmit={(event) => onCorrection(event, paymentEntry.id)} className="grid w-full gap-2 rounded-xl bg-ground p-3 sm:grid-cols-2">
@@ -279,7 +296,6 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
         })}{!auditQuery.data.length && <li className="py-2 text-muted">Abhi koi correction nahi.</li>}</ul>}
         {!!auditQuery.data?.length && <p className="mt-2 text-xs text-muted">Poori audit history Settings ke data export mein milti hai.</p>}
       </Panel>
-      {pdfStatus && <p role="status" className="text-berseem-deep lg:col-span-2">{pdfStatus}</p>}
       {success && <p role="status" className="text-berseem-deep lg:col-span-2">{success}</p>}
       {error && <p role="alert" className="text-udhaar lg:col-span-2">Save nahi hua: {error}</p>}
     </Body>

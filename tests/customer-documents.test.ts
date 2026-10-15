@@ -70,3 +70,20 @@ it("hands the receipt PDF to the phone's app chooser", async () => {
   expect(canShare).toHaveBeenCalledWith({ files: payload.files });
   expect(new Uint8Array(await payload.files![0].arrayBuffer())).toEqual(bytes);
 });
+
+it("keeps the PDF available for a second tap when native sharing loses activation", async () => {
+  const share = vi.fn().mockRejectedValue(new DOMException("Activation expired", "NotAllowedError"));
+  vi.stubGlobal("navigator", { share, canShare: () => true });
+
+  expect(await shareCustomerPdf("receipt.pdf", new Uint8Array([37, 80, 68, 70]), "Receipt", "Wusooli"))
+    .toBe("retry");
+  expect(share).toHaveBeenCalledTimes(1);
+});
+
+it("does not download a receipt when the owner cancels the share sheet", async () => {
+  const share = vi.fn().mockRejectedValue(new DOMException("Cancelled", "AbortError"));
+  vi.stubGlobal("navigator", { share, canShare: () => true });
+
+  expect(await shareCustomerPdf("receipt.pdf", new Uint8Array([37, 80, 68, 70]), "Receipt", "Wusooli"))
+    .toBe("cancelled");
+});

@@ -9,6 +9,7 @@ const lifecycleMigrations = [
   "20261015000029_animal_lifecycle.sql",
   "20261015000030_guard_animal_sale_ledger.sql",
   "20261015000031_breeding_register_offspring.sql",
+  "20261015000032_lock_linked_calf_identity.sql",
 ];
 
 beforeAll(async () => {

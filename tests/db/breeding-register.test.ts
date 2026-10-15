@@ -60,6 +60,10 @@ it("creates one live calf with a temporary ID and returns the same calving on re
     .rejects.toThrow(/CALVING_OFFSPRING_IMMUTABLE/);
   await expect(db.query("update animals set mother_id = null where id = $1", [rows[0].calf_id]))
     .rejects.toThrow(/CALF_BIRTH_IMMUTABLE/);
+  await expect(db.query("update animals set sex = 'male' where id = $1", [rows[0].calf_id]))
+    .rejects.toThrow(/CALF_BIRTH_IMMUTABLE/);
+  await expect(db.query("update animals set species = 'buffalo' where id = $1", [rows[0].calf_id]))
+    .rejects.toThrow(/CALF_BIRTH_IMMUTABLE/);
   await db.query("update animals set tag = 'NEW-TAG' where id = $1", [rows[0].calf_id]);
 });
 

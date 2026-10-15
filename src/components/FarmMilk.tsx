@@ -8,6 +8,7 @@ import { friendlyError } from "@/lib/errors";
 import { Body, PageHeader, Panel } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
 import { MinusIcon, PlusIcon } from "./icons";
+import { GyarhwinNotice } from "./GyarhwinNotice";
 
 type Shift = "morning" | "evening";
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
@@ -91,5 +92,5 @@ export default function FarmMilk() {
   if (!query.data) return <FarmLoading error={query.error} retry={() => void query.refetch()} />;
   const d = query.data;
   const chosen = date || d.today;
-  return <><PageHeader title="Doodh entry" sub={longDate(chosen)} /><Body><div className="mb-4 grid gap-2 sm:grid-cols-2"><label className="text-sm font-semibold">Tareekh<input type="date" value={chosen} max={d.today} onChange={(e) => setDate(e.target.value)} className={field} /></label><div role="tablist" aria-label="Shift" className="flex gap-1 rounded-xl bg-ground p-1">{(["morning", "evening"] as const).map((s) => <button key={s} role="tab" aria-selected={shift === s} onClick={() => setShift(s)} className={`min-h-11 flex-1 rounded-lg font-bold ${shift === s ? "bg-paper" : "text-muted"}`}>{s === "morning" ? "Subah" : "Shaam"}</button>)}</div></div><ShiftForm key={`${chosen}-${shift}`} data={d} date={chosen} shift={shift} /></Body></>;
+  return <><PageHeader title="Doodh entry" sub={longDate(chosen)} /><Body><div className="mb-4 grid gap-2 sm:grid-cols-2"><label className="text-sm font-semibold">Tareekh<input type="date" value={chosen} max={d.today} onChange={(e) => setDate(e.target.value)} className={field} /></label><div role="tablist" aria-label="Shift" className="flex gap-1 rounded-xl bg-ground p-1">{(["morning", "evening"] as const).map((s) => <button key={s} role="tab" aria-selected={shift === s} onClick={() => setShift(s)} className={`min-h-11 flex-1 rounded-lg font-bold ${shift === "morning" ? "bg-paper" : "text-muted"}`}>{s === "morning" ? "Subah" : "Shaam"}</button>)}</div></div><GyarhwinNotice today={d.today} settings={d.settings} className="mb-4" /><ShiftForm key={`${chosen}-${shift}`} data={d} date={chosen} shift={shift} /></Body></>;
 }

@@ -1,12 +1,12 @@
 # Dairy Farm: implementation and acceptance plan
 
-Updated for the Step 5 milk work on 2026-10-15. The [roadmap](ROADMAP.md) defines eight steps. Update this document as each feature changes; the status below is based on code, not a claim that every workflow has passed an end-to-end audit.
+Updated for the Step 5 milk and Gyarhwin reminder work on 2026-10-15. The [roadmap](ROADMAP.md) defines eight steps. Update this document as each feature changes; the status below is based on code, not a claim that every workflow has passed an end-to-end audit.
 
 ## Architecture and environments
 
 Next.js builds a static site on Netlify. React Query and the Supabase browser client read and write PostgreSQL records. The browser gets only a publishable key. Tables, constraints, triggers, RLS, and database report functions are the source of truth for financial records. Stored money uses PostgreSQL `numeric(12,2)` and business dates use `date` and the database `farm_today()` rule; browser timezone and floating-point sums must not redefine balances.
 
-Netlify main and Deploy Previews currently connect to **staging**, which contains invented demo data and allows shared access. A separate **production** Supabase project has the same 37 migrations, owner-only access, and no demo seed. Production is reserved for real client data. Switching the live site to production requires a planned release; there is no browser database toggle.
+Netlify main and Deploy Previews currently connect to **staging**, which contains invented demo data and allows shared access. A separate **production** Supabase project has the same migrations, owner-only access, and no demo seed. Production is reserved for real client data. Switching the live site to production requires a planned release; there is no browser database toggle.
 
 ## Definition of done for every step
 
@@ -25,7 +25,7 @@ Netlify main and Deploy Previews currently connect to **staging**, which contain
 | **2. Janwar** | Animal records, health, and sale/death data; arrival, optional age evidence, dated history, and other departure are in the animal lifecycle update. | Finish Excel import and a correction audit trail; verify historical records and inactive animals. |
 | **3. Nasl kashi** | Farm-wide due register, dated breeding entries, atomic calving with individual offspring, temporary calf IDs, and exports. | Verify the owner flow on a real phone; design audited corrections and unusual higher-order births later. |
 | **4. Customers** | [Types, opening balances, dated rates, profiles, and monthly views](steps/step-4-customers.md). | Check the hosted preview with owner workflows; historical repricing needs an audited correction design. |
-| **5. Doodh** | [Exact per-animal or total production, deliveries, shift notes, stale-save protection, and Naqd auto payment](steps/step-5-milk.md). | Verify the hosted preview and owner workflow on a real phone; design audited milk corrections later. |
+| **5. Doodh** | [Exact per-animal or total production, deliveries, shift notes, stale-save protection, Naqd auto payment, and an optional monthly Gyarhwin cue](steps/step-5-milk.md). | Verify the hosted preview and owner workflow on a real phone; design audited milk corrections later. |
 | **6. Wusooli / galla** | Payments, monthly bills, company bills, PDFs/share, Galla UI, manual transfers, cash counts, and audited corrections are implemented in PR #10. | Verify the live preview on phone and laptop, especially device sharing and real owner workflows. |
 | **7. Kharcha** | Farm/home expenses, categories, accounts, profit screens, and staff salary periods with partial payments. | Verify the salary preview; complete other income and audited expense corrections in later focused work. |
 | **8. Reports / launch** | Dashboard, monthly reports, CSV/Excel/PDF exports, and JSON data snapshot. | Finish month-lock controls, backup/restore plan, real-data import, monitoring, and production launch checks. |

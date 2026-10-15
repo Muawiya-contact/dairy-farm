@@ -20,7 +20,7 @@ import {
 } from "@/lib/customer-documents";
 import { whatsappChatUrl, whatsappNumber } from "@/lib/phone";
 import { downloadBlob } from "@/lib/export-data";
-import { formatMonth } from "@/lib/dates";
+import { addDays, formatMonth } from "@/lib/dates";
 import { correctPayment, getCustomerPaymentAudit, recordDiscount, voidPayment } from "@/lib/galla";
 import { parseDiscount, parsePaymentCorrection, parseVoidReason } from "@/lib/galla-forms";
 import { Body, PageHeader, Panel } from "./ui";
@@ -28,6 +28,9 @@ import { FarmLoading } from "./FarmDashboard";
 import { PlusIcon } from "./icons";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
+const freeReasons = {
+  owner: "Ghar / malik", staff: "Mulazim", charity: "Khairat", calves: "Bachhre", other: "Dusri wajah",
+} as const;
 type Save = (action: () => Promise<void>, message: string) => Promise<boolean>;
 type PdfAction = "download" | "share" | "whatsapp";
 
@@ -65,7 +68,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
   const onProfile = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const values = new FormData(event.currentTarget);
-    void save(() => updateCustomerProfile(c.id, parseCustomerProfile(values)), "Customer ki maloomat save ho gayi.")
+    void save(() => updateCustomerProfile(c.id, parseCustomerProfile(values, c.kind)), "Customer ki maloomat save ho gayi.")
       .then((saved) => { if (saved) setEditing(false); });
   };
   const onPayment = (event: FormEvent<HTMLFormElement>) => {
@@ -73,7 +76,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
     const form = event.currentTarget;
     const values = new FormData(form);
     void save(async () => {
-      const input = parseCustomerPayment(values, data.today);
+      const input = parseCustomerPayment(values, data.today, c.opening_date);
       const signature = JSON.stringify(input);
       if (paymentPending.current?.signature !== signature) paymentPending.current = { id: crypto.randomUUID(), signature };
       await recordCustomerPayment(c.id, input, paymentPending.current.id);
@@ -124,7 +127,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
     const form = event.currentTarget;
     const values = new FormData(form);
     void save(async () => {
-      const input = parseCompanyBill(values, data.today);
+      const input = parseCompanyBill(values, data.today, c.opening_date);
       await insertRow("company_bills", {
         customer_id: c.id, from_date: input.from, to_date: input.to,
         litres: input.litres, amount: input.amount,
@@ -172,7 +175,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
   };
 
   return <>
-    <PageHeader title={c.name} sub={`${c.active ? "Active" : "Band"} · ${c.phone || "Phone darj nahi"} · Subah ${amount(c.default_morning)} L · Shaam ${amount(c.default_evening)} L${rate ? ` · ${money(rate)}/L` : ""}`} back="/khata/" />
+    <PageHeader title={c.name} sub={`${c.active ? "Active" : "Band"} · ${c.kind === "free" ? `Muft: ${freeReasons[c.free_reason ?? "other"]} · ` : ""}${c.phone || "Phone darj nahi"} · Subah ${amount(c.default_morning)} L · Shaam ${amount(c.default_evening)} L${rate ? ` · ${money(rate)}/L` : ""}`} back="/khata/" />
     <Body className="grid gap-4 lg:grid-cols-2">
       <section className={`rounded-2xl p-5 text-white ${balance > 0 ? "bg-udhaar" : "bg-berseem"}`}>
         <p className="text-white/80">{balance > 0 ? "Baqi raqam" : balance < 0 ? "Customer ka advance" : "Hisaab saaf"}</p>
@@ -184,6 +187,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
           <label className="text-sm font-semibold">Naam<input name="name" required defaultValue={c.name} className={field} /></label>
           <label className="text-sm font-semibold">Phone<input name="phone" type="tel" defaultValue={c.phone ?? ""} placeholder="03xxxxxxxxx (optional)" className={field} /></label>
           <div className="grid gap-2 sm:grid-cols-2"><label className="text-sm font-semibold">Subah (L)<input name="morning" type="number" min="0" max="5000" step="0.01" defaultValue={c.default_morning || ""} placeholder="Khali = 0" className={field} /></label><label className="text-sm font-semibold">Shaam (L)<input name="evening" type="number" min="0" max="5000" step="0.01" defaultValue={c.default_evening || ""} placeholder="Khali = 0" className={field} /></label></div>
+          {c.kind === "free" && <label className="text-sm font-semibold">Muft doodh ki wajah<select name="freeReason" defaultValue={c.free_reason ?? "other"} required className={field}>{Object.entries(freeReasons).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>}
           <label className="flex items-center gap-2 text-sm font-semibold"><input name="active" type="checkbox" defaultChecked={c.active} /> Doodh entry mein active rakhein</label>
           <p className="text-xs text-muted">Qism aur pichla baqaya badalne se purana hisaab badal sakta hai; yahan sirf rozmarra maloomat badlein.</p>
           <button disabled={busy} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50">Maloomat save karein</button>
@@ -213,7 +217,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
       {c.kind !== "cash" && c.kind !== "free" && <Panel title="Wusooli likhein">
         <form onSubmit={onPayment} className="grid gap-2">
           <input name="amount" required type="number" min="0.01" step="0.01" placeholder="Raqam Rs" aria-label="Raqam" className={field} />
-          <label className="text-sm text-muted">Wusooli ki tareekh<input name="date" type="date" max={data.today} defaultValue={data.today} required className={field} /></label>
+          <label className="text-sm text-muted">Wusooli ki tareekh<input name="date" type="date" min={c.opening_date} max={data.today} defaultValue={data.today} required className={field} /></label>
           <select name="method" aria-label="Method" className={field}><option value="cash">Cash</option><option value="bank">Bank</option><option value="easypaisa">Easypaisa</option><option value="jazzcash">JazzCash</option><option value="cheque">Cheque</option></select>
           <select name="account" required aria-label="Account" defaultValue="" className={field}><option value="" disabled>Raqam kis account mein aayi?</option>{activeAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select>
           <button disabled={busy || !activeAccounts.length} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50">Wusooli save karein</button>
@@ -224,24 +228,24 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
         <p className="mb-2 text-sm text-muted">Riayat customer ka baqaya kam karti hai; galla mein paisa nahi aata.</p>
         <form onSubmit={onDiscount} className="grid gap-2">
           <input name="amount" type="number" min="0.01" step="0.01" required placeholder="Riayat Rs" aria-label="Riayat raqam" className={field} />
-          <label className="text-sm text-muted">Riayat ki tareekh<input name="date" type="date" max={data.today} defaultValue={data.today} required className={field} /></label>
+          <label className="text-sm text-muted">Riayat ki tareekh<input name="date" type="date" min={c.opening_date} max={data.today} defaultValue={data.today} required className={field} /></label>
           <input name="reason" required placeholder="Riayat ki wajah" aria-label="Riayat ki wajah" className={field} />
           <button disabled={busy} className="min-h-11 rounded-xl border border-berseem font-bold text-berseem disabled:opacity-50">Riayat save karein</button>
         </form>
       </Panel>}
       {c.kind !== "company" && c.kind !== "free" && <Panel title="Doodh ka rate">
-        <p className="mb-2 text-sm text-muted">Rate ki tareekh chunein. Purani saved deliveries ki raqam nahi badlegi.</p>
+        <p className="mb-2 text-sm text-muted">Rate ki tareekh chunein. Saved doodh entries ke darmiyan purana rate nahi badal sakte; agle din ka rate pehle se schedule kar sakte hain.</p>
         <form onSubmit={onRate} className="grid gap-2">
           <input key={`${c.id}-${rate}`} name="rate" type="number" min="0.01" step="0.01" defaultValue={rate || data.settings.default_milk_rate} required placeholder="Naya rate Rs/L" aria-label="Naya rate Rs/L" className={field} />
-          <label className="text-sm text-muted">Rate ki tareekh<input name="date" type="date" min={c.opening_date} max={data.today} defaultValue={data.today} required className={field} /></label>
+          <label className="text-sm text-muted">Rate ki tareekh<input name="date" type="date" min={c.opening_date} max={addDays(data.today, 365)} defaultValue={data.today} required className={field} /></label>
           <button disabled={busy} className="min-h-11 rounded-xl border border-berseem font-bold text-berseem">Rate save karein</button>
         </form>
-        <div className="mt-3 border-t border-line pt-2 text-sm"><strong>Rate ki tareekhwar list</strong><ul>{data.rates.filter((item) => item.customer_id === c.id).sort((a, b) => b.effective_from.localeCompare(a.effective_from)).map((item) => <li key={item.id} className="flex justify-between gap-2 py-1"><span>{shortDate(item.effective_from)}</span><span>{money(item.rate)}/L</span></li>)}</ul></div>
+        <div className="mt-3 border-t border-line pt-2 text-sm"><strong>Rate ki tareekhwar list</strong><ul>{data.rates.filter((item) => item.customer_id === c.id).sort((a, b) => b.effective_from.localeCompare(a.effective_from)).map((item) => <li key={item.id} className="flex justify-between gap-2 py-1"><span>{shortDate(item.effective_from)}{item.effective_from > data.today ? " · Aane wala" : ""}</span><span>{money(item.rate)}/L</span></li>)}</ul></div>
       </Panel>}
       {c.kind === "company" && <Panel title="Company bill">
         <form onSubmit={onCompanyBill} className="grid gap-2">
-          <label className="text-sm">Shuru<input name="from" type="date" max={data.today} required defaultValue={`${data.today.slice(0, 7)}-01`} className={field} /></label>
-          <label className="text-sm">Khatam<input name="to" type="date" max={data.today} required defaultValue={data.today} className={field} /></label>
+          <label className="text-sm">Shuru<input name="from" type="date" min={c.opening_date} max={data.today} required defaultValue={c.opening_date > `${data.today.slice(0, 7)}-01` ? c.opening_date : `${data.today.slice(0, 7)}-01`} className={field} /></label>
+          <label className="text-sm">Khatam<input name="to" type="date" min={c.opening_date} max={data.today} required defaultValue={data.today} className={field} /></label>
           <input name="litres" type="number" min="0" step="0.01" required placeholder="Slip litres" aria-label="Slip litres" className={field} />
           <input name="amount" type="number" min="0" step="0.01" required placeholder="Bill Rs" aria-label="Bill Rs" className={field} />
           <button disabled={busy} className="min-h-11 rounded-xl bg-berseem font-bold text-white">Bill save karein</button>
@@ -307,9 +311,15 @@ function CustomerList({ data, save, busy, error, success }: {
 }) {
   const [adding, setAdding] = useState(false);
   const [kind, setKind] = useState<CustomerKind>("regular");
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<"all" | "active" | "inactive">("all");
   const list = [...data.customers].sort((a, b) =>
     amount(data.balances.find((x) => x.customer_id === b.id)?.balance) -
     amount(data.balances.find((x) => x.customer_id === a.id)?.balance));
+  const visible = list.filter((customer) =>
+    (status === "all" || customer.active === (status === "active")) &&
+    `${customer.name} ${customer.phone ?? ""} ${customer.phone?.replace(/^\+92/, "0") ?? ""}`
+      .toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
   const totalDue = list.reduce((n, c) => n + Math.max(0, amount(data.balances.find((x) => x.customer_id === c.id)?.balance)), 0);
   const onCreate = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -324,6 +334,7 @@ function CustomerList({ data, save, busy, error, success }: {
         <input name="name" required placeholder="Naam" aria-label="Naam" className={field} />
         <input name="phone" type="tel" placeholder="Phone (misal: 03xxxxxxxxx)" aria-label="Phone" className={field} />
         <select name="kind" value={kind} onChange={(e) => setKind(e.target.value as CustomerKind)} aria-label="Qism" className={field}><option value="regular">Regular</option><option value="contractor">Contractor</option><option value="company">Company</option><option value="cash">Cash</option><option value="free">Muft</option></select>
+        {kind === "free" && <label className="text-sm text-muted">Muft doodh ki wajah<select name="freeReason" defaultValue="" required className={field}><option value="" disabled>Wajah chunein</option>{Object.entries(freeReasons).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>}
         <label className="text-sm text-muted">Doodh ka rate (Rs/L) · Settings se<input name="rate" type="number" min="0.01" step="0.01" defaultValue={data.settings.default_milk_rate} placeholder="Rate Rs/L" disabled={kind === "company" || kind === "free"} className={field} /></label>
         <input name="morning" type="number" min="0" max="5000" step="0.01" placeholder="Subah L (khali = 0)" aria-label="Subah litres" className={field} />
         <input name="evening" type="number" min="0" max="5000" step="0.01" placeholder="Shaam L (khali = 0)" aria-label="Shaam litres" className={field} />
@@ -332,11 +343,12 @@ function CustomerList({ data, save, busy, error, success }: {
         <button disabled={busy} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50 sm:col-span-2">Customer save karein</button>
       </form></Panel>}
       <section className="rounded-2xl bg-udhaar p-5 text-white"><p className="text-white/80">Kul udhaar jo lena hai</p><p className="font-display text-[40px] font-extrabold">{money(totalDue)}</p></section>
-      <ul className="overflow-hidden rounded-2xl border border-line bg-paper">{list.map((c) => {
+      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_12rem]"><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Naam ya phone dhoondein" aria-label="Customer dhoondein" className={field} /><select value={status} onChange={(event) => setStatus(event.target.value as typeof status)} aria-label="Customer status" className={field}><option value="all">Sab customers</option><option value="active">Active</option><option value="inactive">Band</option></select></div>
+      <ul className="overflow-hidden rounded-2xl border border-line bg-paper">{visible.map((c) => {
         const balance = amount(data.balances.find((x) => x.customer_id === c.id)?.balance);
         const report = data.reports.find((x) => x.customer_id === c.id);
-        return <li key={c.id} className="border-b border-line last:border-0"><Link href={`/khata/?id=${c.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-ground"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ground font-display font-bold">{c.name.slice(0, 2).toUpperCase()}</span><span className="min-w-0 flex-1"><strong className="block truncate">{c.name}</strong><span className="text-sm text-muted">Is maah {amount(report?.litres)} L</span></span><strong className={balance > 0 ? "text-udhaar" : "text-berseem"}>{balance > 0 ? money(balance) : balance < 0 ? `Advance ${money(-balance)}` : "Saaf"}</strong></Link></li>;
-      })}{!list.length && <li className="p-5 text-muted">Abhi koi customer nahi.</li>}</ul>
+        return <li key={c.id} className="border-b border-line last:border-0"><Link href={`/khata/?id=${c.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-ground"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ground font-display font-bold">{c.name.slice(0, 2).toUpperCase()}</span><span className="min-w-0 flex-1"><strong className="block truncate">{c.name}</strong><span className="text-sm text-muted">{c.active ? "Active" : "Band"} · Is maah {amount(report?.litres)} L</span></span><strong className={balance > 0 ? "text-udhaar" : "text-berseem"}>{balance > 0 ? money(balance) : balance < 0 ? `Advance ${money(-balance)}` : "Saaf"}</strong></Link></li>;
+      })}{!visible.length && <li className="p-5 text-muted">{list.length ? "Is talash mein koi customer nahi." : "Abhi koi customer nahi."}</li>}</ul>
       {success && <p role="status" className="text-berseem-deep">{success}</p>}
       {error && <p role="alert" className="text-udhaar">Save nahi hua: {error}</p>}
     </Body>

@@ -5,8 +5,8 @@
 The existing dashboard, monthly reports, and CSV/Excel/PDF exports continue to
 read Supabase. This PR adds an owner action for closing or reopening a complete
 past month, an import **dry run**, and a read-only connection check in Settings.
-The owner will handle backups separately. No backup scheduler, restore tool, or
-Supabase plan change is included.
+The owner can download a manual farm-data copy from Settings. No backup
+scheduler, restore tool, or Supabase plan change is included.
 
 ## Month close
 
@@ -72,3 +72,16 @@ hosted-preview results in the PR rather than assuming a build proves them.
 
 Optional later work: transactional import, audited corrections to closed
 periods, and automated alerts on deployment or database failures.
+
+## Manual data copy
+
+Settings downloads a JSON file containing every exported public farm table,
+row counts, export time, and a SHA-256 checksum. The app fetches each table in
+ordered pages and stops without downloading a partial file if any table fails.
+The checksum detects later changes to the downloaded JSON, but the tables are
+read one after another, so the file is not a transactionally consistent
+database snapshot if users edit data during the download. It excludes Auth
+accounts, private schema, and any external file storage. There is no restore
+button; preserve migrations separately and test a restore procedure before
+relying on this file for disaster recovery. Store the download securely because
+it contains customer and financial records.

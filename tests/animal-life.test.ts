@@ -1,8 +1,20 @@
 import { expect, it } from "vitest";
-import { animalAge, animalLifeEvents, parseAnimalDates } from "../src/lib/animal-life";
+import { animalAge, animalLifeEvents, matchesAnimalFilter, parseAnimalDates } from "../src/lib/animal-life";
 import type { Animal, FarmData } from "../src/lib/farm-data";
 
 const today = "2026-10-15";
+
+it("keeps sold and dead animals out of active species and milk filters", () => {
+  const cow = { life_status: "active", species: "cow", milking_status: "milking" } as const;
+  const sold = { ...cow, life_status: "sold" } as const;
+  const deadBuffalo = { life_status: "dead", species: "buffalo", milking_status: "dry" } as const;
+  expect(matchesAnimalFilter(cow, "cow")).toBe(true);
+  expect(matchesAnimalFilter(sold, "cow")).toBe(false);
+  expect(matchesAnimalFilter(deadBuffalo, "buffalo")).toBe(false);
+  expect(matchesAnimalFilter(sold, "milking")).toBe(false);
+  expect(matchesAnimalFilter(sold, "sold")).toBe(true);
+  expect(matchesAnimalFilter(deadBuffalo, "all")).toBe(true);
+});
 
 it("requires an arrival date, and derives a farm-born animal's arrival from its birth", () => {
   expect(parseAnimalDates({ source: "born", arrival: "", birth: "2024-02-29", estimatedYears: "", estimatedMonths: "", today }))

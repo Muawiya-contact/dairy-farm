@@ -7,7 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { amount, insertRow, longDate, money, recordHealthEvent, shortDate, useFarmData, type Animal } from "@/lib/farm-data";
 import { friendlyError } from "@/lib/errors";
 import { parseAmount } from "@/lib/format";
-import { animalAge, animalLifeEvents, parseAnimalDates, type AnimalSource } from "@/lib/animal-life";
+import { animalAge, animalLifeEvents, matchesAnimalFilter, parseAnimalDates, type AnimalSource } from "@/lib/animal-life";
 import { Body, PageHeader, Panel, StatusTag } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
 import { PlusIcon, SearchIcon } from "./icons";
@@ -73,7 +73,7 @@ export default function FarmAnimals() {
       <AnimalBreeding animal={selected} animals={d.animals} records={breeding} calvings={d.calvings.filter((x) => x.animal_id === selected.id)} offspring={d.calvingOffspring} today={d.today} busy={busy} run={run} />
       {error && <p role="alert" className="text-udhaar lg:col-span-2">Save nahi hua: {error}</p>}</Body></>;
   }
-  const list = d.animals.filter((a) => (filter === "all" || a.life_status === filter || a.species === filter || a.milking_status === filter) && `${a.tag} ${a.name ?? ""} ${a.breed ?? ""}`.toLowerCase().includes(term.toLowerCase()));
+  const list = d.animals.filter((a) => matchesAnimalFilter(a, filter) && `${a.tag} ${a.name ?? ""} ${a.breed ?? ""}`.toLowerCase().includes(term.toLowerCase()));
   return <><PageHeader title="Janwar" sub={`${active.length} active, ${active.filter((a) => a.milking_status === "milking").length} doodh de rahe`} action={<button onClick={() => setAdd(!add)} className="flex min-h-11 items-center gap-1 rounded-xl bg-berseem px-4 font-semibold text-white"><PlusIcon width={18} />Naya</button>} />
     <Body><Link href="/nasl/" className="inline-flex min-h-11 items-center rounded-xl border border-berseem px-4 font-semibold text-berseem">Nasl kashi register aur due kaam</Link>{add && <Panel title="Naya janwar"><form onSubmit={(e: FormEvent<HTMLFormElement>) => { e.preventDefault(); const f = new FormData(e.currentTarget); void run(async () => { const dates = parseAnimalDates({ source: newSource, arrival: String(f.get("arrival") ?? ""), birth: String(f.get("birth") ?? ""), estimatedYears: String(f.get("ageYears") ?? ""), estimatedMonths: String(f.get("ageMonths") ?? ""), purchaseDate: String(f.get("purchaseDate") ?? ""), today: d.today }); await insertRow("animals", { tag: String(f.get("tag") ?? "").trim(), name: String(f.get("name") || "").trim() || null, species: String(f.get("species")), breed: String(f.get("breed") || "").trim() || null, sex: newSex, category: String(f.get("category")), milking_status: newSex === "male" ? "none" : String(f.get("milking")), source: newSource, ...dates, purchase_price: newSource === "purchased" && String(f.get("purchasePrice") || "").trim() ? parseAmount(String(f.get("purchasePrice"))) : null, notes: String(f.get("notes") || "").trim() || null }); }); }} className="grid gap-3 sm:grid-cols-2">
       <input name="tag" required placeholder="Tag number" aria-label="Tag number" className={field} /><input name="name" placeholder="Naam (optional)" aria-label="Naam" className={field} /><input name="breed" placeholder="Nasl" aria-label="Nasl" className={field} />

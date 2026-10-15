@@ -4,6 +4,12 @@ import type { Animal, FarmData } from "./farm-data";
 export type AnimalSource = "born" | "purchased" | "gift" | "transfer" | "other";
 export type AnimalExit = "sold" | "dead" | "removed";
 
+export function matchesAnimalFilter(animal: Pick<Animal, "life_status" | "species" | "milking_status">, filter: string): boolean {
+  if (filter === "all") return true;
+  if (filter === "active" || filter === "sold" || filter === "dead" || filter === "removed") return animal.life_status === filter;
+  return animal.life_status === "active" && (animal.species === filter || animal.milking_status === filter);
+}
+
 const validDate = (value: string, today: string, label: string): string => {
   try {
     if (daysBetween(value, today) < 0) throw new RangeError();

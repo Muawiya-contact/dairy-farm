@@ -7,8 +7,9 @@ import { breedingFields, getSettings, updateSettings, validateSettings, type Far
 import { parseAmount } from "@/lib/format";
 import { friendlyError } from "@/lib/errors";
 import { createAccount, getAccounts, updateAccount, validateAccount, type FarmAccount } from "@/lib/accounts";
-import { todayPK } from "@/lib/dates";
+import { formatDay, todayPK } from "@/lib/dates";
 import { ExportPanel } from "@/components/ExportPanel";
+import { estimatedHijriDate, nextGyarhwinDate } from "@/lib/gyarhwin";
 
 const inputClass = "mt-1 min-h-12 w-full rounded-xl border border-line bg-paper px-3 outline-none focus:border-berseem";
 
@@ -19,7 +20,15 @@ function SettingsForm({ initial }: { initial: FarmSettings }) {
   const [contactPhone, setContactPhone] = useState(initial.contact_phone);
   const [rate, setRate] = useState(String(initial.default_milk_rate));
   const [footer, setFooter] = useState(initial.whatsapp_footer);
+  const [gyarhwinEnabled, setGyarhwinEnabled] = useState(initial.gyarhwin_reminder_enabled);
+  const [hijriAdjustment, setHijriAdjustment] = useState(String(initial.hijri_date_adjustment));
+  const [eidFitrDate, setEidFitrDate] = useState(initial.eid_fitr_start_date ?? "");
+  const [eidAdhaDate, setEidAdhaDate] = useState(initial.eid_adha_start_date ?? "");
   const [days, setDays] = useState(() => Object.fromEntries(breedingFields.map(({ key }) => [key, String(initial[key])])) as Record<(typeof breedingFields)[number]["key"], string>);
+  const adjustmentDays = Number(hijriAdjustment);
+  const today = todayPK();
+  const hijriToday = estimatedHijriDate(today, adjustmentDays);
+  const nextGyarhwin = nextGyarhwinDate(today, adjustmentDays);
   const [validation, setValidation] = useState("");
   const mutation = useMutation({
     mutationFn: updateSettings,
@@ -38,6 +47,8 @@ function SettingsForm({ initial }: { initial: FarmSettings }) {
       whatsapp_footer: footer.trim(), ultrasound_days: Number(days.ultrasound_days),
       checkup_days: Number(days.checkup_days), dry_off_days: Number(days.dry_off_days),
       calving_days: Number(days.calving_days), fresh_days: Number(days.fresh_days),
+      gyarhwin_reminder_enabled: gyarhwinEnabled, hijri_date_adjustment: Number(hijriAdjustment),
+      eid_fitr_start_date: eidFitrDate || null, eid_adha_start_date: eidAdhaDate || null,
     };
     const issue = validateSettings(values);
     if (issue) { setValidation(issue); return; }
@@ -55,6 +66,24 @@ function SettingsForm({ initial }: { initial: FarmSettings }) {
       </div>
       <fieldset className="mt-5"><legend className="font-display text-lg font-bold">Nasl kashi ke din</legend><p className="mb-3 text-sm text-muted">Tabdeeli sirf nayi entries par lagegi.</p>
         <div className="grid gap-4 sm:grid-cols-2">{breedingFields.map(({ key, label, min, max }) => <label key={key} className="font-semibold">{label} (din)<input required disabled={mutation.isPending} type="number" min={min} max={max} step="1" placeholder={`${min}–${max} din`} value={days[key]} onChange={(event) => { edit(); setDays((current) => ({ ...current, [key]: event.target.value })); }} className={inputClass} /></label>)}</div>
+      </fieldset>
+      <fieldset className="mt-5 border-t border-line pt-5"><legend className="font-display text-lg font-bold">Gyarhwin doodh reminder</legend>
+        <label className="mt-2 flex items-center gap-2 font-semibold"><input type="checkbox" disabled={mutation.isPending} checked={gyarhwinEnabled} onChange={(event) => { edit(); setGyarhwinEnabled(event.target.checked); }} /> Har Hijri maheene ki 9, 10 aur 11 tareekh par yaad dilayein</label>
+        <p className="mt-2 text-sm text-muted">Yeh sirf yaad-dihani hai. Doodh ki miktar ya customer delivery khud se nahi badlegi.</p>
+        <label className="mt-3 block max-w-xs font-semibold">Hijri tareekh adjust (din)
+          <select disabled={mutation.isPending} value={hijriAdjustment} onChange={(event) => { edit(); setHijriAdjustment(event.target.value); }} className={inputClass}>
+            <option value="-2">-2 din</option><option value="-1">-1 din</option><option value="0">0 din</option><option value="1">+1 din</option><option value="2">+2 din</option>
+          </select>
+        </label>
+        <p className="mt-2 text-sm text-muted">Aaj ki andazi Hijri tareekh: {hijriToday ? `${hijriToday.day}/${hijriToday.month}/${hijriToday.year}` : "is browser mein dikhai nahi ja sakti"}. Agli Gyarhwin: {nextGyarhwin ? formatDay(nextGyarhwin) : "maloom nahi"}. Maqami Ruet-e-Hilal elaan se milayein; tareekh badalne par adjustment dobara dekhein.</p>
+      </fieldset>
+      <fieldset className="mt-5 border-t border-line pt-5"><legend className="font-display text-lg font-bold">Pakistan ki Eid tareekhein</legend>
+        <p className="mt-2 text-sm text-muted">Sirf Pakistan Central Ruet-e-Hilal ke elaan ke baad pehla din likhein. Khali tareekh par Eid card nahi dikhega. Har saal nayi tasdeeq karein. <a href="https://mora.gov.pk/LatestNews" target="_blank" rel="noopener noreferrer" className="font-semibold text-berseem-deep underline">Rasmi elaan dekhein</a>.</p>
+        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          <label className="font-semibold">Eid ul Fitr ka pehla din<input disabled={mutation.isPending} type="date" value={eidFitrDate} onChange={(event) => { edit(); setEidFitrDate(event.target.value); }} className={inputClass} /></label>
+          <label className="font-semibold">Eid ul Adha ka pehla din<input disabled={mutation.isPending} type="date" value={eidAdhaDate} onChange={(event) => { edit(); setEidAdhaDate(event.target.value); }} className={inputClass} /></label>
+        </div>
+        <p className="mt-2 text-sm text-muted">Save ki hui pehli tareekh se teen din tak Eid card dikhega. Tareekh khali ho to koi Eid card nahi ayega.</p>
       </fieldset>
       <button disabled={mutation.isPending} className="mt-5 min-h-12 rounded-xl bg-berseem px-5 font-bold text-white disabled:opacity-50">{mutation.isPending ? "Save ho raha hai…" : "Save karein"}</button>
       {validation && <p role="alert" className="mt-3 text-udhaar">{validation}</p>}

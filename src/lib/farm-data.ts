@@ -27,7 +27,7 @@ export type CalvingOffspring = Database["public"]["Tables"]["calving_offspring"]
 export type AnimalMilk = { id: string; shift_id: string; animal_id: string; litres: number };
 export type Customer = { id: string; name: string; phone: string | null; kind: CustomerKind; free_reason: FreeReason | null; default_morning: number; default_evening: number; opening_balance: number; opening_date: string; active: boolean; sort_order: number };
 export type CustomerRate = { id: string; customer_id: string; rate: number; effective_from: string };
-export type MilkShift = { id: string; milk_date: string; shift: "morning" | "evening"; total_litres: number; mode: "total" | "per_animal" };
+export type MilkShift = { id: string; milk_date: string; shift: "morning" | "evening"; total_litres: number; mode: "total" | "per_animal"; notes: string | null; updated_at: string };
 export type MilkDelivery = { id: string; delivery_date: string; shift: "morning" | "evening"; customer_id: string; litres: number; rate: number | null; amount: number };
 export type Payment = { id: string; customer_id: string; payment_date: string; amount: number; kind: string; method: string | null; account_id: string | null; delivery_id: string | null; note: string | null; revision: number };
 export type ExpenseCategory = { id: string; name: string; is_farm_cost: boolean; is_salary: boolean; active: boolean; sort_order: number };
@@ -120,22 +120,33 @@ export function customerRate(data: Pick<FarmData, "rates" | "today">, id: string
 /** Keep old deliveries visible when a customer is later made inactive. */
 export function milkShiftCustomers(data: Pick<FarmData, "customers" | "deliveries">, date: string, shift: "morning" | "evening"): Customer[] {
   const historical = new Set(data.deliveries.filter((row) => row.delivery_date === date && row.shift === shift).map((row) => row.customer_id));
-  return data.customers.filter((customer) => customer.active || historical.has(customer.id));
+  return data.customers.filter((customer) => historical.has(customer.id) ||
+    (customer.active && customer.opening_date <= date));
 }
 
 /** An old shift still needs animals that were milking then, even if they are now dry or sold. */
-export function milkShiftAnimals(data: Pick<FarmData, "animals" | "animalMilk">, shiftId: string | undefined): Animal[] {
+export function milkShiftAnimals(data: Pick<FarmData, "animals" | "animalMilk">, shiftId: string | undefined, date?: string, today?: string): Animal[] {
   const historical = new Set(data.animalMilk.filter((row) => row.shift_id === shiftId).map((row) => row.animal_id));
-  return data.animals.filter((animal) =>
-    (animal.life_status === "active" && animal.sex === "female" && animal.milking_status === "milking") || historical.has(animal.id));
+  return data.animals.filter((animal) => {
+    const onFarm = !date || ((!animal.arrival_date || animal.arrival_date <= date)
+      && (!animal.birth_date || animal.birth_date <= date)
+      && (!animal.exit_date || date < animal.exit_date));
+    const wasOnFarmOnPastDay = Boolean(date && today && date < today);
+    return historical.has(animal.id) ||
+      (animal.sex === "female" && onFarm &&
+        (wasOnFarmOnPastDay || (animal.life_status === "active" && animal.milking_status === "milking")));
+  });
 }
 
-export async function saveMilkEntry(input: { date: string; shift: "morning" | "evening"; total: number; mode: "total" | "per_animal"; animals: { animal_id: string; litres: number }[]; deliveries: { customer_id: string; litres: number }[] }) {
-  const { error } = await getSupabase().rpc("save_milk_entry", {
+export async function saveMilkEntry(input: { date: string; shift: "morning" | "evening"; total: number; mode: "total" | "per_animal"; animals: { animal_id: string; litres: number }[]; deliveries: { customer_id: string; litres: number }[]; expectedUpdatedAt: string | null; notes: string }) {
+  const { data, error } = await getSupabase().rpc("save_milk_entry_checked", {
     p_date: input.date, p_shift: input.shift, p_total: input.total, p_mode: input.mode,
     p_animals: input.animals, p_deliveries: input.deliveries,
+    p_expected_updated_at: input.expectedUpdatedAt, p_notes: input.notes,
   });
   if (error) throw error;
+  if (!data) throw new Error("MILK_STALE");
+  return data;
 }
 
 type InsertValue<K extends Table> = K extends "inseminations"

@@ -18,12 +18,26 @@ test("milk entry uses the rate effective on its selected date", () => {
 test("editing an old milk shift keeps a later-deactivated customer's delivery", () => {
   const data = {
     customers: [
-      { id: "active", active: true }, { id: "old", active: false }, { id: "unused", active: false },
+      { id: "active", active: true, opening_date: "2026-09-01" },
+      { id: "old", active: false, opening_date: "2026-09-01" },
+      { id: "unused", active: false, opening_date: "2026-09-01" },
     ],
     deliveries: [{ customer_id: "old", delivery_date: "2026-10-01", shift: "morning" }],
   } as unknown as Parameters<typeof milkShiftCustomers>[0];
   expect(milkShiftCustomers(data, "2026-10-01", "morning").map((customer) => customer.id)).toEqual(["active", "old"]);
   expect(milkShiftCustomers(data, "2026-10-02", "morning").map((customer) => customer.id)).toEqual(["active"]);
+});
+
+test("backdated milk entry excludes customers who opened later", () => {
+  const data = {
+    customers: [
+      { id: "existing", active: true, opening_date: "2026-10-01" },
+      { id: "new", active: true, opening_date: "2026-10-10" },
+    ],
+    deliveries: [],
+  } as unknown as Parameters<typeof milkShiftCustomers>[0];
+  expect(milkShiftCustomers(data, "2026-10-05", "morning").map((customer) => customer.id)).toEqual(["existing"]);
+  expect(milkShiftCustomers(data, "2026-10-10", "morning").map((customer) => customer.id)).toEqual(["existing", "new"]);
 });
 
 test("editing an old per-animal shift keeps a cow that is now dry or sold", () => {
@@ -40,4 +54,30 @@ test("editing an old per-animal shift keeps a cow that is now dry or sold", () =
   } as unknown as Parameters<typeof milkShiftAnimals>[0];
   expect(milkShiftAnimals(data, "old").map((animal) => animal.id)).toEqual(["current", "dry", "sold"]);
   expect(milkShiftAnimals(data, "new").map((animal) => animal.id)).toEqual(["current"]);
+});
+
+test("backdated milk entry hides cows that had not arrived yet", () => {
+  const data = {
+    animals: [
+      { id: "there", life_status: "active", sex: "female", milking_status: "milking", arrival_date: "2026-09-01" },
+      { id: "new", life_status: "active", sex: "female", milking_status: "milking", arrival_date: "2026-10-10" },
+    ],
+    animalMilk: [],
+  } as unknown as Parameters<typeof milkShiftAnimals>[0];
+  expect(milkShiftAnimals(data, undefined, "2026-10-01").map((animal) => animal.id)).toEqual(["there"]);
+});
+
+test("backdated milk entry offers cows present then, even if now dry or sold", () => {
+  const data = {
+    animals: [
+      { id: "current", life_status: "active", sex: "female", milking_status: "milking", arrival_date: "2026-09-01" },
+      { id: "dry", life_status: "active", sex: "female", milking_status: "dry", arrival_date: "2026-09-01" },
+      { id: "sold", life_status: "sold", sex: "female", milking_status: "none", arrival_date: "2026-09-01", exit_date: "2026-10-10" },
+      { id: "gone", life_status: "sold", sex: "female", milking_status: "none", arrival_date: "2026-09-01", exit_date: "2026-10-01" },
+      { id: "later", life_status: "active", sex: "female", milking_status: "milking", arrival_date: "2026-10-10" },
+    ],
+    animalMilk: [],
+  } as unknown as Parameters<typeof milkShiftAnimals>[0];
+  expect(milkShiftAnimals(data, undefined, "2026-10-05", "2026-10-15").map((animal) => animal.id)).toEqual(["current", "dry", "sold"]);
+  expect(milkShiftAnimals(data, undefined, "2026-10-15", "2026-10-15").map((animal) => animal.id)).toEqual(["current", "later"]);
 });

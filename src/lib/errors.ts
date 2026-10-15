@@ -1,6 +1,8 @@
 const messages: [RegExp, string][] = [
   [/Supabase URL aur publishable key set nahi hain/i, "App ki Supabase settings missing hain. Site admin se rabta karein."],
   [/MONTH_LOCKED/i, "Yeh maheena band hai. Settings mein ja kar kholein."],
+  [/MILK_STALE/i, "Doodh ki is shift ka record badal chuka hai. Page reload karke nayi entry dekhein."],
+  [/MILK_INVALID/i, "Doodh ki miktar, customer, janwar aur tareekh dobara check karein."],
   [/EXPENSE_BEFORE_ACCOUNT/i, "Account khulne ke baad ki tareekh chunein."],
   [/ACCOUNT_INACTIVE/i, "Active account chunein."],
   [/CATEGORY_INACTIVE/i, "Active kharcha category chunein."],

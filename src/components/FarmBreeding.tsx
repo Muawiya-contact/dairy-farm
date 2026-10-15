@@ -12,7 +12,7 @@ import { FarmLoading } from "./FarmDashboard";
 const statusName: Record<string, string> = { pending: "Nateeja baqi", pregnant: "Gaabhan", empty: "Khali", aborted: "Hamla zaya", calved: "Bacha paida" };
 
 export default function FarmBreeding() {
-  const query = useFarmData();
+  const query = useFarmData("breeding");
   const [filter, setFilter] = useState("due");
   const [term, setTerm] = useState("");
   const [exporting, setExporting] = useState(false);

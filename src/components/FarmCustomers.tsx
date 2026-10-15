@@ -362,9 +362,9 @@ function CustomerList({ data, save, busy, error, success }: {
 }
 
 export default function FarmCustomers() {
-  const query = useFarmData();
-  const queryClient = useQueryClient();
   const id = useSearchParams().get("id") ?? "";
+  const query = useFarmData("customers", id);
+  const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [error, setError] = useState("");

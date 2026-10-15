@@ -19,9 +19,9 @@ const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 const animalLabel = (a: Animal) => `${a.tag}${a.name ? ` · ${a.name}` : ""}`;
 
 export default function FarmAnimals() {
-  const query = useFarmData();
-  const qc = useQueryClient();
   const id = useSearchParams().get("id") ?? "";
+  const query = useFarmData("animals", id);
+  const qc = useQueryClient();
   const [add, setAdd] = useState(false);
   const [newSource, setNewSource] = useState<AnimalSource>("purchased");
   const [newSex, setNewSex] = useState<Animal["sex"]>("female");

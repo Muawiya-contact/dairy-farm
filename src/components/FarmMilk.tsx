@@ -90,8 +90,8 @@ function ShiftForm({ data, date, shift }: { data: FarmData; date: string; shift:
 }
 
 export default function FarmMilk() {
-  const query = useFarmData();
   const [date, setDate] = useState("");
+  const query = useFarmData("milk", "", date);
   const [shift, setShift] = useState<Shift>("morning");
   if (!query.data) return <FarmLoading error={query.error} retry={() => void query.refetch()} />;
   const d = query.data;

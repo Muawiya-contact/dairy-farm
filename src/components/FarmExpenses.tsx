@@ -32,7 +32,7 @@ function ExpenseList({ entries, categories, accounts, empty }: {
 }
 
 export default function FarmExpenses() {
-  const query = useFarmData();
+  const query = useFarmData("expenses");
   const qc = useQueryClient();
   const [mode, setMode] = useState<ExpenseMode>("farm");
   const [busy, setBusy] = useState(false);

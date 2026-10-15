@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getSupabase } from "./supabase";
 import { getSettings, type LoadedFarmSettings } from "./settings";
 import { formatDay, todayPK } from "./dates";
+import { addDays } from "./dates";
 import { rs } from "./format";
 import type { CustomerKind, CustomerPayment, CustomerProfile, FreeReason, NewCustomer } from "./customer-forms";
 import type { Database } from "./database.types";
@@ -59,20 +60,26 @@ type Table = keyof Database["public"]["Tables"];
 type View = keyof Database["public"]["Views"];
 type Report = "customer_month_report" | "herd_alerts" | "pnl_month";
 
-export async function allRows<T>(table: Table, key = "id"): Promise<T[]> {
+type RowFilter = { column: string; op: "eq" | "gte" | "lt" | "in"; value: string };
+
+export async function allRows<T>(table: Table, key = "id", filters: RowFilter[] = []): Promise<T[]> {
   const result: T[] = [];
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await getSupabase().from(table).select("*").order(key).range(from, from + 999);
+    let query = getSupabase().from(table).select("*");
+    for (const filter of filters) query = query.filter(filter.column, filter.op, filter.value);
+    const { data, error } = await query.order(key).range(from, from + 999);
     if (error) throw error;
     result.push(...((data ?? []) as T[]));
     if (!data || data.length < 1000) return result;
   }
 }
 
-async function allViewRows<T>(view: View, key: string): Promise<T[]> {
+async function allViewRows<T>(view: View, key: string, filters: RowFilter[] = []): Promise<T[]> {
   const result: T[] = [];
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await getSupabase().from(view).select("*").order(key).range(from, from + 999);
+    let query = getSupabase().from(view).select("*");
+    for (const filter of filters) query = query.filter(filter.column, filter.op, filter.value);
+    const { data, error } = await query.order(key).range(from, from + 999);
     if (error) throw error;
     result.push(...((data ?? []) as T[]));
     if (!data || data.length < 1000) return result;
@@ -85,31 +92,65 @@ async function report<T>(name: Report, args: Record<string, string>): Promise<T[
   return (data ?? []) as T[];
 }
 
-export async function loadFarmData(): Promise<FarmData> {
+export type FarmScope = "dashboard" | "animals" | "milk" | "customers" | "expenses" | "breeding";
+const only = <T>(needed: boolean, load: () => Promise<T[]>) => needed ? load() : Promise.resolve([] as T[]);
+const eq = (column: string, value: string): RowFilter[] => [{ column, op: "eq", value }];
+const since = (column: string, from: string): RowFilter[] => [{ column, op: "gte", value: from }];
+const monthRows = (column: string, month: string): RowFilter[] => [
+  { column, op: "gte", value: `${month}-01` },
+  { column, op: "lt", value: addDays(`${month}-01`, 32).slice(0, 7) + "-01" },
+];
+
+export async function loadFarmData(scope: FarmScope, id = "", date = farmToday()): Promise<FarmData> {
   const today = farmToday();
-  const months = Array.from({ length: Number(today.slice(5, 7)) }, (_, i) => `${today.slice(0, 4)}-${String(i + 1).padStart(2, "0")}-01`);
-  const [settings, animals, animalStatus, health, inseminations, calvings, calvingOffspring, animalMilk,
-    customers, rates, shifts, deliveries, payments, categories, expenses, accounts,
-    companyBills, otherIncome, reports, balances, alerts, pnl] = await Promise.all([
-    getSettings(), allRows<Animal>("animals"), allViewRows<AnimalStatus>("animal_status", "id"),
-    allRows<HealthEvent>("health_events"), allRows<Insemination>("inseminations"), allRows<Calving>("calvings"),
-    allRows<CalvingOffspring>("calving_offspring"),
-    allRows<AnimalMilk>("animal_milk"), allRows<Customer>("customers"),
-    allRows<CustomerRate>("customer_rates"), allRows<MilkShift>("milk_shifts"),
-    allRows<MilkDelivery>("milk_deliveries"), allRows<Payment>("payments"),
-    allRows<ExpenseCategory>("expense_categories"), allRows<Expense>("expenses"),
-    allRows<Account>("accounts"), allRows<CompanyBill>("company_bills"),
-    allRows<OtherIncome>("other_income"), report<CustomerReport>("customer_month_report", { p_month: today }),
-    allViewRows<CustomerBalance>("customer_balances", "customer_id"), report<HerdAlert>("herd_alerts", { p_today: today }),
-    Promise.all(months.map(async (month) => ({ month, data: (await report<Pnl>("pnl_month", { p_month: month }))[0] }))),
+  const month = today.slice(0, 7);
+  const detail = scope === "animals" && !!id;
+  const customerDetail = scope === "customers" && !!id;
+  const monthStart = `${month}-01`;
+  const months = scope === "dashboard" ? Array.from({ length: Number(today.slice(5, 7)) }, (_, i) => `${today.slice(0, 4)}-${String(i + 1).padStart(2, "0")}-01`) : scope === "expenses" ? [monthStart] : [];
+  const [settings, animals, animalStatus, health, inseminations, calvings, customers, rates, shifts, deliveries,
+    payments, categories, expenses, accounts, companyBills, otherIncome, reports, balances, alerts, pnl] = await Promise.all([
+    getSettings(),
+    only(["dashboard", "animals", "milk", "breeding"].includes(scope), () => allRows<Animal>("animals")),
+    only(scope === "dashboard" || scope === "animals", () => allViewRows<AnimalStatus>("animal_status", "id")),
+    only(detail || scope === "expenses", () => allRows<HealthEvent>("health_events", "id", detail ? eq("animal_id", id) : monthRows("event_date", month))),
+    only(detail || scope === "breeding", () => allRows<Insemination>("inseminations", "id", detail ? eq("animal_id", id) : [])),
+    only(detail, () => allRows<Calving>("calvings", "id", eq("animal_id", id))),
+    only(scope === "milk" || scope === "customers", () => allRows<Customer>("customers")),
+    only(scope === "milk" || customerDetail, () => allRows<CustomerRate>("customer_rates", "id", customerDetail ? eq("customer_id", id) : [])),
+    only(scope === "dashboard" || scope === "milk", () => allRows<MilkShift>("milk_shifts", "id",
+      scope === "dashboard" ? since("milk_date", addDays(today, -1)) : eq("milk_date", date))),
+    only(scope === "dashboard" || scope === "milk" || customerDetail, () => allRows<MilkDelivery>("milk_deliveries", "id",
+      scope === "dashboard" ? monthRows("delivery_date", month) : scope === "milk" ? eq("delivery_date", date) : eq("customer_id", id))),
+    only(customerDetail, () => allRows<Payment>("payments", "id", eq("customer_id", id))),
+    only(["dashboard", "animals", "expenses"].includes(scope), () => allRows<ExpenseCategory>("expense_categories")),
+    only(scope === "dashboard" || scope === "expenses", () => allRows<Expense>("expenses", "id", monthRows("expense_date", month))),
+    only(["animals", "customers", "expenses"].includes(scope), () => allRows<Account>("accounts")),
+    only(scope === "dashboard", () => allRows<CompanyBill>("company_bills", "id", monthRows("to_date", month))),
+    only(scope === "dashboard", () => allRows<OtherIncome>("other_income", "id", monthRows("income_date", month))),
+    only(scope === "customers", () => report<CustomerReport>("customer_month_report", { p_month: today })),
+    only(scope === "customers", () => allViewRows<CustomerBalance>("customer_balances", "customer_id")),
+    only(scope === "dashboard", () => report<HerdAlert>("herd_alerts", { p_today: today })),
+    Promise.all(months.map(async (item) => ({ month: item, data: (await report<Pnl>("pnl_month", { p_month: item }))[0] }))),
   ]);
+  const [animalMilk, calvingOffspring] = await Promise.all([
+    only(detail || scope === "milk", () => allRows<AnimalMilk>("animal_milk", "id",
+      detail ? eq("animal_id", id) : shifts.length ? [{ column: "shift_id", op: "in", value: `(${shifts.map((s) => s.id).join(",")})` }] : eq("shift_id", "00000000-0000-0000-0000-000000000000"))),
+    only(detail, async () => {
+      const related = await allRows<CalvingOffspring>("calving_offspring", "id", eq("animal_id", id));
+      if (!calvings.length) return related;
+      const children = await allRows<CalvingOffspring>("calving_offspring", "id", [{ column: "calving_id", op: "in", value: `(${calvings.map((c) => c.id).join(",")})` }]);
+      return [...new Map([...related, ...children].map((child) => [child.id, child])).values()];
+    }),
+  ]);
+  const relevantShifts = detail && animalMilk.length ? await allRows<MilkShift>("milk_shifts", "id", [{ column: "id", op: "in", value: `(${animalMilk.map((r) => r.shift_id).join(",")})` }]) : shifts;
   return { today, settings, animals, animalStatus, health, inseminations, calvings, calvingOffspring, animalMilk,
-    customers, rates, shifts, deliveries, payments, categories, expenses, accounts,
+    customers, rates, shifts: relevantShifts, deliveries, payments, categories, expenses, accounts,
     companyBills, otherIncome, reports, balances, alerts, monthlyPnl: pnl };
 }
 
-export function useFarmData() {
-  return useQuery({ queryKey: ["farm-data"], queryFn: loadFarmData, staleTime: 15_000 });
+export function useFarmData(scope: FarmScope, id = "", date = "") {
+  return useQuery({ queryKey: ["farm-data", scope, id, date], queryFn: () => loadFarmData(scope, id, date || farmToday()), staleTime: 15_000 });
 }
 
 export function customerRate(data: Pick<FarmData, "rates" | "today">, id: string, onDate = data.today): number {

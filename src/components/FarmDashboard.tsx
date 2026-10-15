@@ -28,7 +28,7 @@ function MonthCloseReminder({ today, goLiveDate }: { today: string; goLiveDate: 
 }
 
 export default function FarmDashboard() {
-  const query = useFarmData();
+  const query = useFarmData("dashboard");
   if (!query.data) return <FarmLoading error={query.error} retry={() => void query.refetch()} />;
   const d = query.data;
   const shifts = d.shifts.filter((s) => s.milk_date === d.today);

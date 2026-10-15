@@ -120,17 +120,21 @@ export function customerRate(data: Pick<FarmData, "rates" | "today">, id: string
 /** Keep old deliveries visible when a customer is later made inactive. */
 export function milkShiftCustomers(data: Pick<FarmData, "customers" | "deliveries">, date: string, shift: "morning" | "evening"): Customer[] {
   const historical = new Set(data.deliveries.filter((row) => row.delivery_date === date && row.shift === shift).map((row) => row.customer_id));
-  return data.customers.filter((customer) => customer.active || historical.has(customer.id));
+  return data.customers.filter((customer) => historical.has(customer.id) ||
+    (customer.active && customer.opening_date <= date));
 }
 
 /** An old shift still needs animals that were milking then, even if they are now dry or sold. */
-export function milkShiftAnimals(data: Pick<FarmData, "animals" | "animalMilk">, shiftId: string | undefined, date?: string): Animal[] {
+export function milkShiftAnimals(data: Pick<FarmData, "animals" | "animalMilk">, shiftId: string | undefined, date?: string, today?: string): Animal[] {
   const historical = new Set(data.animalMilk.filter((row) => row.shift_id === shiftId).map((row) => row.animal_id));
   return data.animals.filter((animal) => {
     const onFarm = !date || ((!animal.arrival_date || animal.arrival_date <= date)
-      && (!animal.birth_date || animal.birth_date <= date));
+      && (!animal.birth_date || animal.birth_date <= date)
+      && (!animal.exit_date || date < animal.exit_date));
+    const wasOnFarmOnPastDay = Boolean(date && today && date < today);
     return historical.has(animal.id) ||
-      (animal.life_status === "active" && animal.sex === "female" && animal.milking_status === "milking" && onFarm);
+      (animal.sex === "female" && onFarm &&
+        (wasOnFarmOnPastDay || (animal.life_status === "active" && animal.milking_status === "milking")));
   });
 }
 

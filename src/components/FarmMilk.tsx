@@ -17,7 +17,7 @@ function ShiftForm({ data, date, shift }: { data: FarmData; date: string; shift:
   const qc = useQueryClient();
   const existing = data.shifts.find((s) => s.milk_date === date && s.shift === shift);
   const active = milkShiftCustomers(data, date, shift);
-  const milkers = milkShiftAnimals(data, existing?.id, date);
+  const milkers = milkShiftAnimals(data, existing?.id, date, data.today);
   const [mode, setMode] = useState<"total" | "per_animal">(existing?.mode ?? "total");
   const [total, setTotal] = useState(existing ? String(existing.total_litres) : "");
   const [perAnimal, setPerAnimal] = useState<Record<string, string>>(() => Object.fromEntries(milkers.map((a) => {

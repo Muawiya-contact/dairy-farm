@@ -21,7 +21,10 @@ export default function FarmBreeding() {
   const rows = useMemo(() => {
     if (!data) return [];
     const animalById = new Map(data.animals.map((animal) => [animal.id, animal]));
-    return data.inseminations.map((record) => ({ record, animal: animalById.get(record.animal_id), task: nextBreedingTask(record, data.today) }))
+    return data.inseminations.map((record) => {
+      const animal = animalById.get(record.animal_id);
+      return { record, animal, task: nextBreedingTask(record, data.today, animal?.life_status ?? "removed") };
+    })
       .filter(({ record, animal, task }) => {
         if (!animal) return false;
         const matchesFilter = filter === "all" || filter === "due" && !!task && task.date <= data.today || record.status === filter;
@@ -32,7 +35,11 @@ export default function FarmBreeding() {
   }, [data, filter, term]);
 
   if (!data) return <FarmLoading error={query.error} retry={() => void query.refetch()} />;
-  const dueCount = data.inseminations.filter((record) => { const task = nextBreedingTask(record, data.today); return task && task.date <= data.today; }).length;
+  const animalById = new Map(data.animals.map((animal) => [animal.id, animal]));
+  const dueCount = data.inseminations.filter((record) => {
+    const task = nextBreedingTask(record, data.today, animalById.get(record.animal_id)?.life_status ?? "removed");
+    return task && task.date <= data.today;
+  }).length;
   const save = async (format: ExportFormat) => {
     if (exporting) return;
     setExporting(true); setError("");

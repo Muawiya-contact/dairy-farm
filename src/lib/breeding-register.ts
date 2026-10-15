@@ -43,7 +43,8 @@ export function parseCalving(form: FormData, count: number, serviceDate: string,
   return { date, offspring, ease, notes: optional(form, "notes") };
 }
 
-export function nextBreedingTask(record: Insemination, today?: string): { label: string; date: string } | null {
+export function nextBreedingTask(record: Insemination, today?: string, animalLifeStatus = "active"): { label: string; date: string } | null {
+  if (animalLifeStatus !== "active") return null;
   if (record.status === "pending") {
     if (record.ultrasound_result === "empty") return { label: "Nateeja update", date: record.ultrasound_date ?? record.ultrasound_due };
     if (!record.ultrasound_result) return { label: "Ultrasound", date: record.ultrasound_due };

@@ -40,4 +40,6 @@ it("shows the next due date without making a diagnosis", () => {
   expect(nextBreedingTask({ ...record, status: "pregnant", dry_off_date: "2026-08-02" })).toEqual({ label: "Paidaish", date: "2026-10-01" });
   expect(nextBreedingTask({ ...record, status: "pregnant" }, "2026-10-15")).toEqual({ label: "Paidaish", date: "2026-10-01" });
   expect(nextBreedingTask({ ...record, status: "calved" })).toBeNull();
+  expect(nextBreedingTask(record, "2026-10-15", "sold")).toBeNull();
+  expect(nextBreedingTask(record, "2026-10-15", "dead")).toBeNull();
 });

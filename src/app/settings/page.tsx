@@ -24,7 +24,6 @@ function SettingsForm({ initial }: { initial: FarmSettings }) {
   const [hijriAdjustment, setHijriAdjustment] = useState(String(initial.hijri_date_adjustment));
   const [eidFitrDate, setEidFitrDate] = useState(initial.eid_fitr_start_date ?? "");
   const [eidAdhaDate, setEidAdhaDate] = useState(initial.eid_adha_start_date ?? "");
-  const [eidConfirmed, setEidConfirmed] = useState(false);
   const [days, setDays] = useState(() => Object.fromEntries(breedingFields.map(({ key }) => [key, String(initial[key])])) as Record<(typeof breedingFields)[number]["key"], string>);
   const adjustmentDays = Number(hijriAdjustment);
   const today = todayPK();
@@ -33,7 +32,7 @@ function SettingsForm({ initial }: { initial: FarmSettings }) {
   const [validation, setValidation] = useState("");
   const mutation = useMutation({
     mutationFn: updateSettings,
-    onSuccess: (value) => { setEidConfirmed(false); client.setQueryData(["settings"], value); void client.invalidateQueries({ queryKey: ["farm-data"] }); },
+    onSuccess: (value) => { client.setQueryData(["settings"], value); void client.invalidateQueries({ queryKey: ["farm-data"] }); },
   });
   const edit = () => { setValidation(""); mutation.reset(); };
 
@@ -43,12 +42,6 @@ function SettingsForm({ initial }: { initial: FarmSettings }) {
     let parsedRate: number;
     try { parsedRate = parseAmount(rate); }
     catch { setValidation("Doodh ka sahi rate likhein."); return; }
-    const newFitrDate = eidFitrDate && eidFitrDate !== (initial.eid_fitr_start_date ?? "");
-    const newAdhaDate = eidAdhaDate && eidAdhaDate !== (initial.eid_adha_start_date ?? "");
-    if ((newFitrDate || newAdhaDate) && !eidConfirmed) {
-      setValidation("Eid ki tareekh save karne se pehle Pakistan ke rasmi elaan ki tasdeeq karein.");
-      return;
-    }
     const values = {
       farm_name: farm.trim(), owner_name: owner.trim(), contact_phone: contactPhone.trim(), default_milk_rate: parsedRate,
       whatsapp_footer: footer.trim(), ultrasound_days: Number(days.ultrasound_days),
@@ -87,11 +80,10 @@ function SettingsForm({ initial }: { initial: FarmSettings }) {
       <fieldset className="mt-5 border-t border-line pt-5"><legend className="font-display text-lg font-bold">Pakistan ki Eid tareekhein</legend>
         <p className="mt-2 text-sm text-muted">Sirf Pakistan Central Ruet-e-Hilal ke elaan ke baad pehla din likhein. Khali tareekh par Eid card nahi dikhega. Har saal nayi tasdeeq karein. <a href="https://mora.gov.pk/LatestNews" target="_blank" rel="noopener noreferrer" className="font-semibold text-berseem-deep underline">Rasmi elaan dekhein</a>.</p>
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
-          <label className="font-semibold">Eid ul Fitr ka pehla din<input disabled={mutation.isPending} type="date" value={eidFitrDate} onChange={(event) => { edit(); setEidFitrDate(event.target.value); setEidConfirmed(false); }} className={inputClass} /></label>
-          <label className="font-semibold">Eid ul Adha ka pehla din<input disabled={mutation.isPending} type="date" value={eidAdhaDate} onChange={(event) => { edit(); setEidAdhaDate(event.target.value); setEidConfirmed(false); }} className={inputClass} /></label>
+          <label className="font-semibold">Eid ul Fitr ka pehla din<input disabled={mutation.isPending} type="date" value={eidFitrDate} onChange={(event) => { edit(); setEidFitrDate(event.target.value); }} className={inputClass} /></label>
+          <label className="font-semibold">Eid ul Adha ka pehla din<input disabled={mutation.isPending} type="date" value={eidAdhaDate} onChange={(event) => { edit(); setEidAdhaDate(event.target.value); }} className={inputClass} /></label>
         </div>
-        <label className="mt-3 flex items-start gap-2 text-sm font-semibold"><input type="checkbox" disabled={mutation.isPending} checked={eidConfirmed} onChange={(event) => { edit(); setEidConfirmed(event.target.checked); }} className="mt-1" /> Maine Pakistan ka rasmi chand elaan check kiya hai.</label>
-        <p className="mt-2 text-sm text-muted">Tasdeeq shuda pehle din se teen din tak Eid card dikhega. Eid ul Adha par Gyarhwin ki jagah Eid card ayega.</p>
+        <p className="mt-2 text-sm text-muted">Save ki hui pehli tareekh se teen din tak Eid card dikhega. Tareekh khali ho to koi Eid card nahi ayega.</p>
       </fieldset>
       <button disabled={mutation.isPending} className="mt-5 min-h-12 rounded-xl bg-berseem px-5 font-bold text-white disabled:opacity-50">{mutation.isPending ? "Save ho raha hai…" : "Save karein"}</button>
       {validation && <p role="alert" className="mt-3 text-udhaar">{validation}</p>}

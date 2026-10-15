@@ -31,6 +31,18 @@ it("ignores invalid and unconfirmed dates", () => {
   expect(renderToStaticMarkup(createElement(FarmObservances, { today: "2027-03-10", settings }))).not.toContain("Eid Mubarak");
 });
 
+it("does not prompt for an Eid date when the estimated holiday approaches", () => {
+  let estimatedFitr = "2027-03-01";
+  for (let i = 0; i < 20; i++, estimatedFitr = addDays(estimatedFitr, 1)) {
+    const hijri = estimatedHijriDate(estimatedFitr);
+    if (hijri?.month === 10 && hijri.day === 1) break;
+  }
+  expect(estimatedHijriDate(estimatedFitr)).toMatchObject({ month: 10, day: 1 });
+  const html = renderToStaticMarkup(createElement(FarmObservances, { today: estimatedFitr, settings }));
+  expect(html).not.toContain("Eid");
+  expect(html).not.toContain("tasdeeq");
+});
+
 it("uses the owner name and gives Eid priority over Gyarhwin on an overlapping day", () => {
   let adhaDay = "2027-04-01";
   for (let i = 0; i < 100; i++, adhaDay = addDays(adhaDay, 1)) {

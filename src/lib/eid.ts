@@ -3,7 +3,7 @@ import type { FarmSettings } from "./settings";
 
 export type ConfirmedEid = { kind: "fitr" | "adha"; label: string; startDate: string; day: 1 | 2 | 3 };
 
-// Only owner-entered dates from Pakistan's official announcement qualify.
+// Only a date saved in Settings can trigger a greeting; estimates cannot.
 // Adha has priority if invalid external data ever makes both ranges overlap.
 export function confirmedEidForDate(today: string, settings: Pick<FarmSettings, "eid_fitr_start_date" | "eid_adha_start_date">): ConfirmedEid | null {
   for (const [kind, label, startDate] of [

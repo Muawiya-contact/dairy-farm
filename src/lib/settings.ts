@@ -9,6 +9,7 @@ export type FarmSettings = Pick<SettingsRow,
   "checkup_days" | "dry_off_days" | "calving_days" | "fresh_days" | "whatsapp_footer" |
   "gyarhwin_reminder_enabled" | "hijri_date_adjustment" |
   "eid_fitr_start_date" | "eid_adha_start_date"> & { id: 1 };
+export type LoadedFarmSettings = FarmSettings & Pick<SettingsRow, "go_live_date">;
 
 export const breedingFields = [
   { key: "ultrasound_days", label: "Ultrasound", min: 1, max: 400 },
@@ -49,19 +50,19 @@ export function validateSettings(input: Omit<FarmSettings, "id">): string | null
   return null;
 }
 
-const columns = "id,farm_name,owner_name,contact_phone,default_milk_rate,ultrasound_days,checkup_days,dry_off_days,calving_days,fresh_days,whatsapp_footer,gyarhwin_reminder_enabled,hijri_date_adjustment,eid_fitr_start_date,eid_adha_start_date";
+const columns = "id,farm_name,owner_name,contact_phone,go_live_date,default_milk_rate,ultrasound_days,checkup_days,dry_off_days,calving_days,fresh_days,whatsapp_footer,gyarhwin_reminder_enabled,hijri_date_adjustment,eid_fitr_start_date,eid_adha_start_date";
 
-export async function getSettings(): Promise<FarmSettings> {
+export async function getSettings(): Promise<LoadedFarmSettings> {
   const { data, error } = await getSupabase().from("settings").select(columns).eq("id", 1).single();
   if (error) throw error;
-  return { ...data, id: 1, default_milk_rate: Number(data.default_milk_rate) } as FarmSettings;
+  return { ...data, id: 1, default_milk_rate: Number(data.default_milk_rate) } as LoadedFarmSettings;
 }
 
-export async function updateSettings(settings: Omit<FarmSettings, "id">): Promise<FarmSettings> {
+export async function updateSettings(settings: Omit<FarmSettings, "id">): Promise<LoadedFarmSettings> {
   const validationError = validateSettings(settings);
   if (validationError) throw new RangeError(validationError);
   const { data, error } = await getSupabase().from("settings")
     .update({ ...settings, contact_phone: normalizePhone(settings.contact_phone) }).eq("id", 1).select(columns).single();
   if (error) throw error;
-  return { ...data, id: 1, default_milk_rate: Number(data.default_milk_rate) } as FarmSettings;
+  return { ...data, id: 1, default_milk_rate: Number(data.default_milk_rate) } as LoadedFarmSettings;
 }

@@ -14,7 +14,7 @@ export function validateBuildEnv(env) {
   }
   const expectedUrl = `https://${projectRefs[appEnv]}.supabase.co`;
   if (env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "") !== expectedUrl) {
-    return `NEXT_PUBLIC_SUPABASE_URL must point to the ${appEnv} Supabase project.`;
+    return `NEXT_PUBLIC_SUPABASE_URL must be ${expectedUrl} for ${appEnv}; check the Netlify deploy-context value.`;
   }
   if (!env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.startsWith("sb_publishable_")) {
     return "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY must be set to a publishable key.";

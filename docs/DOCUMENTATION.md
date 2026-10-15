@@ -1,12 +1,12 @@
 # Dairy Farm: implementation and acceptance plan
 
-Updated during Step 7 on 2026-10-14. The [roadmap](ROADMAP.md) defines eight steps. Update this document as each feature changes; the status below is based on code, not a claim that every workflow has passed an end-to-end audit.
+Updated for the Step 2 animal lifecycle work on 2026-10-15. The [roadmap](ROADMAP.md) defines eight steps. Update this document as each feature changes; the status below is based on code, not a claim that every workflow has passed an end-to-end audit.
 
 ## Architecture and environments
 
 Next.js builds a static site on Netlify. React Query and the Supabase browser client read and write PostgreSQL records. The browser gets only a publishable key. Tables, constraints, triggers, RLS, and database report functions are the source of truth for financial records. Stored money uses PostgreSQL `numeric(12,2)` and business dates use `date` and the database `farm_today()` rule; browser timezone and floating-point sums must not redefine balances.
 
-Netlify main and Deploy Previews currently connect to **staging**, which contains invented demo data and allows shared access. A separate **production** Supabase project has the same 28 migrations, owner-only access, and no demo seed. Production is reserved for real client data. Switching the live site to production requires a planned release; there is no browser database toggle.
+Netlify main and Deploy Previews currently connect to **staging**, which contains invented demo data and allows shared access. A separate **production** Supabase project has the same 29 migrations, owner-only access, and no demo seed. Production is reserved for real client data. Switching the live site to production requires a planned release; there is no browser database toggle.
 
 ## Definition of done for every step
 
@@ -22,7 +22,7 @@ Netlify main and Deploy Previews currently connect to **staging**, which contain
 | Step | Implemented so far | Next acceptance milestone |
 |---|---|---|
 | **1. Foundation** | Supabase projects, typed access, settings, staging demo, owner-restricted production, migrations, CI, and deployment. | Verify environment mapping, RLS, types, and migration history at each release. |
-| **2. Janwar** | Animal records, details, health, and sale/death data. | Finish Excel import and full life-cycle operations; test duplicate and inactive animals and historical records. |
+| **2. Janwar** | Animal records, health, and sale/death data; arrival, optional age evidence, dated history, and other departure are in the animal lifecycle update. | Finish Excel import and a correction audit trail; verify historical records and inactive animals. |
 | **3. Nasl kashi** | Breeding entries and due dates on animal details. | Complete the breeding register and calving workflow; test dates and status transitions. |
 | **4. Customers** | Types, opening balances, dated rates, profiles, and monthly views. | Verify rate history and opening-date calculations across all customer types. |
 | **5. Doodh** | Morning/evening production, deliveries, historical shift editing, and Naqd auto payment. | Test full daily operations, corrections, totals, and locked months. |
@@ -31,6 +31,10 @@ Netlify main and Deploy Previews currently connect to **staging**, which contain
 | **8. Reports / launch** | Dashboard, monthly reports, CSV/Excel/PDF exports, and JSON data snapshot. | Finish month-lock controls, backup/restore plan, real-data import, monitoring, and production launch checks. |
 
 Earlier unfinished work stays tracked in the roadmap and future step PRs.
+
+## Step 2: Animal lifecycle
+
+The animal lifecycle update records a real arrival date, optional exact birth date or clearly labeled estimated age at arrival, and sale/death/other departure. Current age derives from dates; age at exit is fixed. The detail page presents health, breeding, calving, milk, and exit history, and exports carry the underlying dates and estimate. Database migration `20261015000029` enforces the date and activity boundaries while leaving unknown legacy arrival dates unset. Owner actions, edge cases, and checks are in [Step 2 animal lifecycle](steps/step-2-animal-lifecycle.md). Spreadsheet import and an audit log of profile edits remain later work.
 
 ## Step 6: Wusooli and galla
 

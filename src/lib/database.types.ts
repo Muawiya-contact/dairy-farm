@@ -1380,6 +1380,21 @@ export type Database = {
             }
             Returns: string
           }
+      create_customer_once: {
+        Args: {
+          p_request_id: string
+          p_name: string
+          p_kind: string
+          p_phone: string
+          p_morning: number
+          p_evening: number
+          p_rate: number
+          p_opening_balance: number
+          p_opening_date: string
+          p_free_reason: string | null
+        }
+        Returns: string
+      }
       customer_month_report: {
         Args: { p_month: string }
         Returns: {

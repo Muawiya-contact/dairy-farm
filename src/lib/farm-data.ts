@@ -177,8 +177,9 @@ export async function closeAnimal(input: {
   if (error) throw error;
 }
 
-export async function createCustomer(input: NewCustomer) {
-  const { error } = await getSupabase().rpc("create_customer", {
+export async function createCustomer(input: NewCustomer, requestId: string) {
+  const { error } = await getSupabase().rpc("create_customer_once", {
+    p_request_id: requestId,
     p_name: input.name, p_kind: input.kind, p_phone: input.phone,
     p_morning: input.morning, p_evening: input.evening, p_rate: input.rate,
     p_opening_balance: input.openingBalance, p_opening_date: input.openingDate,

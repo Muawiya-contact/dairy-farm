@@ -1,5 +1,6 @@
 import { getSupabase } from "./supabase";
-import { addDays, monthStart, todayPK } from "./dates";
+import { addDays, daysBetween, monthStart, todayPK } from "./dates";
+import { getAccountMonth, monthBounds } from "./galla";
 import type { Database } from "./database.types";
 
 export type MonthLock = Database["public"]["Tables"]["month_locks"]["Row"];
@@ -12,6 +13,55 @@ export function previousMonth(today = todayPK()): string {
 export function validateMonthClose(month: string, today = todayPK()): string | null {
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return "Sahi maheena chunein.";
   return month >= today.slice(0, 7) ? "Sirf guzra hua poora maheena band ho sakta hai." : null;
+}
+
+export function shouldRemindCloseMonth(today: string, locks: readonly Pick<MonthLock, "month">[]): boolean {
+  if (Number(today.slice(8)) <= 10) return false;
+  const lastMonth = `${previousMonth(today)}-01`;
+  return !locks.some((lock) => lock.month === lastMonth);
+}
+
+export function recentClosedMonths(today = todayPK()): string[] {
+  const months: string[] = [];
+  let current = previousMonth(today);
+  for (let index = 0; index < 12; index++) {
+    months.push(current);
+    current = previousMonth(`${current}-15`);
+  }
+  return months;
+}
+
+export function countMissingMilkShifts(start: string, end: string, goLive: string,
+  shifts: readonly { milk_date: string; shift: string }[]): number {
+  const first = start > goLive ? start : goLive;
+  if (first >= end) return 0;
+  const recorded = new Set(shifts.filter((row) => row.milk_date >= first && row.milk_date < end)
+    .map((row) => `${row.milk_date}:${row.shift}`));
+  return Math.max(0, daysBetween(first, end) * 2 - recorded.size);
+}
+
+export async function getMonthCloseSummary(month: string) {
+  const issue = validateMonthClose(month);
+  if (issue) throw new RangeError(issue);
+  const { start, end } = monthBounds(month);
+  const supabase = getSupabase();
+  const [milk, pnl, accounts, settings, shifts] = await Promise.all([
+    supabase.rpc("milk_month_summary", { p_month: start }),
+    supabase.rpc("pnl_month", { p_month: start }),
+    getAccountMonth(month),
+    supabase.from("settings").select("go_live_date").eq("id", 1).single(),
+    supabase.from("milk_shifts").select("milk_date,shift").gte("milk_date", start).lt("milk_date", end),
+  ]);
+  for (const result of [milk, pnl, settings, shifts]) if (result.error) throw result.error;
+  const galla = accounts.find((account) => account.is_farm_cash);
+  return {
+    produced: Number(milk.data?.[0]?.produced ?? 0),
+    sales: Number(pnl.data?.[0]?.milk_income ?? 0),
+    expenses: Number(pnl.data?.[0]?.farm_expenses ?? 0),
+    profit: Number(pnl.data?.[0]?.profit ?? 0),
+    gallaClosing: galla ? Number(galla.closing) : null,
+    missingShifts: countMissingMilkShifts(start, end, settings.data!.go_live_date, shifts.data ?? []),
+  };
 }
 
 export async function getMonthLocks(): Promise<MonthLock[]> {

@@ -6,7 +6,7 @@ Updated for the Step 2 animal lifecycle work on 2026-10-15. The [roadmap](ROADMA
 
 Next.js builds a static site on Netlify. React Query and the Supabase browser client read and write PostgreSQL records. The browser gets only a publishable key. Tables, constraints, triggers, RLS, and database report functions are the source of truth for financial records. Stored money uses PostgreSQL `numeric(12,2)` and business dates use `date` and the database `farm_today()` rule; browser timezone and floating-point sums must not redefine balances.
 
-Netlify main and Deploy Previews currently connect to **staging**, which contains invented demo data and allows shared access. A separate **production** Supabase project has the same 29 migrations, owner-only access, and no demo seed. Production is reserved for real client data. Switching the live site to production requires a planned release; there is no browser database toggle.
+Netlify main and Deploy Previews currently connect to **staging**, which contains invented demo data and allows shared access. A separate **production** Supabase project has the same 30 migrations, owner-only access, and no demo seed. Production is reserved for real client data. Switching the live site to production requires a planned release; there is no browser database toggle.
 
 ## Definition of done for every step
 
@@ -34,7 +34,7 @@ Earlier unfinished work stays tracked in the roadmap and future step PRs.
 
 ## Step 2: Animal lifecycle
 
-The animal lifecycle update records a real arrival date, optional exact birth date or clearly labeled estimated age at arrival, and sale/death/other departure. Current age derives from dates; age at exit is fixed. The detail page presents health, breeding, calving, milk, and exit history, and exports carry the underlying dates and estimate. Database migration `20261015000029` enforces the date and activity boundaries while leaving unknown legacy arrival dates unset. Owner actions, edge cases, and checks are in [Step 2 animal lifecycle](steps/step-2-animal-lifecycle.md). Spreadsheet import and an audit log of profile edits remain later work.
+The animal lifecycle update records a real arrival date, optional exact birth date or clearly labeled estimated age at arrival, and sale/death/other departure. Current age derives from dates; age at exit is fixed. The detail page presents health, breeding, calving, milk, and exit history, and exports carry the underlying dates and estimate. Database migration `20261015000029` enforces the date and activity boundaries while leaving unknown legacy arrival dates unset. Migration `20261015000030` requires the close function for departures and protects the linked sale income from direct edits. Owner actions, edge cases, and checks are in [Step 2 animal lifecycle](steps/step-2-animal-lifecycle.md). Spreadsheet import and an audit log of profile edits remain later work.
 
 ## Step 6: Wusooli and galla
 

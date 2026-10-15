@@ -5,7 +5,10 @@ import { afterAll, beforeAll, expect, it } from "vitest";
 
 let db: PGlite;
 const migrationDir = resolve("supabase/migrations");
-const latest = "20261015000029_animal_lifecycle.sql";
+const lifecycleMigrations = [
+  "20261015000029_animal_lifecycle.sql",
+  "20261015000030_guard_animal_sale_ledger.sql",
+];
 
 beforeAll(async () => {
   db = new PGlite();
@@ -15,10 +18,10 @@ beforeAll(async () => {
     create function auth.uid() returns uuid language sql stable as $$
       select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   `);
-  for (const file of readdirSync(migrationDir).filter((name) => name.endsWith(".sql") && name !== latest).sort())
+  for (const file of readdirSync(migrationDir).filter((name) => name.endsWith(".sql") && !lifecycleMigrations.includes(name)).sort())
     await db.exec(readFileSync(resolve(migrationDir, file), "utf8"));
   await db.exec("insert into animals (tag, source, purchase_date) values ('LEGACY', 'purchased', farm_today() - 100), ('UNKNOWN', 'purchased', null)");
-  await db.exec(readFileSync(resolve(migrationDir, latest), "utf8"));
+  for (const file of lifecycleMigrations) await db.exec(readFileSync(resolve(migrationDir, file), "utf8"));
 }, 30_000);
 
 afterAll(async () => { await db?.close(); });
@@ -70,8 +73,36 @@ it("rejects milk, health and breeding entries before arrival", async () => {
 it("records a sale once in the receiving account", async () => {
   const account = (await db.query<{ id: string }>("insert into accounts (name, kind) values ('QA sale cash', 'cash') returning id")).rows[0].id;
   const animal = (await db.query<{ id: string }>("insert into animals (tag, arrival_date) values ('SALE-QA', farm_today() - 3) returning id")).rows[0].id;
+  await expect(db.query("update animals set life_status = 'sold', exit_date = farm_today(), sale_price = 1250 where id = $1", [animal]))
+    .rejects.toThrow(/ANIMAL_EXIT_USE_RPC/);
+  await expect(db.query("insert into other_income (income_date, kind, amount, account_id, animal_id) values (farm_today(), 'animal_sale', 1250, $1, $2)", [account, animal]))
+    .rejects.toThrow(/ANIMAL_SALE_USE_RPC/);
+  const inactive = (await db.query<{ id: string }>("insert into accounts (name, kind, active) values ('Inactive sale account', 'cash', false) returning id")).rows[0].id;
+  await expect(db.query("select close_animal($1, 'sold', farm_today(), '', 1250, $2)", [animal, inactive]))
+    .rejects.toThrow(/ANIMAL_SALE_ACCOUNT_UNAVAILABLE/);
+  await expect(db.query("select close_animal($1, 'sold', farm_today(), '', 1250.001, $2)", [animal, account]))
+    .rejects.toThrow(/Invalid animal exit/);
+  expect((await db.query("select life_status from animals where id = $1", [animal])).rows)
+    .toEqual([{ life_status: "active" }]);
   await db.query("select close_animal($1, 'sold', farm_today(), 'QA sale', 1250, $2)", [animal, account]);
   await expect(db.query("select close_animal($1, 'sold', farm_today(), 'Repeat', 1250, $2)", [animal, account])).rejects.toThrow(/Active animal not found/);
+  await expect(db.query("update animals set life_status = 'active', exit_date = null, sale_price = null where id = $1", [animal]))
+    .rejects.toThrow(/ANIMAL_EXIT_IMMUTABLE/);
+  await expect(db.query("update animals set sale_price = 1400 where id = $1", [animal]))
+    .rejects.toThrow(/ANIMAL_EXIT_IMMUTABLE/);
+  await expect(db.query("update other_income set amount = 1400 where animal_id = $1", [animal]))
+    .rejects.toThrow(/ANIMAL_SALE_IMMUTABLE/);
+  await expect(db.query("delete from other_income where animal_id = $1", [animal]))
+    .rejects.toThrow(/ANIMAL_SALE_IMMUTABLE/);
   expect((await db.query("select kind, amount, account_id from other_income where animal_id = $1", [animal])).rows)
     .toEqual([{ kind: "animal_sale", amount: "1250.00", account_id: account }]);
+});
+
+it("still allows ordinary income and profile edits without altering a sale", async () => {
+  const account = (await db.query<{ id: string }>("select id from accounts where name = 'QA sale cash'")).rows[0].id;
+  const id = (await db.query<{ id: string }>("select id from animals where tag = 'SALE-QA'")).rows[0].id;
+  await db.query("update animals set notes = 'Sold to another farm' where id = $1", [id]);
+  await db.query("insert into other_income (income_date, kind, amount, account_id) values (farm_today(), 'other', 250, $1)", [account]);
+  expect((await db.query("select count(*)::int as count from other_income where animal_id = $1 and kind = 'animal_sale'", [id])).rows)
+    .toEqual([{ count: 1 }]);
 });

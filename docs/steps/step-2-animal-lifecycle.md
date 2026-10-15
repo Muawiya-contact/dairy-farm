@@ -12,6 +12,7 @@ This focused Step 2 update records when each animal joined or left the farm and 
 ## Data rules
 
 - Migration `20261015000029_animal_lifecycle.sql` adds `arrival_date` and `estimated_age_months_at_arrival`, expands source and exit statuses, and checks date order and age range. It backfills historical arrival only when an existing birth or purchase date supplies evidence. Unknown historical dates remain null; no date is invented.
+- Migration `20261015000030_guard_animal_sale_ledger.sql` requires the `close_animal` transaction for every departure. It prevents later changes to exit fields or the linked sale-income row, and rejects inactive or not-yet-open sale accounts. Ordinary non-sale income remains editable.
 - New animals require an arrival date, cannot have a future birth/arrival/purchase date, and cannot have both an exact birth date and an age estimate. Farm-born animals require birth and arrival on the same day. UI and database validate these rules.
 - Existing activity blocks moving birth or arrival after that activity. New milk, health, breeding, and calving entries must fall within the recorded farm stay. Exit cannot precede recorded activity or arrival. Existing month locks and owner-only production RLS still apply.
 - Animal CSV/Excel/JSON exports include arrival and estimated age at arrival. This avoids exporting a changing computed age as a stored fact.

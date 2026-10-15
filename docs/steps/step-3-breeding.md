@@ -29,7 +29,8 @@ The project-wide [definition of done](../DOCUMENTATION.md#definition-of-done-for
 
 ## Validation on 2026-10-15
 
-- `npm test -- --maxWorkers=2`: 101 tests across 25 files passed, including database rollback, idempotency, owner-only anonymous denial, and the prior animal lifecycle regression.
+- `npm test -- --maxWorkers=2`: 102 tests across 25 files passed, including database rollback, idempotency, owner-only anonymous denial, and the prior animal lifecycle regression.
 - `npm run lint`: passed with one pre-existing font warning in `src/app/layout.tsx`; `npx tsc --noEmit` and `npm run build`: passed.
 - Supabase CLI applied migrations 31 and 32 to staging and production. A staging publishable-key smoke check read the empty offspring table and reached the new RPC's `BREEDING_NOT_OPEN` validation for a nonexistent service; it wrote no data.
 - The local browser showed the register at laptop and phone widths, empty filter, one/two calf fields, and conditional stillborn fields. CSV, Excel, and PDF exports downloaded; the XLSX archive and PDF text were checked. The hosted PR #17 preview saved a fictional staging mother, service, mixed-outcome twins, and one linked live calf; its temporary tag was replaced successfully. These clearly labeled QA records remain in staging. A real-phone check remains unverified.
+- Code review removed overdue tasks for animals that have left the farm while preserving their history in the full register. The export now shows the calf's current tag and birth tag when different, plus sex, weight, and calf notes.

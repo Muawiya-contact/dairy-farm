@@ -8,6 +8,8 @@ import { parseAmount, parsePositiveAmount } from "@/lib/format";
 import { parseAnimalDates, type AnimalExit } from "@/lib/animal-life";
 import { refreshFarmViews } from "@/lib/query-refresh";
 import { Panel } from "./ui";
+import { ConfirmActionDialog } from "./ConfirmActionDialog";
+import { UI_TEXT } from "@/lib/text";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 const label = "grid gap-1 text-sm text-muted";
@@ -26,6 +28,7 @@ export function AnimalManagement({ animal, animals, accounts, today, linkedBirth
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [error, setError] = useState("");
+  const [pendingExit, setPendingExit] = useState<{ input: Parameters<typeof closeAnimal>[0]; message: string } | null>(null);
   const run = async (save: () => Promise<void>) => {
     if (busyRef.current) return;
     busyRef.current = true;
@@ -96,9 +99,9 @@ export function AnimalManagement({ animal, animals, accounts, today, linkedBirth
       catch (issue) { setError(friendlyError(issue)); return; }
       const date = text(f.get("date"));
       const action = exitStatus === "sold" ? `farokht ${money(price)}` : exitStatus === "dead" ? "wafat" : "farm se nikalna";
-      if (!window.confirm(`${animal.tag} ka ${action} ${longDate(date)} ko darj karein? Is ke baad yeh janwar active list se hat jayega.`)) return;
-      void run(() => closeAnimal({ animalId: animal.id, status: exitStatus, date, reason: text(f.get("reason")),
-        price, accountId: exitStatus === "sold" ? text(f.get("account")) : null }));
+      setPendingExit({ input: { animalId: animal.id, status: exitStatus, date, reason: text(f.get("reason")),
+        price, accountId: exitStatus === "sold" ? text(f.get("account")) : null },
+        message: UI_TEXT.animalExitMessage(animal.tag, action, longDate(date)) });
     }}>
       <p className="text-sm text-muted sm:col-span-2">Is action ke baad janwar active list aur doodh entry se hat jayega. Sirf farokht ki raqam account mein aayegi.</p>
       <label className={label}>Haalat<select name="status" value={exitStatus} onChange={(e) => setExitStatus(e.target.value as AnimalExit)} className={field}><option value="sold">Farokht</option><option value="dead">Wafat</option><option value="removed">Doosri wajah se nikla</option></select></label>
@@ -108,6 +111,14 @@ export function AnimalManagement({ animal, animals, accounts, today, linkedBirth
       <div className="flex gap-2 sm:col-span-2"><button disabled={busy || (exitStatus === "sold" && !accounts.some((a) => a.active))} className="min-h-11 rounded-xl bg-udhaar px-4 font-semibold text-white disabled:opacity-50">{exitStatus === "sold" ? "Farokht darj karein" : exitStatus === "dead" ? "Wafat darj karein" : "Ikhtitam darj karein"}</button><button type="button" disabled={busy} onClick={() => setMode(null)} className="min-h-11 rounded-xl border border-line px-4 disabled:opacity-50">Cancel</button></div>
     </form>}
     {!mode && <p className="text-sm text-muted">Record mein tabdeeli ya janwar ka ikhtitam yahan darj karein.</p>}
+    {pendingExit && <ConfirmActionDialog title={UI_TEXT.animalExitTitle[pendingExit.input.status]}
+      message={pendingExit.message} confirmLabel={UI_TEXT.animalExitButton[pendingExit.input.status]} busy={busy}
+      onCancel={() => setPendingExit(null)} onConfirm={() => {
+        if (busyRef.current) return;
+        const input = pendingExit.input;
+        setPendingExit(null);
+        void run(() => closeAnimal(input));
+      }} />}
     {error && <p role="alert" className="mt-3 text-sm text-udhaar">Save nahi hua: {error}</p>}
   </Panel>;
 }

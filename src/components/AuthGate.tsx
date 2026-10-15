@@ -7,6 +7,7 @@ import { getSupabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/errors";
 import { isPasswordSetupSession, passwordLinkError, passwordRecoveryRedirect, passwordSetupError } from "@/lib/auth-password";
 import LogoMark from "./LogoMark";
+import { UI_TEXT } from "@/lib/text";
 
 const requireAuth = process.env.NEXT_PUBLIC_REQUIRE_AUTH === "true";
 const missingConfig = requireAuth && (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
@@ -26,7 +27,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [error, setError] = useState(() => missingConfig
-    ? friendlyError(new Error("Supabase URL aur publishable key set nahi hain."))
+    ? friendlyError(new Error(UI_TEXT.missingConnection))
     : passwordLinkError(callbackUrl) ?? "");
   const [busy, setBusy] = useState(false);
   const access = useQuery({

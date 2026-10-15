@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { type ReactElement } from "react";
 import { vi } from "vitest";
 
-export const fixtures = vi.hoisted(() => ({
+const fixtures = vi.hoisted(() => ({
   today: "2026-10-16",
   cow: { id: "animal-1", tag: "101", name: "Gaye 101", species: "cow", sex: "female",
     category: "cow", milking_status: "milking", life_status: "active", source: "purchased",
@@ -12,13 +12,14 @@ export const fixtures = vi.hoisted(() => ({
   customer: { id: "customer-1", name: "Naqd", kind: "cash", default_morning: 0, default_evening: 0 },
 }));
 
-export const farmMocks = vi.hoisted(() => ({
+const farmMocks = vi.hoisted(() => ({
   useFarmData: vi.fn(),
   saveMilkEntry: vi.fn(),
   closeAnimal: vi.fn(),
   updateAnimal: vi.fn(),
 }));
-export const supabaseMocks = vi.hoisted(() => ({ getSupabase: vi.fn() }));
+const supabaseMocks = vi.hoisted(() => ({ getSupabase: vi.fn() }));
+export { fixtures, farmMocks, supabaseMocks };
 
 vi.mock("@/lib/farm-data", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/farm-data")>()),

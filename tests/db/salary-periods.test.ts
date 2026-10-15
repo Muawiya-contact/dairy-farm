@@ -79,9 +79,8 @@ describe("salary periods and payments", () => {
     const ordinary = (await db.query<{ id: string }>(
       "select id from expenses where salary_period_id is null limit 1",
     )).rows[0].id;
-    expect((await db.query<{ note: string }>(
-      "update expenses set note = 'ordinary correction' where id = $1 returning note", [ordinary],
-    )).rows).toEqual([{ note: "ordinary correction" }]);
+    await expect(db.query("update expenses set note = 'ordinary correction' where id = $1", [ordinary]))
+      .rejects.toThrow(/EXPENSE_USE_CORRECTION/);
     await expect(db.query(`
       insert into expenses(expense_date, category_id, account_id, staff_id, salary_period_id, amount)
       values (farm_today(), $1, $2, $3, $4, 0.01)

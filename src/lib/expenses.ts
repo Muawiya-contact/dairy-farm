@@ -15,3 +15,20 @@ export async function recordExpense(id: string, input: ExpenseInput): Promise<vo
   if (!data || data.expense_date !== input.date || data.category_id !== input.categoryId ||
       data.account_id !== input.accountId || Number(data.amount) !== input.amount || data.note !== input.note) throw error;
 }
+
+export async function correctExpense(id: string, revision: number, requestId: string,
+  input: ExpenseInput, reason: string): Promise<void> {
+  const { error } = await getSupabase().rpc("correct_expense", {
+    p_request_id: requestId, p_id: id, p_revision: revision,
+    p_date: input.date, p_category: input.categoryId, p_account: input.accountId,
+    p_amount: input.amount, p_note: input.note, p_reason: reason,
+  });
+  if (error) throw error;
+}
+
+export async function getExpenseAudit(expenseId: string) {
+  const { data, error } = await getSupabase().from("expense_audit").select("*")
+    .eq("expense_id", expenseId).order("changed_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}

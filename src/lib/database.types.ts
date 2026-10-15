@@ -532,6 +532,21 @@ export type Database = {
         }
         Relationships: []
       }
+      expense_audit: {
+        Row: {
+          id: string; request_id: string; expense_id: string; before_row: Json;
+          after_row: Json; reason: string; actor_id: string | null; changed_at: string
+        }
+        Insert: {
+          id?: string; request_id: string; expense_id: string; before_row: Json;
+          after_row: Json; reason: string; actor_id?: string | null; changed_at?: string
+        }
+        Update: {
+          id?: string; request_id?: string; expense_id?: string; before_row?: Json;
+          after_row?: Json; reason?: string; actor_id?: string | null; changed_at?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           account_id: string
@@ -542,6 +557,7 @@ export type Database = {
           id: string
           note: string | null
           quantity: number | null
+          revision: number
           salary_period_id: string | null
           staff_id: string | null
           unit: string | null
@@ -555,6 +571,7 @@ export type Database = {
           id?: string
           note?: string | null
           quantity?: number | null
+          revision?: number
           salary_period_id?: string | null
           staff_id?: string | null
           unit?: string | null
@@ -568,6 +585,7 @@ export type Database = {
           id?: string
           note?: string | null
           quantity?: number | null
+          revision?: number
           salary_period_id?: string | null
           staff_id?: string | null
           unit?: string | null
@@ -1339,6 +1357,13 @@ export type Database = {
       close_farm_month: {
         Args: { p_month: string; p_note?: string | null }
         Returns: boolean
+      }
+      correct_expense: {
+        Args: {
+          p_request_id: string; p_id: string; p_revision: number; p_date: string;
+          p_category: string; p_account: string; p_amount: number; p_note: string | null; p_reason: string
+        }
+        Returns: number
       }
       correct_manual_payment: {
         Args: {

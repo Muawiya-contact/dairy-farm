@@ -21,7 +21,7 @@ export type Animal = {
   updated_at: string;
 };
 export type AnimalStatus = { id: string; breeding_status: string; service_date: string | null; calving_due: string | null };
-export type HealthEvent = { id: string; animal_id: string; event_date: string; kind: string; title: string; notes: string | null; cost: number; next_due_date: string | null };
+export type HealthEvent = { id: string; animal_id: string; event_date: string; kind: string; title: string; notes: string | null; cost: number; next_due_date: string | null; expense_id: string | null };
 export type Insemination = Database["public"]["Tables"]["inseminations"]["Row"];
 export type Calving = Database["public"]["Tables"]["calvings"]["Row"];
 export type CalvingOffspring = Database["public"]["Tables"]["calving_offspring"]["Row"];
@@ -32,7 +32,7 @@ export type MilkShift = { id: string; milk_date: string; shift: "morning" | "eve
 export type MilkDelivery = { id: string; delivery_date: string; shift: "morning" | "evening"; customer_id: string; litres: number; rate: number | null; amount: number };
 export type Payment = { id: string; customer_id: string; payment_date: string; amount: number; kind: string; method: string | null; account_id: string | null; delivery_id: string | null; note: string | null; revision: number };
 export type ExpenseCategory = { id: string; name: string; is_farm_cost: boolean; is_salary: boolean; active: boolean; sort_order: number };
-export type Expense = { id: string; expense_date: string; category_id: string; amount: number; account_id: string; note: string | null };
+export type Expense = { id: string; expense_date: string; category_id: string; amount: number; account_id: string; note: string | null; salary_period_id: string | null; revision: number };
 export type Account = { id: string; name: string; kind: string; is_farm_cash: boolean; active: boolean; opening_date: string };
 export type CompanyBill = { id: string; customer_id: string; from_date: string; to_date: string; litres: number; amount: number };
 export type OtherIncome = { id: string; income_date: string; amount: number };

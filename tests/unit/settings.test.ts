@@ -6,6 +6,7 @@ const settings: Omit<FarmSettings, "id"> = {
   ultrasound_days: 30, checkup_days: 75, dry_off_days: 210,
   calving_days: 270, fresh_days: 60, whatsapp_footer: "Shukriya",
   gyarhwin_reminder_enabled: true, hijri_date_adjustment: 0,
+  eid_fitr_start_date: null, eid_adha_start_date: null,
 };
 
 it("validates the breeding ranges before saving", () => {
@@ -21,4 +22,7 @@ it("validates the breeding ranges before saving", () => {
   expect(validateSettings({ ...settings, hijri_date_adjustment: -3 })).toContain("Hijri");
   expect(validateSettings({ ...settings, hijri_date_adjustment: 1.5 })).toContain("Hijri");
   expect(validateSettings({ ...settings, hijri_date_adjustment: 2 })).toBeNull();
+  expect(validateSettings({ ...settings, eid_fitr_start_date: "2026-02-30" })).toContain("Eid ul Fitr");
+  expect(validateSettings({ ...settings, eid_fitr_start_date: "2027-03-10", eid_adha_start_date: "2027-03-11" })).toContain("alag");
+  expect(validateSettings({ ...settings, eid_fitr_start_date: "2027-03-10", eid_adha_start_date: "2027-05-18" })).toBeNull();
 });

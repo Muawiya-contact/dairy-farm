@@ -8,7 +8,7 @@ import { Body, Panel } from "./ui";
 import { BellIcon, PlusIcon } from "./icons";
 import MilkCan from "./MilkCan";
 import ProfitChart from "./ProfitChart";
-import { GyarhwinNotice } from "./GyarhwinNotice";
+import { FarmObservances } from "./FarmObservances";
 
 export function FarmLoading({ error, retry }: { error?: Error | null; retry?: () => void }) {
   return <Body className="py-8"><div role={error ? "alert" : "status"} className="rounded-2xl border border-line bg-paper p-5 text-muted">
@@ -48,7 +48,7 @@ export default function FarmDashboard() {
       <a href="#alerts" aria-label={`${d.alerts.length} alerts`} className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-paper"><BellIcon /><span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-udhaar px-1 text-[11px] font-bold text-white">{d.alerts.length}</span></a>
     </header>
     <Body className="mt-2 grid gap-4 lg:grid-cols-3">
-      <GyarhwinNotice today={d.today} settings={d.settings} className="lg:col-span-3" />
+      <FarmObservances today={d.today} settings={d.settings} className="lg:col-span-3" />
       <section className="rounded-3xl bg-berseem-deep p-5 text-white lg:col-span-2 lg:p-7"><div className="flex items-end justify-between gap-4"><div className="min-w-0">
         <p className="text-[15px] text-[#cfe3cf]">Aaj ka doodh</p><p className="font-display text-[64px] font-extrabold leading-[0.95] tracking-[-0.03em] tnum lg:text-[84px]">{morning + evening}<span className="ml-2 text-[24px] font-bold tracking-normal text-[#cfe3cf]">litre</span></p>
         <p className="mt-2 text-[15px] text-[#cfe3cf]">Kal se {Math.abs(morning + evening - yMilk)} litre {morning + evening < yMilk ? "kam" : "zyada"}</p>

@@ -1,12 +1,14 @@
 import { getSupabase } from "./supabase";
 import { normalizePhone } from "./phone";
+import { daysBetween } from "./dates";
 import type { Database } from "./database.types";
 
 type SettingsRow = Database["public"]["Tables"]["settings"]["Row"];
 export type FarmSettings = Pick<SettingsRow,
   "farm_name" | "owner_name" | "contact_phone" | "default_milk_rate" | "ultrasound_days" |
   "checkup_days" | "dry_off_days" | "calving_days" | "fresh_days" | "whatsapp_footer" |
-  "gyarhwin_reminder_enabled" | "hijri_date_adjustment"> & { id: 1 };
+  "gyarhwin_reminder_enabled" | "hijri_date_adjustment" |
+  "eid_fitr_start_date" | "eid_adha_start_date"> & { id: 1 };
 
 export const breedingFields = [
   { key: "ultrasound_days", label: "Ultrasound", min: 1, max: 400 },
@@ -34,10 +36,20 @@ export function validateSettings(input: Omit<FarmSettings, "id">): string | null
   if (!Number.isInteger(input.hijri_date_adjustment) || input.hijri_date_adjustment < -2 || input.hijri_date_adjustment > 2) {
     return "Hijri tareekh ki adjustment -2 se +2 din tak likhein.";
   }
+  for (const [label, date] of [["Eid ul Fitr", input.eid_fitr_start_date], ["Eid ul Adha", input.eid_adha_start_date]] as const) {
+    if (date !== null) {
+      try { daysBetween(date, date); }
+      catch { return `${label} ki sahi Pakistan tareekh likhein.`; }
+    }
+  }
+  if (input.eid_fitr_start_date && input.eid_adha_start_date &&
+      Math.abs(daysBetween(input.eid_fitr_start_date, input.eid_adha_start_date)) <= 2) {
+    return "Dono Eid ki tareekhein aik doosre se alag honi chahiye.";
+  }
   return null;
 }
 
-const columns = "id,farm_name,owner_name,contact_phone,default_milk_rate,ultrasound_days,checkup_days,dry_off_days,calving_days,fresh_days,whatsapp_footer,gyarhwin_reminder_enabled,hijri_date_adjustment";
+const columns = "id,farm_name,owner_name,contact_phone,default_milk_rate,ultrasound_days,checkup_days,dry_off_days,calving_days,fresh_days,whatsapp_footer,gyarhwin_reminder_enabled,hijri_date_adjustment,eid_fitr_start_date,eid_adha_start_date";
 
 export async function getSettings(): Promise<FarmSettings> {
   const { data, error } = await getSupabase().from("settings").select(columns).eq("id", 1).single();

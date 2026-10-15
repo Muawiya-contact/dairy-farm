@@ -10,6 +10,7 @@ const settings: FarmSettings = {
   id: 1, farm_name: "Demo Farm", owner_name: "Owner", contact_phone: "", default_milk_rate: 150,
   ultrasound_days: 30, checkup_days: 75, dry_off_days: 210, calving_days: 270, fresh_days: 60,
   whatsapp_footer: "Shukriya", gyarhwin_reminder_enabled: true, hijri_date_adjustment: 0,
+  eid_fitr_start_date: null, eid_adha_start_date: null,
 };
 const eleventh = nextGyarhwinDate("2026-10-15", 0)!;
 

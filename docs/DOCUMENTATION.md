@@ -1,6 +1,6 @@
 # Dairy Farm: implementation and acceptance plan
 
-Updated for the Step 5 milk and Gyarhwin reminder work on 2026-10-15. The [roadmap](ROADMAP.md) defines eight steps. Update this document as each feature changes; the status below is based on code, not a claim that every workflow has passed an end-to-end audit.
+Updated for the Step 8 month-close and launch preparation work on 2026-10-15. The [roadmap](ROADMAP.md) defines eight steps. Update this document as each feature changes; the status below is based on code, not a claim that every workflow has passed an end-to-end audit.
 
 ## Architecture and environments
 
@@ -28,9 +28,11 @@ Netlify main and Deploy Previews currently connect to **staging**, which contain
 | **5. Doodh** | [Exact per-animal or total production, deliveries, shift notes, stale-save protection, Naqd auto payment, and an optional monthly Gyarhwin cue](steps/step-5-milk.md). | Verify the hosted preview and owner workflow on a real phone; design audited milk corrections later. |
 | **6. Wusooli / galla** | Payments, monthly bills, company bills, PDFs/share, Galla UI, manual transfers, cash counts, and audited corrections are implemented in PR #10. | Verify the live preview on phone and laptop, especially device sharing and real owner workflows. |
 | **7. Kharcha** | Farm/home expenses, categories, accounts, profit screens, and staff salary periods with partial payments. | Verify the salary preview; complete other income and audited expense corrections in later focused work. |
-| **8. Reports / launch** | Dashboard, monthly reports, CSV/Excel/PDF exports, and JSON data snapshot. | Finish month-lock controls, backup/restore plan, real-data import, monitoring, and production launch checks. |
+| **8. Reports / launch** | Dashboard, monthly reports, CSV/Excel/PDF exports, and JSON data snapshot. Step 8 PR adds owner month-close controls, a CSV/Excel import dry run, and a read-only connection check. | Apply migration on both projects; validate the preview and owner flows. Real-data import waits for client files. Owner handles backups separately. Production cutover remains a separate release decision. |
 
 Earlier unfinished work stays tracked in the roadmap and future step PRs.
+
+Step 8 behavior, failure cases, tests, and release checks are in [Step 8 launch](steps/step-8-launch.md).
 
 ## Step 2: Animal lifecycle
 

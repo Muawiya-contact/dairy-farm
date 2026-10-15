@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { milkLitres, remainingMilk, sumMilkLitres } from "../src/lib/milk-entry";
+import { animalMilkRows, milkLitres, remainingMilk, sumMilkLitres } from "../src/lib/milk-entry";
 
 describe("daily milk entry quantities", () => {
   it("accepts exact hundredths for animals and customers", () => {
@@ -13,5 +13,9 @@ describe("daily milk entry quantities", () => {
   });
   it("rejects a customer quantity above its database limit", () => {
     expect(() => milkLitres("3000.01", 3000)).toThrow(RangeError);
+  });
+  it("does not create animal rows for blank or zero values on a backdated shift", () => {
+    expect(animalMilkRows([{ id: "old" }, { id: "new" }, { id: "dry" }],
+      { old: "0.25", new: "", dry: "0" })).toEqual([{ animal_id: "old", litres: 0.25 }]);
   });
 });

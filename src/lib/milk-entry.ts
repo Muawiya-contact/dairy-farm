@@ -13,3 +13,13 @@ export function sumMilkLitres(values: readonly number[]): number {
 export function remainingMilk(produced: number, delivered: number): number {
   return (Math.round(produced * 100) - Math.round(delivered * 100)) / 100;
 }
+
+/** Blank and zero rows are omitted; a newly arrived animal on an old date must not get a zero record. */
+export function animalMilkRows(animals: readonly { id: string }[], values: Record<string, string>) {
+  return animals.flatMap((animal) => {
+    const raw = values[animal.id]?.trim();
+    if (!raw) return [];
+    const litres = milkLitres(raw, 60);
+    return litres > 0 ? [{ animal_id: animal.id, litres }] : [];
+  });
+}

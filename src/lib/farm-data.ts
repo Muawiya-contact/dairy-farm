@@ -124,10 +124,14 @@ export function milkShiftCustomers(data: Pick<FarmData, "customers" | "deliverie
 }
 
 /** An old shift still needs animals that were milking then, even if they are now dry or sold. */
-export function milkShiftAnimals(data: Pick<FarmData, "animals" | "animalMilk">, shiftId: string | undefined): Animal[] {
+export function milkShiftAnimals(data: Pick<FarmData, "animals" | "animalMilk">, shiftId: string | undefined, date?: string): Animal[] {
   const historical = new Set(data.animalMilk.filter((row) => row.shift_id === shiftId).map((row) => row.animal_id));
-  return data.animals.filter((animal) =>
-    (animal.life_status === "active" && animal.sex === "female" && animal.milking_status === "milking") || historical.has(animal.id));
+  return data.animals.filter((animal) => {
+    const onFarm = !date || ((!animal.arrival_date || animal.arrival_date <= date)
+      && (!animal.birth_date || animal.birth_date <= date));
+    return historical.has(animal.id) ||
+      (animal.life_status === "active" && animal.sex === "female" && animal.milking_status === "milking" && onFarm);
+  });
 }
 
 export async function saveMilkEntry(input: { date: string; shift: "morning" | "evening"; total: number; mode: "total" | "per_animal"; animals: { animal_id: string; litres: number }[]; deliveries: { customer_id: string; litres: number }[]; expectedUpdatedAt: string | null; notes: string }) {

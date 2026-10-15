@@ -41,3 +41,14 @@ test("editing an old per-animal shift keeps a cow that is now dry or sold", () =
   expect(milkShiftAnimals(data, "old").map((animal) => animal.id)).toEqual(["current", "dry", "sold"]);
   expect(milkShiftAnimals(data, "new").map((animal) => animal.id)).toEqual(["current"]);
 });
+
+test("backdated milk entry hides cows that had not arrived yet", () => {
+  const data = {
+    animals: [
+      { id: "there", life_status: "active", sex: "female", milking_status: "milking", arrival_date: "2026-09-01" },
+      { id: "new", life_status: "active", sex: "female", milking_status: "milking", arrival_date: "2026-10-10" },
+    ],
+    animalMilk: [],
+  } as unknown as Parameters<typeof milkShiftAnimals>[0];
+  expect(milkShiftAnimals(data, undefined, "2026-10-01").map((animal) => animal.id)).toEqual(["there"]);
+});

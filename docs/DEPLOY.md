@@ -5,7 +5,7 @@ The Next.js static export is built into `out`. Public Supabase values are frozen
 | Environment | Netlify site | Git branch | Supabase project | Access |
 |---|---|---|---|---|
 | Staging demo | Existing `demo-dairy-app` site (optional rename) | `main` and PR previews | `dlirssfoazlxzyamsltv` | Fictional shared demo data |
-| Production | Separate site, created for launch | `production` only | `ylipnghdygpyqlptqazx` | Owner sign-in and real data |
+| Production | Separate site, created for launch | `production` only | `ylipnghdygpyqlptqazx` | Owner and two invited editors; real data |
 
 In **Project configuration → Environment variables**, set these as site-level **Builds** values for all deploy contexts on the existing staging site, before merging the environment-split PR:
 
@@ -27,6 +27,23 @@ NEXT_PUBLIC_REQUIRE_AUTH=true
 NEXT_PUBLIC_APP_ENV=production
 ```
 
-Set Supabase Auth's Site URL and allowed redirect URLs to the final production address. Keep production RLS owner-only. Production already has versioned migrations and generic defaults as of Step 8; check migration parity for later changes. Never apply `supabase/seed/dev-demo.sql`, `supabase/seed/test-*.sql`, or real client records to the staging demo.
+Set Supabase Auth's Site URL and allowed redirect URLs to the final production address. Keep production access limited to the named farm users. Production already has versioned migrations and generic defaults as of Step 8; check migration parity for later changes. Never apply `supabase/seed/dev-demo.sql`, `supabase/seed/test-*.sql`, or real client records to the staging demo.
+
+## Three production users
+
+The existing owner account remains the first user. After migration `20261015000043_farm_editors.sql` is applied to **production**, invite two more people in that project's **Authentication → Users → Add user → Send invitation**. Each person uses their own email and password; they do not need access to the Supabase dashboard. Configure the production Auth Site URL and redirect URLs before sending invitations. Never send passwords or secret keys to the development team.
+
+Copy the two new **User UIDs** from the production Auth user list. In the **production** SQL Editor, add exactly those IDs to the private allowlist:
+
+```sql
+insert into private.app_editors (user_id)
+values ('<first-user-uid>'::uuid), ('<second-user-uid>'::uuid)
+on conflict (user_id) do nothing;
+
+select (select count(*) from private.app_owner) as owners,
+       (select count(*) from private.app_editors) as editors;
+```
+
+The expected counts are `owners = 1` and `editors = 2`. Use the production site's normal URL for sign-in. All three users can read and edit the same production records; this is not a per-user workspace. A production Auth user who is not on the allowlist cannot access farm rows. To remove an editor's farm access, delete their UID from `private.app_editors`; deleting their Auth account also removes its allowlist row. Keep production self-signup disabled after invitations are set up so access stays invitation based. The staging demo has no editor entries and remains separate.
 
 Release sequence: test a PR preview on staging; merge to `main` after owner review; update `production` from `main` only when the owner chooses to release; verify production build, owner login, read/write flow, reports and logs. No Git merge or production cutover happens automatically through this document. The owner handles periodic backups separately.

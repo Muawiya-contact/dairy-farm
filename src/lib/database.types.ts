@@ -1447,6 +1447,19 @@ export type Database = {
         }
         Returns: string
       }
+      save_milk_entry_checked: {
+        Args: {
+          p_animals: Json
+          p_date: string
+          p_deliveries: Json
+          p_expected_updated_at: string | null
+          p_mode: string
+          p_notes: string | null
+          p_shift: string
+          p_total: number
+        }
+        Returns: string
+      }
       void_manual_payment: {
         Args: { p_id: string; p_reason: string; p_revision: number }
         Returns: undefined

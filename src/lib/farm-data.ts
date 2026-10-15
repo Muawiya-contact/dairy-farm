@@ -27,7 +27,7 @@ export type CalvingOffspring = Database["public"]["Tables"]["calving_offspring"]
 export type AnimalMilk = { id: string; shift_id: string; animal_id: string; litres: number };
 export type Customer = { id: string; name: string; phone: string | null; kind: CustomerKind; free_reason: FreeReason | null; default_morning: number; default_evening: number; opening_balance: number; opening_date: string; active: boolean; sort_order: number };
 export type CustomerRate = { id: string; customer_id: string; rate: number; effective_from: string };
-export type MilkShift = { id: string; milk_date: string; shift: "morning" | "evening"; total_litres: number; mode: "total" | "per_animal" };
+export type MilkShift = { id: string; milk_date: string; shift: "morning" | "evening"; total_litres: number; mode: "total" | "per_animal"; notes: string | null; updated_at: string };
 export type MilkDelivery = { id: string; delivery_date: string; shift: "morning" | "evening"; customer_id: string; litres: number; rate: number | null; amount: number };
 export type Payment = { id: string; customer_id: string; payment_date: string; amount: number; kind: string; method: string | null; account_id: string | null; delivery_id: string | null; note: string | null; revision: number };
 export type ExpenseCategory = { id: string; name: string; is_farm_cost: boolean; is_salary: boolean; active: boolean; sort_order: number };
@@ -130,12 +130,15 @@ export function milkShiftAnimals(data: Pick<FarmData, "animals" | "animalMilk">,
     (animal.life_status === "active" && animal.sex === "female" && animal.milking_status === "milking") || historical.has(animal.id));
 }
 
-export async function saveMilkEntry(input: { date: string; shift: "morning" | "evening"; total: number; mode: "total" | "per_animal"; animals: { animal_id: string; litres: number }[]; deliveries: { customer_id: string; litres: number }[] }) {
-  const { error } = await getSupabase().rpc("save_milk_entry", {
+export async function saveMilkEntry(input: { date: string; shift: "morning" | "evening"; total: number; mode: "total" | "per_animal"; animals: { animal_id: string; litres: number }[]; deliveries: { customer_id: string; litres: number }[]; expectedUpdatedAt: string | null; notes: string }) {
+  const { data, error } = await getSupabase().rpc("save_milk_entry_checked", {
     p_date: input.date, p_shift: input.shift, p_total: input.total, p_mode: input.mode,
     p_animals: input.animals, p_deliveries: input.deliveries,
+    p_expected_updated_at: input.expectedUpdatedAt, p_notes: input.notes,
   });
   if (error) throw error;
+  if (!data) throw new Error("MILK_STALE");
+  return data;
 }
 
 type InsertValue<K extends Table> = K extends "inseminations"

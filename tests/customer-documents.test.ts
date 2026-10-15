@@ -1,12 +1,15 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { afterAll, beforeAll, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
+import { downloadBlob } from "../src/lib/export-data";
 import {
   balanceLabel, buildCustomerStatementPdf, buildPaymentReceiptPdf, documentFilename,
   receiptMessage, shareCustomerPdf, statementLines, statementMessage,
 } from "../src/lib/customer-documents";
 import type { Customer, CustomerReport, FarmData, Payment } from "../src/lib/farm-data";
 import type { FarmSettings } from "../src/lib/settings";
+
+vi.mock("../src/lib/export-data", () => ({ downloadBlob: vi.fn() }));
 
 const farm = { farm_name: "Saim Dairy Farm", owner_name: "Saim", contact_phone: "+923001234567", whatsapp_footer: "Shukriya" } as FarmSettings;
 const customer = { id: "c1", name: "Ahmed / Test", phone: "+923001234568" } as Customer;
@@ -26,6 +29,7 @@ beforeAll(() => vi.stubGlobal("fetch", async (url: string) => {
   if (filename !== "OpenSans-Regular.ttf" && filename !== "OpenSans-Bold.ttf") return new Response(null, { status: 404 });
   return new Response(readFileSync(resolve("public/fonts", filename)));
 }));
+beforeEach(() => vi.mocked(downloadBlob).mockClear());
 afterAll(() => vi.unstubAllGlobals());
 
 it("builds a selected-month ledger from saved records without pulling in another month", () => {
@@ -69,4 +73,47 @@ it("hands the receipt PDF to the phone's app chooser", async () => {
   expect(payload.files?.[0]).toMatchObject({ name: "receipt.pdf", type: "application/pdf" });
   expect(canShare).toHaveBeenCalledWith({ files: payload.files });
   expect(new Uint8Array(await payload.files![0].arrayBuffer())).toEqual(bytes);
+});
+
+it("keeps the PDF available for a second tap when native sharing loses activation", async () => {
+  const share = vi.fn().mockRejectedValue(new DOMException("Activation expired", "NotAllowedError"));
+  vi.stubGlobal("navigator", { share, canShare: () => true });
+
+  expect(await shareCustomerPdf("receipt.pdf", new Uint8Array([37, 80, 68, 70]), "Receipt", "Wusooli"))
+    .toBe("retry");
+  expect(share).toHaveBeenCalledTimes(1);
+});
+
+it("does not download a receipt when the owner cancels the share sheet", async () => {
+  const share = vi.fn().mockRejectedValue(new DOMException("Cancelled", "AbortError"));
+  vi.stubGlobal("navigator", { share, canShare: () => true });
+
+  expect(await shareCustomerPdf("receipt.pdf", new Uint8Array([37, 80, 68, 70]), "Receipt", "Wusooli"))
+    .toBe("cancelled");
+  expect(downloadBlob).not.toHaveBeenCalled();
+});
+
+it("downloads the PDF when this browser has no File constructor", async () => {
+  const originalFile = File;
+  const share = vi.fn();
+  vi.stubGlobal("File", undefined);
+  vi.stubGlobal("navigator", { share, canShare: vi.fn() });
+  try {
+    expect(await shareCustomerPdf("receipt.pdf", new Uint8Array([37, 80, 68, 70]), "Receipt", "Wusooli"))
+      .toBe("downloaded");
+    expect(share).not.toHaveBeenCalled();
+    expect(downloadBlob).toHaveBeenCalledWith("receipt.pdf", expect.any(Blob));
+  } finally {
+    vi.stubGlobal("File", originalFile);
+  }
+});
+
+it("downloads the PDF when the file-share capability check throws", async () => {
+  const share = vi.fn();
+  vi.stubGlobal("navigator", { share, canShare: vi.fn(() => { throw new DOMException("Blocked", "SecurityError"); }) });
+
+  expect(await shareCustomerPdf("receipt.pdf", new Uint8Array([37, 80, 68, 70]), "Receipt", "Wusooli"))
+    .toBe("downloaded");
+  expect(share).not.toHaveBeenCalled();
+  expect(downloadBlob).toHaveBeenCalledWith("receipt.pdf", expect.any(Blob));
 });

@@ -36,7 +36,9 @@ Earlier unfinished work stays tracked in the roadmap and future step PRs.
 
 ### Delivered in PR #8
 
-Customer profile editing, dated rates, monthly reports/registers, payment entry with amount/date/method/account validation, company bills, farm contact number, statement PDFs, receipt PDFs, and Share buttons. A supported phone opens its native share sheet so the owner can choose WhatsApp. On unsupported devices the PDF downloads and, with a valid customer number, a WhatsApp chat can open with prefilled text; the owner attaches the PDF manually. A web page cannot guarantee the WhatsApp recipient or automatic attachment.
+Customer profile editing, dated rates, monthly reports/registers, payment entry with amount/date/method/account validation, company bills, farm contact number, statement PDFs, receipt PDFs, and Share buttons. On supported phones, a Share button opens the native share sheet. On unsupported devices the PDF downloads; the owner can open a WhatsApp chat and attach it manually.
+
+The later receipt-sharing update passes the PDF `File` to the native Web Share sheet, where the owner chooses WhatsApp and the recipient. If PDF generation outlasts transient user activation, a second tap reuses the prepared bytes. A second permission failure downloads the PDF. The separate **WhatsApp chat + PDF** action opens a new chat tab with prefilled text and downloads the PDF; on desktop the owner attaches it manually. The app cannot pick a share target or manipulate WhatsApp Web's file input across origins, and it never sends on the owner's behalf.
 
 The schema has `payments`, `transfers`, `accounts`, `cash_counts`, `payment_audit`, `month_locks`, and `company_bills`. `customer_month_report(date)` calculates monthly charges, payments, discounts, and balance. `account_entries(uuid)` unions payments, other income, transfers in/out, and expenses. `account_month_summary(date)` calculates opening, in, out, and closing per account; an account opened midmonth contributes its starting balance on its actual opening date. A milk-delivery trigger manages Naqd auto payments. The owner-facing Galla screen and operating rules are documented in [Step 6 Galla](steps/step-6-galla.md).
 
@@ -87,4 +89,5 @@ The dedicated `/salary/` screen manages staff, a separately agreed amount for ea
 - [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [database functions](https://supabase.com/docs/guides/database/functions), and [JavaScript RPC](https://supabase.com/docs/reference/javascript/rpc)
 - [Supabase CLI migrations](https://supabase.com/docs/guides/local-development/cli-workflows)
 - [MDN Web Share API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Share_API)
+- [WhatsApp click to chat](https://faq.whatsapp.com/5913398998672934), [MDN same-origin policy](https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Same-origin_policy)
 - [Netlify Deploy Previews](https://docs.netlify.com/deploy/deploy-types/deploy-previews/)

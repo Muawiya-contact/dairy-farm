@@ -10,16 +10,16 @@ describe("friendly database errors", () => {
 
   it("identifies offline, paused and expired sessions", () => {
     expect(friendlyError(new TypeError("Failed to fetch"))).toContain("Internet nahi");
-    expect(friendlyError({ status: 503, message: "Service unavailable" })).toContain("Database so raha");
+    expect(friendlyError({ status: 503, message: "Service unavailable" })).toContain("data abhi dastiyab nahi");
     expect(friendlyError({ status: 401 })).toContain("Dobara login");
     expect(friendlyError({ code: "PGRST116", message: "The result contains 0 rows" })).toContain("Reload karein");
-    expect(friendlyError(new Error("Supabase URL aur publishable key set nahi hain."))).toContain("settings missing");
+    expect(friendlyError(new Error("Supabase URL aur publishable key set nahi hain."))).toContain("data rabta set nahi");
   });
 
   it("explains invitation and password setup failures", () => {
     expect(friendlyError({ code: "weak_password" })).toContain("Mazboot password");
     expect(friendlyError({ code: "otp_expired" })).toContain("link expire");
-    expect(friendlyError({ code: "email_address_not_authorized" })).toContain("SMTP");
+    expect(friendlyError({ code: "email_address_not_authorized" })).toContain("email bhejne ki setting");
   });
 
   it("hides unknown database details and logs once", () => {

@@ -1,12 +1,19 @@
 import { expect, test } from "vitest";
-import { isPasswordSetupLink, passwordRecoveryRedirect, passwordSetupError } from "../src/lib/auth-password";
+import { isPasswordSetupSession, passwordLinkError, passwordRecoveryRedirect, passwordSetupError } from "../src/lib/auth-password";
 
-test("recognizes invite and recovery redirects without treating a normal page as setup", () => {
-  expect(isPasswordSetupLink("https://farm.example/#access_token=token&type=invite")).toBe(true);
-  expect(isPasswordSetupLink("https://farm.example/?type=recovery#access_token=token")).toBe(true);
-  expect(isPasswordSetupLink("https://farm.example/#access_token=token&type=signup")).toBe(false);
-  expect(isPasswordSetupLink("https://farm.example/")).toBe(false);
-  expect(isPasswordSetupLink("not a URL")).toBe(false);
+test("offers password setup only for the session returned by the invite or recovery link", () => {
+  expect(isPasswordSetupSession("https://farm.example/#access_token=token&type=invite", "token")).toBe(true);
+  expect(isPasswordSetupSession("https://farm.example/?type=recovery#access_token=token", "token")).toBe(true);
+  expect(isPasswordSetupSession("https://farm.example/#access_token=token&type=invite", "previous-user-token")).toBe(false);
+  expect(isPasswordSetupSession("https://farm.example/#access_token=token&type=invite", undefined)).toBe(false);
+  expect(isPasswordSetupSession("https://farm.example/#access_token=token&type=signup", "token")).toBe(false);
+  expect(isPasswordSetupSession("not a URL", "token")).toBe(false);
+});
+
+test("explains failed email redirects without exposing the provider's raw error", () => {
+  expect(passwordLinkError("https://farm.example/#error=access_denied&error_code=otp_expired")).toMatch(/expire/);
+  expect(passwordLinkError("https://farm.example/?error=access_denied&error_description=private-detail")).not.toContain("private-detail");
+  expect(passwordLinkError("https://farm.example/")).toBeNull();
 });
 
 test("rejects short or mismatched passwords before calling Auth", () => {

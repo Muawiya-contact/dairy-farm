@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/errors";
-import { isPasswordSetupLink, passwordRecoveryRedirect, passwordSetupError } from "@/lib/auth-password";
+import { isPasswordSetupSession, passwordLinkError, passwordRecoveryRedirect, passwordSetupError } from "@/lib/auth-password";
 import LogoMark from "./LogoMark";
 
 const requireAuth = process.env.NEXT_PUBLIC_REQUIRE_AUTH === "true";
@@ -20,12 +20,13 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [password, setPassword] = useState("");
   const [forgotPassword, setForgotPassword] = useState(false);
   const [resetSent, setResetSent] = useState(false);
-  const [needsPassword, setNeedsPassword] = useState(
-    () => typeof window !== "undefined" && isPasswordSetupLink(window.location.href),
-  );
+  const [callbackUrl] = useState(() => typeof window !== "undefined" ? window.location.href : "");
+  const [needsPassword, setNeedsPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
-  const [error, setError] = useState(missingConfig ? friendlyError(new Error("Supabase URL aur publishable key set nahi hain.")) : "");
+  const [error, setError] = useState(() => missingConfig
+    ? friendlyError(new Error("Supabase URL aur publishable key set nahi hain."))
+    : passwordLinkError(callbackUrl) ?? "");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -35,6 +36,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       const userId = session?.user.id ?? null;
       if (previousUser.current !== userId) queryClient.clear();
       previousUser.current = userId;
+      if (isPasswordSetupSession(callbackUrl, session?.access_token)) setNeedsPassword(true);
       setSignedIn(Boolean(session));
       setReady(true);
     };
@@ -47,10 +49,11 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     });
     const { data: listener } = client.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY") setNeedsPassword(true);
+      if (event === "SIGNED_OUT") setNeedsPassword(false);
       applySession(session);
     });
     return () => listener.subscription.unsubscribe();
-  }, [queryClient]);
+  }, [queryClient, callbackUrl]);
 
   const signIn = async (event: FormEvent) => {
     event.preventDefault();

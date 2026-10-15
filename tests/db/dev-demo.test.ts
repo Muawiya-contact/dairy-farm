@@ -35,6 +35,31 @@ async function expectRejected(sql: string, params: unknown[], reason: RegExp) {
 }
 
 describe("staging demo seed", () => {
+  it("loads a salary payment on the first farm day of a month", async () => {
+    const firstDayDb = new PGlite();
+    try {
+      await firstDayDb.exec(`
+        create role anon;
+        create role authenticated;
+        create schema auth;
+        create table auth.users (id uuid primary key);
+        create function auth.uid() returns uuid language sql stable as $$
+          select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
+        $$;
+      `);
+      for (const name of readdirSync(resolve("supabase/migrations")).filter((file) => file.endsWith(".sql")).sort()) {
+        await firstDayDb.exec(readFileSync(resolve("supabase/migrations", name), "utf8"));
+      }
+      await firstDayDb.exec("create or replace function public.farm_today() returns date language sql stable as $$ select date '2026-10-01' $$");
+      await firstDayDb.exec(readFileSync(resolve("supabase/seed/dev-demo.sql"), "utf8"));
+      const result = await firstDayDb.query<{ expense_date: string; salary_month: string }>(`
+        select to_char(e.expense_date, 'YYYY-MM-DD') as expense_date,
+               to_char(p.salary_month, 'YYYY-MM-DD') as salary_month from public.expenses e
+        join public.salary_periods p on p.id = e.salary_period_id
+      `);
+      expect(result.rows).toEqual([{ expense_date: "2026-10-01", salary_month: "2026-10-01" }]);
+    } finally { await firstDayDb.close(); }
+  }, 30_000);
   it("leaves Pakistan Eid dates unconfirmed and rejects overlapping saved dates", async () => {
     const { rows } = await db.query<{ eid_fitr_start_date: string | null; eid_adha_start_date: string | null }>(
       "select eid_fitr_start_date, eid_adha_start_date from public.settings where id = 1",

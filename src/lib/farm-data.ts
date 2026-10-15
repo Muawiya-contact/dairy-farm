@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { getSupabase } from "./supabase";
-import { getSettings, type FarmSettings } from "./settings";
+import { getSettings, type LoadedFarmSettings } from "./settings";
 import { formatDay, todayPK } from "./dates";
 import { rs } from "./format";
 import type { CustomerKind, CustomerPayment, CustomerProfile, FreeReason, NewCustomer } from "./customer-forms";
@@ -41,7 +41,7 @@ export type HerdAlert = { alert_kind: string; severity: string; due_date: string
 export type Pnl = { milk_income: number; other_income: number; total_income: number; farm_expenses: number; personal_expenses: number; profit: number };
 
 export type FarmData = {
-  today: string; settings: FarmSettings; animals: Animal[]; animalStatus: AnimalStatus[];
+  today: string; settings: LoadedFarmSettings; animals: Animal[]; animalStatus: AnimalStatus[];
   health: HealthEvent[]; inseminations: Insemination[]; calvings: Calving[]; calvingOffspring: CalvingOffspring[]; animalMilk: AnimalMilk[];
   customers: Customer[]; rates: CustomerRate[]; shifts: MilkShift[]; deliveries: MilkDelivery[];
   payments: Payment[]; categories: ExpenseCategory[]; expenses: Expense[]; accounts: Account[];

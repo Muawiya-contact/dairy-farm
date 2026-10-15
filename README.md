@@ -9,7 +9,7 @@ A Roman Urdu dairy farm web app for phone and laptop. The dashboard, animals, mi
 | Netlify main site / Deploy Preview / branch deploy | `dlirssfoazlxzyamsltv` | Shared demo, no sign-in | Invented demo records |
 | Reserved Supabase project for real data | `ylipnghdygpyqlptqazx` | Owner sign-in and row level security | Live records only |
 
-The staging and real-data databases are separate projects. During the demo phase, every Netlify deploy, including the main site, uses staging through `netlify.toml`. Anyone with the main site or a preview link can change staging demo data, so never enter real client information there. The reserved real-data project still requires the Supabase owner account and keeps anonymous table access disabled. There is no browser toggle between databases. The browser uses only publishable keys; do not put secret keys or database passwords in the app.
+The staging and real-data databases are separate projects. The current Netlify site uses staging values set in its dashboard; `netlify.toml` contains build settings only. Anyone with the main site or a preview link can change staging demo data, so never enter real client information there. The reserved real-data project still requires the Supabase owner account and keeps anonymous table access disabled. There is no browser toggle between databases. The browser uses only publishable keys; do not put secret keys or database passwords in the app. See [deployment steps](docs/DEPLOY.md).
 
 ## Screens
 
@@ -32,15 +32,15 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `.env.local` to the staging project values from `netlify.toml`. Keep `.env.local` ignored. Open http://localhost:3000. To test the production project locally, also set `NEXT_PUBLIC_REQUIRE_AUTH=true` and use the production URL and publishable key.
+Set the four `NEXT_PUBLIC_*` variables in `.env.local` for the desired project. For staging, use its URL and publishable key, `NEXT_PUBLIC_APP_ENV=staging`, and `NEXT_PUBLIC_REQUIRE_AUTH=false`. Keep `.env.local` ignored. Open http://localhost:3000. A production build needs the production URL/key, `NEXT_PUBLIC_APP_ENV=production`, and `NEXT_PUBLIC_REQUIRE_AUTH=true`.
 
 ## Deploy to Netlify
 
-Import `Muawiya-contact/dairy-farm` from Git. Leave Base directory and Functions directory empty. The build command is `npm run build`; Publish directory is `out`. Netlify reads these values and the environment mapping from `netlify.toml`. The `out` folder is generated during the build and is intentionally absent from GitHub.
+Import `Muawiya-contact/dairy-farm` from Git. Leave Base directory and Functions directory empty. The build command is `npm run build`; Publish directory is `out`. Set the public build variables in each Netlify site's dashboard as described in [deployment steps](docs/DEPLOY.md). The `out` folder is generated during the build and is intentionally absent from GitHub.
 
 ## Database
 
-Twenty-eight migrations in `supabase/migrations/` are recorded on both projects as of 2026-10-14. Apply future schema changes with the Supabase CLI so migration history stays in sync. Staging alone contains the invented records from `supabase/seed/dev-demo.sql`; no demo seed was applied to production. Database triggers and report functions calculate delivery amounts, customer balances and profit. The staging access switch is `private.demo_access.enabled = true`; production keeps it `false`. Step 6 money rules are described in [docs/steps/step-6-galla.md](docs/steps/step-6-galla.md); the home-expense and salary workflows are in [docs/steps/step-7-kharcha.md](docs/steps/step-7-kharcha.md) and [docs/steps/step-7-salary.md](docs/steps/step-7-salary.md).
+Forty-one migrations are recorded on both projects as of Step 8. Apply future schema changes with the Supabase CLI so migration history stays in sync. Staging alone contains the invented records from `supabase/seed/dev-demo.sql`; no demo seed was applied to production. Database triggers and report functions calculate delivery amounts, customer balances and profit. The staging access switch is `private.demo_access.enabled = true`; production keeps it `false`. Step 6 money rules are described in [docs/steps/step-6-galla.md](docs/steps/step-6-galla.md); the home-expense and salary workflows are in [docs/steps/step-7-kharcha.md](docs/steps/step-7-kharcha.md) and [docs/steps/step-7-salary.md](docs/steps/step-7-salary.md).
 
 Set the optional farm contact number in Settings before sending customer documents. A statement PDF includes the selected month's saved deliveries, company bills and payments; a receipt PDF confirms one payment. On phones that support file sharing, **PDF share** passes the file to the system share sheet; the owner chooses WhatsApp and the recipient, checks the draft, and sends it. If the browser loses the click permission while building a PDF, the same button can retry with the prepared file. **WhatsApp chat + PDF** opens a new chat tab with prefilled text and downloads the PDF. On a computer, the owner attaches that download in WhatsApp Web and presses Send. The site cannot select an app or recipient in the system sheet or attach a local file inside another website's tab. No document is sent automatically.
 

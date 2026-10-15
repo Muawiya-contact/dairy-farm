@@ -3,7 +3,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { GyarhwinNotice } from "../../src/components/GyarhwinNotice";
 import { addDays } from "../../src/lib/dates";
-import { nextGyarhwinDate } from "../../src/lib/gyarhwin";
+import { gyarhwinDismissalKey, nextGyarhwinDate } from "../../src/lib/gyarhwin";
 import type { FarmSettings } from "../../src/lib/settings";
 
 const settings: FarmSettings = {
@@ -18,6 +18,7 @@ it("shows a concise Gyarhwin cue only on the relevant estimated day", () => {
   expect(preparation).toContain("Gyarhwin ki tayyari");
   expect(preparation).toContain("Maghrib");
   expect(preparation).toContain("Zaroorat ho to kal ka doodh plan karein.");
+  expect(preparation).toContain("Aaj ke liye reminder band karein");
   expect(preparation).not.toContain("Tareekh adjust karein");
 
   const today = renderToStaticMarkup(createElement(GyarhwinNotice, { today: eleventh, settings }));
@@ -26,4 +27,10 @@ it("shows a concise Gyarhwin cue only on the relevant estimated day", () => {
 
   expect(renderToStaticMarkup(createElement(GyarhwinNotice, { today: eleventh, settings: { ...settings, gyarhwin_reminder_enabled: false } }))).toBe("");
   expect(renderToStaticMarkup(createElement(GyarhwinNotice, { today: addDays(eleventh, 1), settings }))).toBe("");
+});
+
+it("scopes dismissals to the day, phase, and moon-sighting adjustment", () => {
+  const preparation = gyarhwinDismissalKey(addDays(eleventh, -1), "prepare", 0);
+  expect(preparation).not.toBe(gyarhwinDismissalKey(eleventh, "today", 0));
+  expect(preparation).not.toBe(gyarhwinDismissalKey(addDays(eleventh, -1), "prepare", 1));
 });

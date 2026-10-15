@@ -3,6 +3,10 @@ import { addDays } from "./dates";
 export type HijriDate = { year: number; month: number; day: number };
 export type GyarhwinReminder = { phase: "prepare" | "today"; hijri: HijriDate; title: string; message: string };
 
+export function gyarhwinDismissalKey(pakistanDay: string, phase: GyarhwinReminder["phase"], adjustmentDays: number): string {
+  return `dairy-farm:gyarhwin:dismissed:${pakistanDay}:${phase}:${adjustmentDays}`;
+}
+
 // ICU's Islamic calendar is an estimate, not Pakistan's announced moon sighting.
 // Noon UTC is 17:00 PKT, safely within the selected Pakistan civil date.
 export function estimatedHijriDate(pakistanDay: string, adjustmentDays = 0): HijriDate | null {

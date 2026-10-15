@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/errors";
+import { isPasswordSetupLink, passwordSetupError } from "@/lib/auth-password";
 import LogoMark from "./LogoMark";
 
 const requireAuth = process.env.NEXT_PUBLIC_REQUIRE_AUTH === "true";
@@ -17,6 +18,11 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [signedIn, setSignedIn] = useState(!requireAuth);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [needsPassword, setNeedsPassword] = useState(
+    () => typeof window !== "undefined" && isPasswordSetupLink(window.location.href),
+  );
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
   const [error, setError] = useState(missingConfig ? friendlyError(new Error("Supabase URL aur publishable key set nahi hain.")) : "");
   const [busy, setBusy] = useState(false);
 
@@ -37,7 +43,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       setError(friendlyError(sessionError));
       applySession(null);
     });
-    const { data: listener } = client.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = client.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") setNeedsPassword(true);
       applySession(session);
     });
     return () => listener.subscription.unsubscribe();
@@ -45,6 +52,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
   const signIn = async (event: FormEvent) => {
     event.preventDefault();
+    setNeedsPassword(false);
     setBusy(true);
     setError("");
     try {
@@ -58,6 +66,25 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     }
   };
 
+  const setAccountPassword = async (event: FormEvent) => {
+    event.preventDefault();
+    const validationError = passwordSetupError(newPassword, confirmation);
+    if (validationError) { setError(validationError); return; }
+    setBusy(true);
+    setError("");
+    try {
+      const { error: updateError } = await getSupabase().auth.updateUser({ password: newPassword });
+      if (updateError) throw updateError;
+      setNewPassword("");
+      setConfirmation("");
+      setNeedsPassword(false);
+    } catch (updateError) {
+      setError(friendlyError(updateError));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (!ready) return <main className="mx-auto max-w-sm p-8 text-muted">Account check ho raha hai…</main>;
   if (!signedIn) return (
     <main className="mx-auto max-w-sm px-5 py-16">
@@ -67,6 +94,18 @@ export default function AuthGate({ children }: { children: ReactNode }) {
         <label className="grid gap-1 font-semibold">Email<input type="email" autoComplete="email" required placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="min-h-12 rounded-xl border border-line px-3" /></label>
         <label className="grid gap-1 font-semibold">Password<input type="password" autoComplete="current-password" required placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="min-h-12 rounded-xl border border-line px-3" /></label>
         <button disabled={busy} className="min-h-12 rounded-xl bg-berseem font-bold text-white disabled:opacity-50">{busy ? "Sign in ho raha hai…" : "Sign in"}</button>
+        {error && <p role="alert" className="text-udhaar">{error}</p>}
+      </form>
+    </main>
+  );
+  if (needsPassword) return (
+    <main className="mx-auto max-w-sm px-5 py-16">
+      <h1 className="flex items-center gap-3 font-display text-3xl font-bold"><LogoMark size={48} />Dairy Farm</h1>
+      <p className="mt-2 text-muted">Apne farm account ka naya password banayein.</p>
+      <form onSubmit={setAccountPassword} className="mt-6 grid gap-3 rounded-2xl border border-line bg-paper p-5">
+        <label className="grid gap-1 font-semibold">Naya password<input type="password" autoComplete="new-password" required minLength={8} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className="min-h-12 rounded-xl border border-line px-3" /></label>
+        <label className="grid gap-1 font-semibold">Password dobara<input type="password" autoComplete="new-password" required minLength={8} value={confirmation} onChange={(event) => setConfirmation(event.target.value)} className="min-h-12 rounded-xl border border-line px-3" /></label>
+        <button disabled={busy} className="min-h-12 rounded-xl bg-berseem font-bold text-white disabled:opacity-50">{busy ? "Save ho raha hai…" : "Password save karein"}</button>
         {error && <p role="alert" className="text-udhaar">{error}</p>}
       </form>
     </main>

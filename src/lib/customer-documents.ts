@@ -176,8 +176,14 @@ export async function buildPaymentReceiptPdf(input: {
 /** Native share can attach the PDF on supported phones. Desktop falls back to download. */
 export async function shareCustomerPdf(filename: string, bytes: Uint8Array<ArrayBuffer>, title: string, message: string): Promise<"shared" | "downloaded" | "cancelled" | "retry"> {
   const blob = new Blob([bytes], { type: "application/pdf" });
-  const file = new File([blob], filename, { type: "application/pdf" });
-  if (navigator.share && navigator.canShare?.({ files: [file] })) {
+  let file: File | null = null;
+  if (typeof File !== "undefined" && typeof navigator !== "undefined" && typeof navigator.share === "function" && typeof navigator.canShare === "function") {
+    try {
+      const candidate = new File([blob], filename, { type: "application/pdf" });
+      if (navigator.canShare({ files: [candidate] })) file = candidate;
+    } catch { /* Treat a failed capability check like an unsupported file share. */ }
+  }
+  if (file) {
     try { await navigator.share({ files: [file], title, text: message }); return "shared"; }
     catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return "cancelled";

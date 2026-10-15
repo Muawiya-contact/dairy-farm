@@ -11,10 +11,11 @@ import type { Database } from "./database.types";
 export type Animal = {
   id: string; tag: string; name: string | null; species: "cow" | "buffalo";
   breed: string | null; sex: "female" | "male"; category: "cow" | "heifer" | "calf" | "bull";
-  birth_date: string | null; mother_id: string | null; purchase_date: string | null;
-  purchase_price: number | null; source: "born" | "purchased"; sire: string | null;
+  birth_date: string | null; arrival_date: string | null; estimated_age_months_at_arrival: number | null;
+  mother_id: string | null; purchase_date: string | null;
+  purchase_price: number | null; source: "born" | "purchased" | "gift" | "transfer" | "other"; sire: string | null;
   milking_status: "milking" | "dry" | "none";
-  life_status: "active" | "sold" | "dead"; exit_date: string | null;
+  life_status: "active" | "sold" | "dead" | "removed"; exit_date: string | null;
   exit_reason: string | null; sale_price: number | null; notes: string | null;
   updated_at: string;
 };
@@ -151,7 +152,7 @@ export async function updateAnimal(id: string, version: string, value: Database[
 }
 
 export async function closeAnimal(input: {
-  animalId: string; status: "sold" | "dead"; date: string; reason: string;
+  animalId: string; status: "sold" | "dead" | "removed"; date: string; reason: string;
   price: number | null; accountId: string | null;
 }) {
   const args = {

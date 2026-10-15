@@ -95,10 +95,12 @@ export type Database = {
       }
       animals: {
         Row: {
+          arrival_date: string | null
           birth_date: string | null
           breed: string | null
           category: string
           created_at: string
+          estimated_age_months_at_arrival: number | null
           exit_date: string | null
           exit_reason: string | null
           id: string
@@ -118,10 +120,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          arrival_date?: string | null
           birth_date?: string | null
           breed?: string | null
           category?: string
           created_at?: string
+          estimated_age_months_at_arrival?: number | null
           exit_date?: string | null
           exit_reason?: string | null
           id?: string
@@ -141,10 +145,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          arrival_date?: string | null
           birth_date?: string | null
           breed?: string | null
           category?: string
           created_at?: string
+          estimated_age_months_at_arrival?: number | null
           exit_date?: string | null
           exit_reason?: string | null
           id?: string

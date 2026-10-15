@@ -38,7 +38,7 @@ insert into private.app_owner (singleton, user_id)
 values (true, '<owner-user-uid>'::uuid);
 ```
 
-After migration `20261015000043_farm_editors.sql` is applied to **production**, invite two more people in that project's **Authentication → Users → Add user → Send invitation**. Each person uses their own email and password; they do not need access to the Supabase dashboard. Configure the production Auth Site URL and redirect URLs before sending invitations. Never send passwords or secret keys to the development team.
+After migration `20261015000043_farm_editors.sql` is applied to **production**, invite two more people in that project's **Authentication → Users → Add user → Send invitation**. Each person uses their own email and password; they do not need access to the Supabase dashboard. Configure the production Auth Site URL and redirect URLs to the normal production site address before sending invitations. Never send passwords or secret keys to the development team. The invitation link should open the production site and show **Naya password banayein**; the recipient saves a password there, then uses the regular sign-in form next time. If the invitation expires, resend it from production Supabase Auth. A user who has already accepted an invitation and set a password can just sign in; they do not need another invitation. Release the invite-password screen to the production branch before asking a new recipient to click the link.
 
 Copy the two new **User UIDs** from the production Auth user list. In the **production** SQL Editor, add exactly those IDs to the private allowlist:
 

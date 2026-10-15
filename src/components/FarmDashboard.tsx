@@ -20,9 +20,10 @@ export function FarmLoading({ error, retry }: { error?: Error | null; retry?: ()
   </div></Body>;
 }
 
-function MonthCloseReminder({ today }: { today: string }) {
-  const locks = useQuery({ queryKey: ["month-locks"], queryFn: getMonthLocks, enabled: Number(today.slice(8)) > 10 });
-  if (!locks.data || !shouldRemindCloseMonth(today, locks.data)) return null;
+function MonthCloseReminder({ today, goLiveDate }: { today: string; goLiveDate: string }) {
+  const locks = useQuery({ queryKey: ["month-locks"], queryFn: getMonthLocks, enabled: shouldRemindCloseMonth(today, [], goLiveDate) });
+  if (locks.isError) return <p role="alert" className="rounded-2xl border border-line bg-paper p-4 text-sm lg:col-span-3">Band maheenay check nahi huay: {friendlyError(locks.error)} <button onClick={() => void locks.refetch()} className="font-semibold text-berseem underline">Dobara koshish</button></p>;
+  if (!locks.data || !shouldRemindCloseMonth(today, locks.data, goLiveDate)) return null;
   return <p className="rounded-2xl border border-line bg-paper p-4 text-sm lg:col-span-3">Pichhla maheena abhi khula hai. Hisaab milane ke baad <Link href="/settings/" className="font-semibold text-berseem underline">Settings mein band karein</Link>.</p>;
 }
 
@@ -60,7 +61,7 @@ export default function FarmDashboard() {
     </header>
     <Body className="mt-2 grid gap-4 lg:grid-cols-3">
       <FarmObservances today={d.today} settings={d.settings} className="lg:col-span-3" />
-      <MonthCloseReminder today={d.today} />
+      <MonthCloseReminder today={d.today} goLiveDate={d.settings.go_live_date} />
       <section className="rounded-3xl bg-berseem-deep p-5 text-white lg:col-span-2 lg:p-7"><div className="flex items-end justify-between gap-4"><div className="min-w-0">
         <p className="text-[15px] text-[#cfe3cf]">Aaj ka doodh</p><p className="font-display text-[64px] font-extrabold leading-[0.95] tracking-[-0.03em] tnum lg:text-[84px]">{litres(todayMilk).replace(/ L$/, "")}<span className="ml-2 text-[24px] font-bold tracking-normal text-[#cfe3cf]">litre</span></p>
         <p className="mt-2 text-[15px] text-[#cfe3cf]">Kal se {litres(Math.abs(remainingMilk(todayMilk, yMilk)))} {todayMilk < yMilk ? "kam" : "zyada"}</p>

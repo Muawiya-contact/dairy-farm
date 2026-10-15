@@ -15,9 +15,11 @@ export function validateMonthClose(month: string, today = todayPK()): string | n
   return month >= today.slice(0, 7) ? "Sirf guzra hua poora maheena band ho sakta hai." : null;
 }
 
-export function shouldRemindCloseMonth(today: string, locks: readonly Pick<MonthLock, "month">[]): boolean {
+export function shouldRemindCloseMonth(today: string, locks: readonly Pick<MonthLock, "month">[], goLiveDate: string): boolean {
   if (Number(today.slice(8)) <= 10) return false;
-  const lastMonth = `${previousMonth(today)}-01`;
+  const lastMonthName = previousMonth(today);
+  if (lastMonthName < goLiveDate.slice(0, 7)) return false;
+  const lastMonth = `${lastMonthName}-01`;
   return !locks.some((lock) => lock.month === lastMonth);
 }
 
@@ -62,6 +64,13 @@ export async function getMonthCloseSummary(month: string) {
     gallaClosing: galla ? Number(galla.closing) : null,
     missingShifts: countMissingMilkShifts(start, end, settings.data!.go_live_date, shifts.data ?? []),
   };
+}
+
+export type MonthCloseSummary = Awaited<ReturnType<typeof getMonthCloseSummary>>;
+
+export function sameMonthCloseSummary(a: MonthCloseSummary, b: MonthCloseSummary): boolean {
+  return a.produced === b.produced && a.sales === b.sales && a.expenses === b.expenses
+    && a.profit === b.profit && a.gallaClosing === b.gallaClosing && a.missingShifts === b.missingShifts;
 }
 
 export async function getMonthLocks(): Promise<MonthLock[]> {

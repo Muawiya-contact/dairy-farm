@@ -6,7 +6,7 @@ Updated for the Step 3 breeding register work on 2026-10-15. The [roadmap](ROADM
 
 Next.js builds a static site on Netlify. React Query and the Supabase browser client read and write PostgreSQL records. The browser gets only a publishable key. Tables, constraints, triggers, RLS, and database report functions are the source of truth for financial records. Stored money uses PostgreSQL `numeric(12,2)` and business dates use `date` and the database `farm_today()` rule; browser timezone and floating-point sums must not redefine balances.
 
-Netlify main and Deploy Previews currently connect to **staging**, which contains invented demo data and allows shared access. A separate **production** Supabase project has the same 31 migrations, owner-only access, and no demo seed. Production is reserved for real client data. Switching the live site to production requires a planned release; there is no browser database toggle.
+Netlify main and Deploy Previews currently connect to **staging**, which contains invented demo data and allows shared access. A separate **production** Supabase project has the same 32 migrations, owner-only access, and no demo seed. Production is reserved for real client data. Switching the live site to production requires a planned release; there is no browser database toggle.
 
 ## Definition of done for every step
 
@@ -38,7 +38,7 @@ The animal lifecycle update records a real arrival date, optional exact birth da
 
 ## Step 3: Nasl kashi
 
-The register groups due or late ultrasound, checkup, dry, and calving work across animals. Completed and historical entries remain searchable. A calving saves one or two individual offspring and any live calves as linked animal records in one transaction. Optional semen batch, birth weight, calving ease, and calf notes improve traceability. An untagged live calf receives an editable temporary tag. Migration `20261015000031` is applied to both staging and production with no production seed. Owner workflow, database rules, edge cases, sources, and acceptance checks are in [Step 3 breeding](steps/step-3-breeding.md).
+The register groups due or late ultrasound, checkup, dry, and calving work across animals. Completed and historical entries remain searchable. A calving saves one or two individual offspring and any live calves as linked animal records in one transaction. Optional semen batch, birth weight, calving ease, and calf notes improve traceability. An untagged live calf receives an editable temporary tag. Migrations `20261015000031` and `20261015000032` are applied to both staging and production with no production seed. The second migration locks a linked calf’s sex and species alongside its birth date, mother, arrival, and source. Owner workflow, database rules, edge cases, sources, and acceptance checks are in [Step 3 breeding](steps/step-3-breeding.md).
 
 ## Step 6: Wusooli and galla
 

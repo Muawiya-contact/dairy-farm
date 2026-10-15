@@ -101,7 +101,7 @@ from (values
   (10, 'Wanda',           21000, 'Jahangir Sahab', null,     10, 'bori', '10 bori wanda'),
   (8,  'Bijli bill',      12000, 'Jahangir Sahab', null,     null, null, 'Bijli ka bill'),
   (2,  'Farm ka kharcha',  3000, 'Farm galla',     null,     null, null, 'Chhota mota saman'),
-  (1,  'Tankhwah',        25000, 'Jahangir Sahab', 'Ismail', null, null, 'Tankhwah')
+  (least(1, extract(day from farm_today())::int - 1), 'Tankhwah', 25000, 'Jahangir Sahab', 'Ismail', null, null, 'Tankhwah')
 ) v(days_ago, cat, amount, acct, staff, qty, unit, note)
 join expense_categories ec on ec.name = v.cat
 join accounts a on a.name = v.acct

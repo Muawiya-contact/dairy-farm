@@ -19,7 +19,8 @@ requires a reason and typing the selected
 month. Both actions write a dated audit event, including the signed-in actor
 when one exists. Closing an already-closed month or reopening an already-open
 one has no second effect. The database makes the final decision; transaction
-locks serialize a close with dated writes.
+locks serialize a close with dated writes. The decisions are also available in
+the CSV/Excel/PDF table exports and JSON data export.
 
 The shared staging demo permits anonymous actions by design. Production only
 permits its configured owner. Use staging records for rehearsal; do not close

@@ -28,6 +28,7 @@ describe("CSV exports", () => {
     expect(DATASETS.find((dataset) => dataset.table === "settings")?.columns).toContain("contact_phone");
     expect(DATASETS.find((dataset) => dataset.table === "salary_periods")?.columns).toContain("agreed_amount");
     expect(DATASETS.find((dataset) => dataset.table === "expenses")?.columns).toContain("salary_period_id");
+    expect(DATASETS.find((dataset) => dataset.table === "month_lock_events")?.columns).toContain("reason");
   });
 
   it("escapes quotes, line breaks and spreadsheet formulas", () => {

@@ -28,6 +28,7 @@ export const DATASETS: { table: Table; label: string; key: string; columns: stri
   { table: "staff", label: "Staff", key: "id", columns: ["id", "name", "role", "monthly_salary", "phone", "active", "created_at", "updated_at"] },
   { table: "salary_periods", label: "Mahwari tankhwah", key: "id", columns: ["id", "staff_id", "salary_month", "agreed_amount", "created_at"] },
   { table: "month_locks", label: "Band maheenay", key: "month", columns: ["month", "locked_at", "note"] },
+  { table: "month_lock_events", label: "Maheena band faislay", key: "id", columns: ["id", "month", "action", "reason", "actor_id", "created_at"] },
   { table: "settings", label: "Farm settings", key: "id", columns: ["id", "farm_name", "owner_name", "contact_phone", "go_live_date", "default_milk_rate", "ultrasound_days", "checkup_days", "dry_off_days", "calving_days", "fresh_days", "whatsapp_footer"] },
 ];
 

@@ -9,6 +9,7 @@ const messages: [RegExp, string][] = [
   [/CUSTOMER_REQUEST_CHANGED/i, "Customer ki entry badli hai. Form dobara check karein."],
   [/Supabase URL aur publishable key set nahi hain/i, "App ka data rabta set nahi. Farm admin se rabta karein."],
   [/MONTH_LOCKED/i, "Yeh maheena band hai. Settings mein ja kar kholein."],
+  [/COUNT_REASON_REQUIRED/i, "Cash ginti mein farq ho to us ki wajah likhein."],
   [/MONTH_FORBIDDEN/i, "Sirf farm ka maalik maheena band ya dobara khol sakta hai."],
   [/MONTH_INVALID/i, "Sirf guzra hua poora maheena band karein."],
   [/MONTH_REASON_REQUIRED/i, "Dobara kholne ki wajah 5 se 500 harf tak likhein."],

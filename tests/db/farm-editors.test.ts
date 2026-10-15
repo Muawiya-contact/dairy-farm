@@ -36,13 +36,16 @@ test("only the owner and explicitly added editors can use farm data", async () =
       set request.jwt.claim.sub = '${owner}';
     `);
     await db.exec("insert into animals (tag) values ('OWNER')");
+    expect((await db.query("select id from settings where id = 1")).rows).toEqual([{ id: 1 }]);
 
     await db.exec(`set request.jwt.claim.sub = '${editor}'`);
+    expect((await db.query("select id from settings where id = 1")).rows).toEqual([]);
     expect((await db.query("select tag from animals")).rows).toEqual([]);
     await expect(db.exec("insert into animals (tag) values ('BLOCKED')")).rejects.toThrow();
     await expect(db.query("select user_id from private.app_editors")).rejects.toThrow();
 
     await db.exec(`reset role; insert into private.app_editors (user_id) values ('${editor}'), ('${secondEditor}'); set role authenticated`);
+    expect((await db.query("select id from settings where id = 1")).rows).toEqual([{ id: 1 }]);
     expect((await db.query("select tag from animals")).rows).toEqual([{ tag: "OWNER" }]);
     await db.exec("insert into animals (tag) values ('EDITOR')");
 
@@ -52,6 +55,7 @@ test("only the owner and explicitly added editors can use farm data", async () =
     expect((await db.query("select breed from animals where tag = 'EDITOR'")).rows).toEqual([{ breed: "Holstein" }]);
 
     await db.exec(`set request.jwt.claim.sub = '${outsider}'`);
+    expect((await db.query("select id from settings where id = 1")).rows).toEqual([]);
     expect((await db.query("select tag from animals")).rows).toEqual([]);
     await expect(db.exec("insert into animals (tag) values ('BLOCKED')")).rejects.toThrow();
 

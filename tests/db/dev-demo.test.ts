@@ -144,6 +144,66 @@ describe("staging demo seed", () => {
   });
 });
 
+describe("checked daily milk entry", () => {
+  const save = `select public.save_milk_entry_checked(coalesce($1::date, public.farm_today()), $2::text, $3::numeric,
+    $4::text, $5::jsonb, $6::jsonb, $7::timestamptz, $8::text) as version`;
+
+  it("saves exact per-animal litres, note, delivery and cash receipt; rejects stale corrections", async () => {
+    await db.exec("begin");
+    try {
+      const cows = (await db.query<{ id: string }>("select id from public.animals where tag in ('101', '102') order by tag")).rows;
+      const cash = (await db.query<{ id: string }>("select id from public.customers where kind = 'cash' limit 1")).rows[0];
+      const animals = JSON.stringify([{ animal_id: cows[0].id, litres: 0.1 }, { animal_id: cows[1].id, litres: 0.2 }]);
+      const deliveries = JSON.stringify([{ customer_id: cash.id, litres: 0.2 }]);
+      const args = [null, "evening", 0.3, "per_animal", animals, deliveries, null, "Baqi ghar mein istemal hua"];
+      const version = (await db.query<{ version: string }>(save, args)).rows[0].version;
+      const record = (await db.query<{ total_litres: string; notes: string; paid: string }>(`
+        select s.total_litres, s.notes, p.amount as paid
+        from public.milk_shifts s
+        join public.milk_deliveries d on d.delivery_date = s.milk_date and d.shift = s.shift
+        join public.payments p on p.delivery_id = d.id
+        where s.milk_date = public.farm_today() and s.shift = 'evening'`)).rows[0];
+      expect(record).toMatchObject({ total_litres: "0.30", notes: "Baqi ghar mein istemal hua", paid: "30.00" });
+      await expectRejected(save, args, /MILK_STALE/);
+      await db.query(save, [null, "evening", 0.3, "per_animal", animals, deliveries, version, "Naya note"]);
+      await expectRejected(save, [null, "evening", 0.3, "per_animal", animals, deliveries, version, "Purana note"], /MILK_STALE/);
+      expect((await db.query<{ notes: string }>("select notes from public.milk_shifts where milk_date = public.farm_today() and shift = 'evening'")).rows[0].notes).toBe("Naya note");
+    } finally { await db.exec("rollback"); }
+  });
+
+  it("rejects malformed, duplicate, future, and over-delivered requests without partial rows", async () => {
+    await db.exec("begin");
+    try {
+      const customer = (await db.query<{ id: string }>("select id from public.customers where kind = 'free' limit 1")).rows[0].id;
+      const date = (await db.query<{ day: string }>("select (public.farm_today() - 20)::text as day")).rows[0].day;
+      const delivery = JSON.stringify([{ customer_id: customer, litres: 1 }]);
+      const base = [date, "evening", 1, "total", "[]", delivery, null, ""];
+      await expectRejected(save, [date, "evening", 1.001, "total", "[]", delivery, null, ""], /MILK_INVALID/);
+      await expectRejected(save, [date, "evening", 1, "total", "[]", JSON.stringify([{ customer_id: customer, litres: 0.5 }, { customer_id: customer, litres: 0.5 }]), null, ""], /MILK_INVALID/);
+      await expectRejected(save, [date, "evening", 1, "total", "[]", JSON.stringify([{ customer_id: customer, litres: 2 }]), null, ""], /MILK_INVALID/);
+      await expectRejected(save, [date, "evening", 1, "total", "[]", JSON.stringify([{ customer_id: customer, litres: -1 }]), null, ""], /MILK_INVALID/);
+      await expectRejected(save, [date, "evening", 1, "total", "[]", "[{}]", null, ""], /MILK_INVALID/);
+      await expectRejected(save, [date, "evening", 1, "total", "[]", delivery, null, "x".repeat(501)], /MILK_INVALID/);
+      await expectRejected(save, ["2999-01-01", "evening", 1, "total", "[]", delivery, null, ""], /FUTURE_DATE/);
+      expect(Number((await db.query<{ count: string }>("select count(*) from public.milk_shifts where milk_date = $1 and shift = 'evening'", [date])).rows[0].count)).toBe(0);
+      await db.query(save, base);
+      const before = (await db.query<{ version: string }>("select updated_at as version from public.milk_shifts where milk_date = $1 and shift = 'evening'", [date])).rows[0].version;
+      await db.query("update public.milk_deliveries set litres = 0.5 where delivery_date = $1 and shift = 'evening'", [date]);
+      await expectRejected(save, [...base.slice(0, 6), before, ""], /MILK_STALE/);
+    } finally { await db.exec("rollback"); }
+  });
+
+  it("respects a closed month and blocks direct future milk writes", async () => {
+    await db.exec("begin");
+    try {
+      await expectRejected("insert into public.milk_shifts (milk_date, shift, total_litres) values (public.farm_today() + 1, 'morning', 1)", [], /FUTURE_DATE/);
+      await expectRejected("insert into public.milk_deliveries (delivery_date, shift, customer_id, litres) select public.farm_today() + 1, 'morning', id, 1 from public.customers limit 1", [], /FUTURE_DATE/);
+      await db.exec("insert into public.month_locks (month) values (date_trunc('month', public.farm_today())::date)");
+      await expectRejected(save, [null, "morning", 0, "total", "[]", "[]", null, ""], /MONTH_LOCKED/);
+    } finally { await db.exec("rollback"); }
+  });
+});
+
 describe("customer opening dates and price history", () => {
   it("keeps used prices fixed while allowing an unchanged retry and a scheduled future rate", async () => {
     await db.exec("begin");

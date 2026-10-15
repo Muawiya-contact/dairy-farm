@@ -30,7 +30,7 @@ production periods until the owner has checked the real books.
 Settings offers CSV templates for animals, customers, and accounts. CSV and
 `.xlsx` files are read in the browser, validated, and previewed for up to 5,000
 rows / 2 MB. The dry run checks columns, types, dates, amounts, basic business
-rules, and duplicate tags or account names **within the file**. It does not
+rules, and duplicate tags or customer/account names **within the file**. It does not
 write to Supabase and cannot detect conflicts with existing database records.
 The source files are not available yet, so there is no production import in
 this PR. Before a later import: get the client's files, review mapping and

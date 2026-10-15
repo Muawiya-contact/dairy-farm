@@ -112,7 +112,7 @@ export function previewImport(matrix: string[][], kind: ImportKind, today: strin
     rows.push(row);
     const problems = validateRow(kind, row, today);
     if (cells.length !== columns.length) problems.push("Column count template se nahi milta.");
-    const identity = kind === "animals" ? row.tag.toLowerCase() : kind === "accounts" ? row.name.toLowerCase() : "";
+    const identity = (kind === "animals" ? row.tag : row.name).toLowerCase();
     if (identity) {
       if (seen.has(identity)) problems.push("Is file mein tag ya naam dobara aaya hai.");
       seen.add(identity);

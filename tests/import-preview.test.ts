@@ -24,11 +24,13 @@ describe("import dry run", () => {
   test("checks signed opening balances and customer business rules", () => {
     const valid = ["Ahmed", "03297316882", "regular", "2026-01-01", "1.25", "0", "150", "-100.50", ""];
     const invalid = ["Free", "", "free", "2026-11-01", "-1", "0", "10", "100", ""];
-    const result = previewImport([[...IMPORT_TEMPLATES.customers], valid, invalid], "customers", today);
-    expect(result.count).toBe(2);
+    const duplicate = ["ahmed", "", "regular", "2026-01-01", "1", "0", "150", "0", ""];
+    const result = previewImport([[...IMPORT_TEMPLATES.customers], valid, invalid, duplicate], "customers", today);
+    expect(result.count).toBe(3);
     expect(result.issues.filter((issue) => issue.row === 2)).toEqual([]);
     expect(result.issues.filter((issue) => issue.row === 3).map((issue) => issue.message).join(" "))
       .toMatch(/aaj se aage|Morning litres|rate 0|opening balance 0|Free reason/);
+    expect(result.issues).toContainEqual({ row: 4, message: "Is file mein tag ya naam dobara aaya hai." });
   });
 
   test("rejects impossible dates, oversized ages, and duplicate account names", () => {

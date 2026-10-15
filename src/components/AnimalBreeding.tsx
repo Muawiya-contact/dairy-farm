@@ -86,11 +86,14 @@ export function AnimalBreeding({ animal, animals, records, calvings, offspring, 
 
   const calve = (event: FormEvent<HTMLFormElement>, record: Insemination) => {
     event.preventDefault();
+    if (busy) return;
     const form = event.currentTarget;
     let values: ReturnType<typeof parseCalving>;
     try { values = parseCalving(new FormData(form), calfCount, record.service_date, today); }
     catch (error) { setCalvingValidation(error instanceof Error ? error.message : "Paidaish ka form dobara dekhein."); return; }
     setCalvingValidation("");
+    const liveCount = values.offspring.filter((child) => child.outcome === "alive").length;
+    if (!window.confirm(`${animal.tag} ki ${shortDate(values.date)} wali paidaish aur ${values.offspring.length} bachay darj karein? ${liveCount} zinda bachay ka janwar record banega. Is entry ko baad mein seedha badal nahi sakte.`)) return;
     const requestId = requests.current.get(record.id) ?? crypto.randomUUID();
     requests.current.set(record.id, requestId);
     void run(async () => {

@@ -94,10 +94,14 @@ export default function StaffSalary() {
 
   const onPay = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!period || !salaryCategory) return;
+    if (!period || !salaryCategory || busyRef.current) return;
     const form = event.currentTarget;
+    let fields: ReturnType<typeof parsePayment>;
+    try { fields = parsePayment(new FormData(form), today, period, accounts, data.payments); }
+    catch (issue) { setError(friendlyError(issue)); return; }
+    const account = accounts.find((item) => item.id === fields.accountId);
+    if (!window.confirm(`${selected?.name ?? "Mulazim"} ko ${money(fields.amount)} ${account?.name ?? "account"} se ${longDate(fields.date)} ko ada karein? Yeh Galla aur kharchay mein darj hoga.`)) return;
     void run(async () => {
-      const fields = parsePayment(new FormData(form), today, period, accounts, data.payments);
       const signature = JSON.stringify({ categoryId: salaryCategory.id, ...fields });
       if (paymentPending.current?.signature !== signature) paymentPending.current = { id: crypto.randomUUID(), signature };
       await recordSalaryPayment(paymentPending.current.id, salaryCategory.id, fields);

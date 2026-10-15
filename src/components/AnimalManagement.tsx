@@ -88,9 +88,15 @@ export function AnimalManagement({ animal, animals, accounts, today, linkedBirth
     </form>}
     {mode === "exit" && <form className="grid gap-3 sm:grid-cols-2" onSubmit={(e: FormEvent<HTMLFormElement>) => {
       e.preventDefault(); const f = new FormData(e.currentTarget);
-      void run(() => closeAnimal({ animalId: animal.id, status: exitStatus, date: text(f.get("date")), reason: text(f.get("reason")),
-        price: exitStatus === "sold" ? parsePositiveAmount(text(f.get("price"))) : null,
-        accountId: exitStatus === "sold" ? text(f.get("account")) : null }));
+      if (busyRef.current) return;
+      let price: number | null = null;
+      try { if (exitStatus === "sold") price = parsePositiveAmount(text(f.get("price"))); }
+      catch (issue) { setError(friendlyError(issue)); return; }
+      const date = text(f.get("date"));
+      const action = exitStatus === "sold" ? `farokht ${money(price)}` : exitStatus === "dead" ? "wafat" : "farm se nikalna";
+      if (!window.confirm(`${animal.tag} ka ${action} ${longDate(date)} ko darj karein? Is ke baad yeh janwar active list se hat jayega.`)) return;
+      void run(() => closeAnimal({ animalId: animal.id, status: exitStatus, date, reason: text(f.get("reason")),
+        price, accountId: exitStatus === "sold" ? text(f.get("account")) : null }));
     }}>
       <p className="text-sm text-muted sm:col-span-2">Is action ke baad janwar active list aur doodh entry se hat jayega. Sirf farokht ki raqam account mein aayegi.</p>
       <label className={label}>Haalat<select name="status" value={exitStatus} onChange={(e) => setExitStatus(e.target.value as AnimalExit)} className={field}><option value="sold">Farokht</option><option value="dead">Wafat</option><option value="removed">Doosri wajah se nikla</option></select></label>

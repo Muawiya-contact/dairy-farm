@@ -10,6 +10,7 @@ import { createAccount, getAccounts, updateAccount, validateAccount, type FarmAc
 import { formatDay, todayPK } from "@/lib/dates";
 import { ExportPanel } from "@/components/ExportPanel";
 import { estimatedHijriDate, nextGyarhwinDate } from "@/lib/gyarhwin";
+import { MonthCloseSection } from "@/components/MonthCloseSection";
 
 const inputClass = "mt-1 min-h-12 w-full rounded-xl border border-line bg-paper px-3 outline-none focus:border-berseem";
 
@@ -171,6 +172,7 @@ export default function SettingsPage() {
         {query.isError && <p role="alert" className="text-udhaar">Settings load nahi huin: {friendlyError(query.error)} <button onClick={() => void query.refetch()} className="underline">Dobara koshish</button></p>}
         {query.data && <SettingsForm initial={query.data} />}
         <AccountsSection />
+        <MonthCloseSection />
         <ExportPanel />
       </Body>
     </>

@@ -838,6 +838,33 @@ export type Database = {
         }
         Relationships: []
       }
+      month_lock_events: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          id: string
+          month: string
+          reason: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          month: string
+          reason?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          month?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
       month_locks: {
         Row: {
           locked_at: string
@@ -1309,6 +1336,10 @@ export type Database = {
         }
         Returns: string
       }
+      close_farm_month: {
+        Args: { p_month: string; p_note?: string | null }
+        Returns: boolean
+      }
       correct_manual_payment: {
         Args: {
           p_account: string | null
@@ -1447,6 +1478,10 @@ export type Database = {
           p_title: string
         }
         Returns: string
+      }
+      reopen_farm_month: {
+        Args: { p_month: string; p_reason: string }
+        Returns: boolean
       }
       save_milk_entry: {
         Args: {

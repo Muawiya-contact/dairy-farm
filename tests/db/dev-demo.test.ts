@@ -218,6 +218,62 @@ describe("checked daily milk entry", () => {
   });
 });
 
+describe("owner month closing", () => {
+  it("does not let a signed-in non-owner close a month", async () => {
+    await db.exec("begin");
+    try {
+      await db.exec("set role authenticated");
+      await expectRejected("select public.close_farm_month((date_trunc('month', public.farm_today()) - interval '1 month')::date)", [], /MONTH_FORBIDDEN/);
+    } finally { await db.exec("reset role"); await db.exec("rollback"); }
+  });
+
+  it("records close/reopen decisions and protects a closed ledger from indirect edits", async () => {
+    await db.exec("begin");
+    try {
+      const month = (await db.query<{ month: string }>(
+        "select (date_trunc('month', public.farm_today()) - interval '1 month')::date as month",
+      )).rows[0].month;
+      const owner = "9fb34167-f97d-4938-be7f-ca9a45ef509d";
+      await db.query("insert into auth.users(id) values ($1)", [owner]);
+      await db.query("insert into private.app_owner(singleton, user_id) values (true, $1)", [owner]);
+      const account = (await db.query<{ id: string }>(
+        "insert into public.accounts(name, kind, opening_balance, opening_date) values ('Month close QA', 'cash', 100, $1) returning id", [month],
+      )).rows[0].id;
+      const category = (await db.query<{ id: string }>(
+        "insert into public.expense_categories(name, is_farm_cost) values ('Month close QA', true) returning id",
+      )).rows[0].id;
+      const customer = (await db.query<{ id: string }>(
+        "insert into public.customers(name, kind, opening_balance, opening_date) values ('Month close QA', 'regular', 100, $1) returning id", [month],
+      )).rows[0].id;
+      await db.query("insert into public.expenses(expense_date, category_id, amount, account_id) values ($1, $2, 1, $3)",
+        [month, category, account]);
+      await db.exec("set request.jwt.claim.sub = '9fb34167-f97d-4938-be7f-ca9a45ef509d'");
+      await db.exec("set role authenticated");
+      expect((await db.query<{ changed: boolean }>("select public.close_farm_month($1, 'Mahina check ho gaya') as changed", [month])).rows[0].changed).toBe(true);
+      expect((await db.query<{ changed: boolean }>("select public.close_farm_month($1, null) as changed", [month])).rows[0].changed).toBe(false);
+      await expectRejected("update public.accounts set opening_balance = 200 where id = $1", [account], /MONTH_LOCKED/);
+      await expectRejected("update public.customers set opening_balance = 200 where id = $1", [customer], /MONTH_LOCKED/);
+      await expectRejected("update public.expense_categories set is_farm_cost = false where id = $1", [category], /MONTH_LOCKED/);
+      await expectRejected("delete from public.month_locks where month = $1", [month], /permission denied/);
+      await expectRejected("select public.reopen_farm_month($1, 'no')", [month], /MONTH_REASON_REQUIRED/);
+      expect((await db.query<{ changed: boolean }>("select public.reopen_farm_month($1, 'Owner correction') as changed", [month])).rows[0].changed).toBe(true);
+      expect((await db.query<{ changed: boolean }>("select public.reopen_farm_month($1, 'Owner correction') as changed", [month])).rows[0].changed).toBe(false);
+      const events = (await db.query<{ action: string; reason: string }>(
+        "select action, reason from public.month_lock_events where month = $1 order by created_at", [month],
+      )).rows;
+      expect(events).toEqual([
+        { action: "close", reason: "Mahina check ho gaya" },
+        { action: "reopen", reason: "Owner correction" },
+      ]);
+      await db.query("update public.accounts set opening_balance = 200 where id = $1", [account]);
+    } finally {
+      await db.exec("reset role");
+      await db.exec("reset request.jwt.claim.sub");
+      await db.exec("rollback");
+    }
+  });
+});
+
 describe("customer opening dates and price history", () => {
   it("keeps used prices fixed while allowing an unchanged retry and a scheduled future rate", async () => {
     await db.exec("begin");

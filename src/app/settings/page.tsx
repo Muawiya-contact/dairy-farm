@@ -90,7 +90,7 @@ function SettingsForm({ initial }: { initial: FarmSettings }) {
       </fieldset>
       <button disabled={mutation.isPending} className="mt-5 min-h-12 rounded-xl bg-berseem px-5 font-bold text-white disabled:opacity-50">{mutation.isPending ? "Save ho raha hai…" : "Save karein"}</button>
       {validation && <p role="alert" className="mt-3 text-udhaar">{validation}</p>}
-      {mutation.isSuccess && <p role="status" className="mt-3 text-berseem-deep">Settings Supabase mein save ho gayi.</p>}
+      {mutation.isSuccess && <p role="status" className="mt-3 text-berseem-deep">Settings farm ke data mein save ho gayi.</p>}
       {mutation.isError && <p role="alert" className="mt-3 text-udhaar">Save nahi hua: {friendlyError(mutation.error)}</p>}
     </form>
   );

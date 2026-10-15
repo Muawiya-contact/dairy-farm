@@ -24,6 +24,8 @@ test("production never grants anonymous access to write RPCs", async () => {
       "public.save_milk_entry(date,text,numeric,text,jsonb,jsonb)",
       "public.save_milk_entry_checked(date,text,numeric,text,jsonb,jsonb,timestamp with time zone,text)",
       "public.create_customer(text,text,text,numeric,numeric,numeric,numeric,date,text)",
+      "public.create_customer_once(uuid,text,text,text,numeric,numeric,numeric,numeric,date,text)",
+      "public.correct_expense(uuid,uuid,integer,date,uuid,uuid,numeric,text,text)",
       "public.record_health_event(uuid,date,text,text,numeric,date,uuid,uuid)",
       "public.close_animal(uuid,text,date,text,numeric,uuid)",
       "public.record_calving(uuid,date,text,text)",
@@ -42,6 +44,7 @@ test("production never grants anonymous access to write RPCs", async () => {
       "correct_manual_payment", "void_manual_payment", "milk_month_summary", "pnl_month",
       "close_farm_month", "reopen_farm_month", "save_milk_entry_checked", "close_animal",
       "create_customer", "customer_month_report", "record_health_event",
+      "create_customer_once", "correct_expense", "subscription_status",
       "record_calving_with_offspring", "expense_month_report", "herd_alerts", "rate_on",
     ];
     const { rows: inaccessibleRpcs } = await db.query<{ proname: string }>(`
@@ -60,6 +63,11 @@ test("production never grants anonymous access to write RPCs", async () => {
           or has_table_privilege('anon', c.oid, 'DELETE'))
     `);
     expect(exposedTables).toEqual([]);
+    const { rows: privateAccess } = await db.query<{ anon_access: boolean; auth_access: boolean }>(`
+      select has_table_privilege('anon', 'private.farm_subscription', 'UPDATE') as anon_access,
+             has_table_privilege('authenticated', 'private.farm_subscription', 'UPDATE') as auth_access
+    `);
+    expect(privateAccess).toEqual([{ anon_access: false, auth_access: false }]);
     await db.exec(`
       create function public.permission_probe() returns integer language sql as $$ select 1 $$;
       create table public.permission_probe_table (id integer);

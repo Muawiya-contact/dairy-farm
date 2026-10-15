@@ -1,8 +1,7 @@
 # Dairy Farm roadmap
 
 This adapts the supplied `ROADMAP.md` to the current repository. The app
-now reads and saves farm records through Supabase. Forty-one migrations are recorded
-on staging and production as of the Step 8 PR. Staging has invented demo records;
+now reads and saves farm records through Supabase. Staging has invented demo records;
 production has schema and generic defaults and requires the owner login.
 The table below remains a plan for fuller workflows and launch readiness.
 
@@ -16,6 +15,7 @@ The table below remains a plan for fuller workflows and launch readiness.
 | 6. Wusooli / galla | Payments, bills, account transfers | 5 |
 | 7. Kharcha | Expenses, salary, other income | 6 |
 | 8. Reports / launch | Dashboard, month close controls, import dry run, connection and release checks | Earlier steps |
+| 9. Release hardening | [Corrections, scoped reads, manual copy, and annual access](steps/step-9-final-hardening.md) | 1–8 |
 
 The supplied files only describe Step 1 in detail; later step documents,
 client sheets, and the claimed larger test suite were not included. See
@@ -34,8 +34,9 @@ real-data project stays owner restricted until a planned live-data release.
 
 [Step 8 launch work](steps/step-8-launch.md) documents month closing,
 CSV/Excel import preparation, checks, and the remaining real-data cutover.
-The owner will handle periodic backups separately; this PR does not add a
-backup service or restore workflow.
+Settings offers a manual farm-data download. It does not add a backup service
+or restore workflow. See [Step 9](steps/step-9-final-hardening.md) for the
+latest release and annual-access procedure.
 
 Staging is disposable; production is not. Do not copy real customer, animal,
 or financial records into staging. Never put a secret/service-role key in the

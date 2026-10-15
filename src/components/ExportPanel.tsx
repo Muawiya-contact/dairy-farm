@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BREEDING_COLUMNS, DATASETS, REPORTS, downloadFile, exportRows, fetchBreedingRegister, fetchDataset, fetchReport, type ExportFormat } from "@/lib/export-data";
 import { friendlyError } from "@/lib/errors";
 import { todayPK } from "@/lib/dates";
+import { buildFarmBackup } from "@/lib/backup";
 
 const buttonClass = "min-h-11 rounded-xl border border-line px-3 text-left text-sm font-semibold hover:border-berseem disabled:opacity-50";
 
@@ -29,9 +30,8 @@ export function ExportPanel() {
     await exportRows(`dairy-${report.name}-${month}`, report.label, [...report.columns], rows, format);
   });
   const exportBackup = () => void run("Mukammal JSON", async () => {
-    const tables: Record<string, Record<string, unknown>[]> = {};
-    for (const dataset of DATASETS) tables[dataset.table] = await fetchDataset(dataset);
-    downloadFile(`dairy-data-${todayPK()}.json`, JSON.stringify({ exported_at: new Date().toISOString(), tables }, null, 2), "application/json;charset=utf-8");
+    const backup = await buildFarmBackup();
+    downloadFile(`dairy-backup-${todayPK()}.json`, JSON.stringify(backup, null, 2), "application/json;charset=utf-8");
   });
   const exportBreeding = () => void run("Nasl kashi register", async () => {
     const rows = await fetchBreedingRegister();
@@ -39,12 +39,13 @@ export function ExportPanel() {
   });
 
   return <section className="max-w-4xl rounded-2xl border border-line bg-paper p-5">
-    <h2 className="font-display text-xl font-bold">Data export</h2>
-    <p className="mt-1 text-sm text-muted">Supabase ka abhi wala data download karein. Har report aur table CSV, Excel ya PDF mein milti hai. JSON mein tamam tables hain. Khali table mein bhi column naam honge.</p>
+    <h2 className="font-display text-xl font-bold">Data ki copy aur export</h2>
+    <p className="mt-1 text-sm text-muted">Farm ke abhi wale records download karein. Har report aur table CSV, Excel ya PDF mein milti hai. JSON copy mein tamam farm tables aur har table ki entries ki ginti hoti hai.</p>
+    <p className="mt-2 text-xs text-muted">Is copy ko apni mehfooz jagah rakhein. Is mein login accounts, app ki banawat aur alag se rakhi files shamil nahi. Wapas dalne ka button abhi nahi hai.</p>
     <div className="mt-5 flex flex-wrap items-end gap-3">
       <label className="text-sm font-semibold">Report ka maheena<input type="month" value={month} onChange={(event) => setMonth(event.target.value)} className="mt-1 block min-h-11 rounded-xl border border-line bg-paper px-3" /></label>
       <label className="text-sm font-semibold">File ki qism<select value={format} onChange={(event) => setFormat(event.target.value as ExportFormat)} className="mt-1 block min-h-11 rounded-xl border border-line bg-paper px-3"><option value="csv">CSV</option><option value="xlsx">Excel (.xlsx)</option><option value="pdf">PDF</option></select></label>
-      <button type="button" disabled={!!busy} onClick={exportBackup} className="min-h-11 rounded-xl bg-berseem px-4 font-semibold text-white disabled:opacity-50">{busy === "Mukammal JSON" ? "Download ho raha hai…" : "Tamam data JSON"}</button>
+      <button type="button" disabled={!!busy} onClick={exportBackup} className="min-h-11 rounded-xl bg-berseem px-4 font-semibold text-white disabled:opacity-50">{busy === "Mukammal JSON" ? "Copy ban rahi hai…" : "Farm data ki copy download karein"}</button>
     </div>
     <h3 className="mt-5 font-semibold">Maheene ki reports</h3>
     <div className="mt-2 grid gap-2 sm:grid-cols-2">{REPORTS.map((report) => <button key={report.name} type="button" disabled={!!busy || !month} onClick={() => exportReport(report)} className={buttonClass}>{report.label} · {format.toUpperCase()}</button>)}</div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expenseMode, parseExpenseEntry } from "../src/lib/expense-forms";
+import { expenseMode, parseExpenseCorrection, parseExpenseEntry } from "../src/lib/expense-forms";
 
 const today = "2026-10-14";
 const accounts = [
@@ -24,6 +24,15 @@ function form(fields: Record<string, string>): FormData {
 }
 
 describe("expense entry form", () => {
+  it("requires a reason and validates every corrected value", () => {
+    const corrected = parseExpenseCorrection(form({ category: "farm", amount: "89.25", reason: "Raqam ghalat thi" }), today, accounts, categories);
+    expect(corrected).toEqual({ input: { date: today, accountId: "cash", categoryId: "farm", amount: 89.25, note: null }, reason: "Raqam ghalat thi" });
+    expect(() => parseExpenseCorrection(form({ category: "farm", reason: "no" }), today, accounts, categories)).toThrow(/5 se 500/);
+    expect(() => parseExpenseCorrection(form({ category: "salary", reason: "Raqam ghalat thi" }), today, accounts, categories)).toThrow(/Tankhwah/);
+    expect(() => parseExpenseCorrection(form({ category: "farm", amount: "-5", reason: "Raqam ghalat thi" }), today, accounts, categories)).toThrow(/Raqam/);
+    expect(() => parseExpenseCorrection(form({ category: "inactive", reason: "Raqam ghalat thi" }), today, accounts, categories)).toThrow(/category/);
+    expect(() => parseExpenseCorrection(form({ category: "farm", account: "closed", reason: "Raqam ghalat thi" }), today, accounts, categories)).toThrow(/Active account/);
+  });
   it("selects the dedicated home category and keeps other personal costs distinct", () => {
     expect(parseExpenseEntry(form({ note: "  ghar ke liye  " }), "home", today, accounts, categories))
       .toEqual({ date: today, accountId: "cash", categoryId: "home", amount: 125.5, note: "ghar ke liye" });

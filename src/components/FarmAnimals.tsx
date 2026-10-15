@@ -7,7 +7,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { amount, insertRow, longDate, money, recordHealthEvent, shortDate, useFarmData, type Animal } from "@/lib/farm-data";
 import { friendlyError } from "@/lib/errors";
 import { parseAmount } from "@/lib/format";
-import { animalAge, animalLifeEvents, parseAnimalDates, type AnimalSource } from "@/lib/animal-life";
+import { animalAge, animalLifeEvents, matchesAnimalFilter, parseAnimalDates, type AnimalSource } from "@/lib/animal-life";
+import { refreshFarmViews } from "@/lib/query-refresh";
 import { Body, PageHeader, Panel, StatusTag } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
 import { PlusIcon, SearchIcon } from "./icons";
@@ -18,9 +19,9 @@ const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 const animalLabel = (a: Animal) => `${a.tag}${a.name ? ` · ${a.name}` : ""}`;
 
 export default function FarmAnimals() {
-  const query = useFarmData();
-  const qc = useQueryClient();
   const id = useSearchParams().get("id") ?? "";
+  const query = useFarmData("animals", id);
+  const qc = useQueryClient();
   const [add, setAdd] = useState(false);
   const [newSource, setNewSource] = useState<AnimalSource>("purchased");
   const [newSex, setNewSex] = useState<Animal["sex"]>("female");
@@ -39,8 +40,9 @@ export default function FarmAnimals() {
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true); setError("");
-    try { await fn(); await qc.invalidateQueries({ queryKey: ["farm-data"] }); setAdd(false); }
-    catch (e) { setError(friendlyError(e)); if (e instanceof Error && /STALE/.test(e.message)) await qc.invalidateQueries({ queryKey: ["farm-data"] }); }
+    try { await fn(); setAdd(false); try { await refreshFarmViews(qc, "animal"); }
+      catch { setError("Record save ho gaya, lekin nayi list nahi khuli. Page dobara kholein."); } }
+    catch (e) { setError(friendlyError(e)); if (e instanceof Error && /STALE/.test(e.message)) await refreshFarmViews(qc, "animal"); }
     finally { busyRef.current = false; setBusy(false); }
   };
   if (selected) {
@@ -73,11 +75,11 @@ export default function FarmAnimals() {
       <AnimalBreeding animal={selected} animals={d.animals} records={breeding} calvings={d.calvings.filter((x) => x.animal_id === selected.id)} offspring={d.calvingOffspring} today={d.today} busy={busy} run={run} />
       {error && <p role="alert" className="text-udhaar lg:col-span-2">Save nahi hua: {error}</p>}</Body></>;
   }
-  const list = d.animals.filter((a) => (filter === "all" || a.life_status === filter || a.species === filter || a.milking_status === filter) && `${a.tag} ${a.name ?? ""} ${a.breed ?? ""}`.toLowerCase().includes(term.toLowerCase()));
-  return <><PageHeader title="Janwar" sub={`${active.length} active, ${active.filter((a) => a.milking_status === "milking").length} doodh de rahe`} action={<button onClick={() => setAdd(!add)} className="flex min-h-11 items-center gap-1 rounded-xl bg-berseem px-4 font-semibold text-white"><PlusIcon width={18} />Naya</button>} />
+  const list = d.animals.filter((a) => matchesAnimalFilter(a, filter) && `${a.tag} ${a.name ?? ""} ${a.breed ?? ""}`.toLowerCase().includes(term.toLowerCase()));
+  return <><PageHeader title="Janwar" sub={`${active.length} farm par hain, ${active.filter((a) => a.milking_status === "milking").length} doodh de rahe`} action={<button onClick={() => setAdd(!add)} className="flex min-h-11 items-center gap-1 rounded-xl bg-berseem px-4 font-semibold text-white"><PlusIcon width={18} />Naya</button>} />
     <Body><Link href="/nasl/" className="inline-flex min-h-11 items-center rounded-xl border border-berseem px-4 font-semibold text-berseem">Nasl kashi register aur due kaam</Link>{add && <Panel title="Naya janwar"><form onSubmit={(e: FormEvent<HTMLFormElement>) => { e.preventDefault(); const f = new FormData(e.currentTarget); void run(async () => { const dates = parseAnimalDates({ source: newSource, arrival: String(f.get("arrival") ?? ""), birth: String(f.get("birth") ?? ""), estimatedYears: String(f.get("ageYears") ?? ""), estimatedMonths: String(f.get("ageMonths") ?? ""), purchaseDate: String(f.get("purchaseDate") ?? ""), today: d.today }); await insertRow("animals", { tag: String(f.get("tag") ?? "").trim(), name: String(f.get("name") || "").trim() || null, species: String(f.get("species")), breed: String(f.get("breed") || "").trim() || null, sex: newSex, category: String(f.get("category")), milking_status: newSex === "male" ? "none" : String(f.get("milking")), source: newSource, ...dates, purchase_price: newSource === "purchased" && String(f.get("purchasePrice") || "").trim() ? parseAmount(String(f.get("purchasePrice"))) : null, notes: String(f.get("notes") || "").trim() || null }); }); }} className="grid gap-3 sm:grid-cols-2">
       <input name="tag" required placeholder="Tag number" aria-label="Tag number" className={field} /><input name="name" placeholder="Naam (optional)" aria-label="Naam" className={field} /><input name="breed" placeholder="Nasl" aria-label="Nasl" className={field} />
-      <select name="species" aria-label="Species" className={field}><option value="cow">Gaye</option><option value="buffalo">Bhains</option></select><select name="sex" aria-label="Sex" value={newSex} onChange={(e) => setNewSex(e.target.value as Animal["sex"])} className={field}><option value="female">Female</option><option value="male">Male</option></select><select name="category" aria-label="Category" className={field}><option value="cow">Bari</option><option value="heifer">Heifer</option><option value="calf">Bacha</option><option value="bull">Bull</option></select>
+      <select name="species" aria-label="Janwar ki qism" className={field}><option value="cow">Gaye</option><option value="buffalo">Bhains</option></select><select name="sex" aria-label="Jins" value={newSex} onChange={(e) => setNewSex(e.target.value as Animal["sex"])} className={field}><option value="female">Mada</option><option value="male">Nar</option></select><select name="category" aria-label="Umar ka group" className={field}><option value="cow">Bari</option><option value="heifer">Bachhi</option><option value="calf">Bacha</option><option value="bull">Saand</option></select>
       <select name="milking" aria-label="Milk status" disabled={newSex === "male"} className={field}><option value="none">Doodh nahi</option><option value="milking">Doodh de rahi</option><option value="dry">Khushk</option></select>
       <label className="grid gap-1 text-sm text-muted">Aane ka zariya<select name="source" value={newSource} onChange={(e) => setNewSource(e.target.value as AnimalSource)} className={field}><option value="purchased">Kharida</option><option value="born">Farm par paida hua</option><option value="gift">Tohfa</option><option value="transfer">Transfer</option><option value="other">Doosra</option></select></label>
       <label className="grid gap-1 text-sm text-muted">Paidaish ki tareekh {newSource === "born" ? "(zaroori)" : "(agar maloom ho)"}<input name="birth" type="date" max={d.today} required={newSource === "born"} className={field} /></label>

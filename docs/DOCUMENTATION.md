@@ -1,12 +1,12 @@
 # Dairy Farm: implementation and acceptance plan
 
-Updated for the Step 8 month-close and launch preparation work on 2026-10-15. The [roadmap](ROADMAP.md) defines eight steps. Update this document as each feature changes; the status below is based on code, not a claim that every workflow has passed an end-to-end audit.
+Updated for the Step 9 release hardening work on 2026-10-16. The [roadmap](ROADMAP.md) now tracks nine steps. The earlier step history below describes its original milestones; [Step 9](steps/step-9-final-hardening.md) records the latest behavior and release checks. Code completion does not by itself prove a hosted workflow passed an end-to-end audit.
 
 ## Architecture and environments
 
 Next.js builds a static site on Netlify. React Query and the Supabase browser client read and write PostgreSQL records. The browser gets only a publishable key. Tables, constraints, triggers, RLS, and database report functions are the source of truth for financial records. Stored money uses PostgreSQL `numeric(12,2)` and business dates use `date` and the database `farm_today()` rule; browser timezone and floating-point sums must not redefine balances.
 
-Netlify main and Deploy Previews currently connect to **staging**, which contains invented demo data and allows shared access. A separate **production** Supabase project has the same migrations, owner-only access, and no demo seed. Production is reserved for real client data. Switching the live site to production requires a planned release; there is no browser database toggle.
+The demo Netlify site and its previews connect to **staging**, which contains invented data and allows shared access. A separate production Netlify site uses the production branch and the owner/editor-restricted production Supabase project. New migrations still have to be applied to each database at its release stage. There is no browser database toggle.
 
 ## Definition of done for every step
 
@@ -17,7 +17,7 @@ Netlify main and Deploy Previews currently connect to **staging**, which contain
 5. **Before the PR:** Run `npm run check` (Vitest, ESLint, TypeScript, static build). Apply migrations to staging through Supabase CLI and verify migration history. Check the Netlify preview at phone and laptop widths for loading, empty, error, and success states. Check device-specific sharing on a real phone. State exactly what passed and what remains unverified.
 6. **Release:** Keep changes focused with atomic commits. Apply the same migrations to production at the planned release stage, confirm owner-only access and no demo records, and have the owner review the preview. Merging or closing any PR requires explicit confirmation for that PR.
 
-## All eight steps
+## All nine steps
 
 | Step | Implemented so far | Next acceptance milestone |
 |---|---|---|
@@ -27,8 +27,9 @@ Netlify main and Deploy Previews currently connect to **staging**, which contain
 | **4. Customers** | [Types, opening balances, dated rates, profiles, and monthly views](steps/step-4-customers.md). | Check the hosted preview with owner workflows; historical repricing needs an audited correction design. |
 | **5. Doodh** | [Exact per-animal or total production, deliveries, shift notes, stale-save protection, Naqd auto payment, and an optional monthly Gyarhwin cue](steps/step-5-milk.md). | Verify the hosted preview and owner workflow on a real phone; design audited milk corrections later. |
 | **6. Wusooli / galla** | Payments, monthly bills, company bills, PDFs/share, Galla UI, manual transfers, cash counts, and audited corrections are implemented in PR #10. | Verify the live preview on phone and laptop, especially device sharing and real owner workflows. |
-| **7. Kharcha** | Farm/home expenses, categories, accounts, profit screens, and staff salary periods with partial payments. | Verify the salary preview; complete other income and audited expense corrections in later focused work. |
-| **8. Reports / launch** | Dashboard, monthly reports, CSV/Excel/PDF exports, and JSON data snapshot. Step 8 PR adds owner month-close controls, a CSV/Excel import dry run, and a read-only connection check. | Apply migration on both projects; validate the preview and owner flows. Real-data import waits for client files. Owner handles backups separately. Production cutover remains a separate release decision. |
+| **7. Kharcha** | Farm/home expenses, categories, accounts, salary periods with partial payments, manual gobar/other income, and audited expense corrections. | Check owner workflows and account balances in the hosted preview. |
+| **8. Reports / launch** | Dashboard, monthly reports, CSV/Excel/PDF exports, month close, import dry run, connection check, and manual JSON data copy. | Check the downloaded file; real-data import still waits for client files. |
+| **9. Release hardening** | [Confirmations, cache refresh, scoped reads, retry-safe customer create, and annual read-only access](steps/step-9-final-hardening.md). | Check staging and production migration history, preview behavior, and the owner-approved release. |
 
 Earlier unfinished work stays tracked in the roadmap and future step PRs.
 

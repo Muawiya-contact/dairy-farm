@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState, type FormEvent } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { amount, insertRow, longDate, money, shortDate, useFarmData, type Account, type Expense, type ExpenseCategory } from "@/lib/farm-data";
 import { friendlyError } from "@/lib/errors";
-import { expenseMode, isHomeCategory, parseExpenseEntry, type ExpenseMode } from "@/lib/expense-forms";
-import { recordExpense } from "@/lib/expenses";
+import { expenseMode, isHomeCategory, parseExpenseCorrection, parseExpenseEntry, type ExpenseMode } from "@/lib/expense-forms";
+import { correctExpense, getExpenseAudit, recordExpense } from "@/lib/expenses";
 import { Body, PageHeader, Panel } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
 
@@ -16,8 +16,9 @@ const modeNames: Record<ExpenseMode, string> = {
 };
 type Pending = { id: string; signature: string };
 
-function ExpenseList({ entries, categories, accounts, empty }: {
+function ExpenseList({ entries, categories, accounts, empty, onEdit, canEdit }: {
   entries: Expense[]; categories: ExpenseCategory[]; accounts: Account[]; empty: string;
+  onEdit?: (entry: Expense) => void; canEdit?: (entry: Expense) => boolean;
 }) {
   return <ul className="divide-y divide-line text-sm">{entries.map((entry) => {
     const category = categories.find((item) => item.id === entry.category_id);
@@ -26,13 +27,15 @@ function ExpenseList({ entries, categories, accounts, empty }: {
       <span className="text-muted">{shortDate(entry.expense_date)}</span>
       <span className="min-w-0 break-words">{entry.note || category?.name || "Kharcha"}</span>
       <span className="text-muted">{account?.name || "Account"}</span>
-      <strong className="sm:text-right">{money(entry.amount)}</strong>
+      <span className="flex flex-wrap items-center gap-2 sm:justify-end"><strong>{money(entry.amount)}</strong>
+        {onEdit && canEdit?.(entry) && <button type="button" onClick={() => onEdit(entry)} className="min-h-11 rounded-xl border border-berseem px-3 font-semibold text-berseem">Durust karein</button>}
+      </span>
     </li>;
   })}{!entries.length && <li className="py-3 text-muted">{empty}</li>}</ul>;
 }
 
 export default function FarmExpenses() {
-  const query = useFarmData();
+  const query = useFarmData("expenses");
   const qc = useQueryClient();
   const [mode, setMode] = useState<ExpenseMode>("farm");
   const [busy, setBusy] = useState(false);
@@ -40,6 +43,12 @@ export default function FarmExpenses() {
   const pending = useRef<Pending | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [editing, setEditing] = useState<Expense | null>(null);
+  const correctionPending = useRef<Pending | null>(null);
+  const audit = useQuery({ queryKey: ["expense-audit", editing?.id], queryFn: () => getExpenseAudit(editing!.id), enabled: !!editing });
+  useEffect(() => {
+    if (editing) document.getElementById("expense-correction")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [editing]);
   if (!query.data) return <FarmLoading error={query.error} retry={() => void query.refetch()} />;
   const d = query.data;
   const month = d.today.slice(0, 7);
@@ -61,6 +70,7 @@ export default function FarmExpenses() {
   const farmCategories = d.categories.filter((category) => category.active && category.is_farm_cost && !category.is_salary).sort(categoryOrder);
   const personalCategories = d.categories.filter((category) => category.active && expenseMode(category) === "personal").sort(categoryOrder);
   const activeAccounts = d.accounts.filter((account) => account.active);
+  const correctionCategories = d.categories.filter((category) => category.active && !category.is_salary);
   const availableCategories = mode === "farm" ? farmCategories : personalCategories;
   const defaultCategoryId = mode === "farm"
     ? farmCategories.find((category) => category.name === "Farm ka kharcha")?.id ?? farmCategories[0]?.id ?? ""
@@ -76,10 +86,11 @@ export default function FarmExpenses() {
         await Promise.all([
           qc.invalidateQueries({ queryKey: ["farm-data"] }, { throwOnError: true }),
           qc.invalidateQueries({ queryKey: ["galla"] }, { throwOnError: true }),
+          qc.invalidateQueries({ queryKey: ["expense-audit"] }, { throwOnError: true }),
         ]);
         setSuccess(message);
       } catch {
-        setSuccess("Supabase mein save ho gaya. Naye totals load nahi hue; page reload karein.");
+        setSuccess("farm ke data mein save ho gaya. Naye totals load nahi hue; page reload karein.");
       }
     } catch (issue) { setError(friendlyError(issue)); }
     finally { busyRef.current = false; setBusy(false); }
@@ -95,8 +106,22 @@ export default function FarmExpenses() {
       await recordExpense(pending.current.id, input);
       pending.current = null;
       form.reset();
-    }, `${modeNames[mode]} Supabase mein save ho gaya. Account ka balance update ho gaya.`);
+    }, `${modeNames[mode]} farm ke data mein save ho gaya. Account ka balance update ho gaya.`);
   };
+  const onCorrection = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editing) return;
+    const form = new FormData(event.currentTarget);
+    void run(async () => {
+      const { input, reason } = parseExpenseCorrection(form, d.today, d.accounts, d.categories);
+      const signature = JSON.stringify({ id: editing.id, revision: editing.revision, input, reason });
+      if (correctionPending.current?.signature !== signature) correctionPending.current = { id: crypto.randomUUID(), signature };
+      await correctExpense(editing.id, editing.revision, correctionPending.current.id, input, reason);
+      correctionPending.current = null;
+      setEditing(null);
+    }, "Kharcha durust ho gaya. Purana record audit mein mehfooz hai.");
+  };
+  const canEdit = (entry: Expense) => !entry.salary_period_id && !d.health.some((item) => item.expense_id === entry.id);
 
   return <>
     <PageHeader title="Kharcha aur munafa" sub={`${longDate(`${month}-01`)} se ${longDate(d.today)}`} />
@@ -109,6 +134,7 @@ export default function FarmExpenses() {
       </section>
       {personalTotal > 0 && <p className="text-sm text-muted lg:col-span-2">Doosray zaati kharchay: {money(personalTotal)}. Ghar aur doosray zaati kharchay account se nikalte hain, farm munafay se nahi.</p>}
       <Link href="/salary/" className="rounded-xl border border-berseem bg-berseem-soft px-4 py-3 font-semibold text-berseem-deep lg:col-span-2">Mulazim aur tankhwah →</Link>
+      <Link href="/aamdani/" className="rounded-xl border border-berseem bg-berseem-soft px-4 py-3 font-semibold text-berseem-deep lg:col-span-2">Gobar aur doosri aamdani →</Link>
       <Panel title="Naya kharcha" className="lg:col-span-2">
         <div className="mb-3 grid gap-2 sm:grid-cols-3" role="group" aria-label="Kharcha ki qism">
           {(["farm", "home", "personal"] as const).map((choice) => <button key={choice} type="button" disabled={busy} onClick={() => { setMode(choice); setError(""); setSuccess(""); }}
@@ -129,21 +155,37 @@ export default function FarmExpenses() {
           <label className="text-sm sm:col-span-2">Tafseel (optional)<input name="note" placeholder="Misal: ghar ka rashan" className={field} /></label>
           <button disabled={busy || !canSave} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50 sm:col-span-2">{modeNames[mode]} save karein</button>
         </form>
-        {!canSave && <p className="mt-2 text-sm text-udhaar" role="alert">Pehle active account aur is qism ki category chahiye. Migration apply hui hai ya nahi, check karein.</p>}
+        {!canSave && <p className="mt-2 text-sm text-udhaar" role="alert">Pehle istemal ke qabil account aur is qism ka kharcha chunein.</p>}
         <p className="mt-2 text-xs text-muted">Ghar ka kharcha chunein to raqam account se niklegi; farm munafa nahi badlega. Save ke baad entry Galla mein bhi dikhegi.</p>
       </Panel>
+      {editing && <div id="expense-correction" className="lg:col-span-2"><Panel title="Kharcha durust karein"><p className="mb-3 text-sm text-muted">Purani entry: {shortDate(editing.expense_date)} · {money(editing.amount)}. Band maheene ki entry pehle Settings mein kholni hogi.</p>
+        {(!correctionCategories.some((category) => category.id === editing.category_id) || !activeAccounts.some((account) => account.id === editing.account_id)) && <p role="alert" className="mb-3 text-sm text-udhaar">Is entry ki purani qism ya account band hai. Durusti ke liye istemal ke qabil qism aur account khud chunein.</p>}
+        <form key={editing.id} onSubmit={onCorrection} className="grid gap-3 sm:grid-cols-2">
+          <label className="text-sm">Tareekh<input name="date" type="date" max={d.today} required defaultValue={editing.expense_date} className={field} /></label>
+          <label className="text-sm">Qism<select name="category" required defaultValue={correctionCategories.some((item) => item.id === editing.category_id) ? editing.category_id : ""} className={field}><option value="" disabled>Qism chunein</option>{correctionCategories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+          <label className="text-sm">Paisa kis account se nikla?<select name="account" required defaultValue={activeAccounts.some((item) => item.id === editing.account_id) ? editing.account_id : ""} className={field}><option value="" disabled>Account chunein</option>{activeAccounts.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+          <label className="text-sm">Raqam (Rs)<input name="amount" type="number" min="0.01" step="0.01" required defaultValue={editing.amount} className={field} /></label>
+          <label className="text-sm sm:col-span-2">Tafseel<input name="note" defaultValue={editing.note ?? ""} className={field} /></label>
+          <label className="text-sm sm:col-span-2">Durusti ki wajah (zaroori)<input name="reason" required minLength={5} maxLength={500} placeholder="Misal: ghalat raqam likh di thi" className={field} /></label>
+          <button disabled={busy} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50">Durusti save karein</button>
+          <button type="button" onClick={() => { setEditing(null); setError(""); }} className="min-h-11 rounded-xl border border-line font-semibold">Band karein</button>
+        </form>
+        {audit.isLoading && <p className="mt-3 text-sm text-muted">Purani durustiyan khul rahi hain…</p>}
+        {audit.error && <p role="alert" className="mt-3 text-sm text-udhaar">Purani durustiyan nahi khulin: {friendlyError(audit.error)}</p>}
+        {!!audit.data?.length && <div className="mt-4 border-t border-line pt-3"><h3 className="font-semibold">Purani durustiyan</h3><ul>{audit.data.map((item) => <li key={item.id} className="py-2 text-sm">{item.reason} · {shortDate(String((item.before_row as { expense_date?: string }).expense_date ?? ""))} · {money(Number((item.before_row as { amount?: number }).amount))} → {money(Number((item.after_row as { amount?: number }).amount))}</li>)}</ul></div>}
+      </Panel></div>}
       <Panel title="Kahan kharcha hua" className="lg:col-span-2"><ul className="grid gap-3">{byCat.map((category) => <li key={category.id} className="grid grid-cols-[minmax(0,1fr)_2fr_auto] items-center gap-2 text-sm">
         <span className="truncate">{category.name}</span><span className="h-3 overflow-hidden rounded-full bg-ground"><span className="block h-full rounded-full bg-haldi" style={{ width: `${category.total / maxCategory * 100}%` }} /></span><strong>{money(category.total)}</strong>
       </li>)}{!byCat.length && <li className="text-muted">Is maah koi kharcha nahi.</li>}</ul></Panel>
-      <Panel title="Farm ke kharchay" className="lg:col-span-2"><ExpenseList entries={farmExpenses} categories={d.categories} accounts={d.accounts} empty="Is maah farm ka kharcha nahi." /></Panel>
-      <Panel title="Ghar ke kharchay" className="lg:col-span-2"><ExpenseList entries={homeExpenses} categories={d.categories} accounts={d.accounts} empty="Is maah ghar ka kharcha nahi." /></Panel>
-      {!!personalExpenses.length && <Panel title="Doosray zaati kharchay" className="lg:col-span-2"><ExpenseList entries={personalExpenses} categories={d.categories} accounts={d.accounts} empty="Is maah koi entry nahi." /></Panel>}
+      <Panel title="Farm ke kharchay" className="lg:col-span-2"><ExpenseList entries={farmExpenses} categories={d.categories} accounts={d.accounts} empty="Is maah farm ka kharcha nahi." onEdit={setEditing} canEdit={canEdit} /></Panel>
+      <Panel title="Ghar ke kharchay" className="lg:col-span-2"><ExpenseList entries={homeExpenses} categories={d.categories} accounts={d.accounts} empty="Is maah ghar ka kharcha nahi." onEdit={setEditing} canEdit={canEdit} /></Panel>
+      {!!personalExpenses.length && <Panel title="Doosray zaati kharchay" className="lg:col-span-2"><ExpenseList entries={personalExpenses} categories={d.categories} accounts={d.accounts} empty="Is maah koi entry nahi." onEdit={setEditing} canEdit={canEdit} /></Panel>}
       <Panel title="Category aur account setup" className="lg:col-span-2"><div className="grid gap-5 sm:grid-cols-2">
         <form onSubmit={(event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const form = event.currentTarget; void run(async () => {
           const fields = new FormData(form);
           await insertRow("expense_categories", { name: String(fields.get("name")).trim(), is_farm_cost: fields.get("farm") === "on" });
           form.reset();
-        }, "Category Supabase mein save ho gayi."); }} className="grid gap-2"><h3 className="font-semibold">Nayi category</h3>
+        }, "Category farm ke data mein save ho gayi."); }} className="grid gap-2"><h3 className="font-semibold">Nayi category</h3>
           <input name="name" required placeholder="Category ka naam" aria-label="Category ka naam" className={field} />
           <label className="text-sm"><input name="farm" type="checkbox" defaultChecked /> Farm kharcha</label>
           <button disabled={busy} className="min-h-11 rounded-xl border border-berseem font-semibold text-berseem">Category save</button>
@@ -152,7 +194,7 @@ export default function FarmExpenses() {
           const fields = new FormData(form);
           await insertRow("accounts", { name: String(fields.get("name")).trim(), kind: String(fields.get("kind")), is_farm_cash: !d.accounts.some((account) => account.is_farm_cash) });
           form.reset();
-        }, "Account Supabase mein save ho gaya."); }} className="grid gap-2"><h3 className="font-semibold">Naya account</h3>
+        }, "Account farm ke data mein save ho gaya."); }} className="grid gap-2"><h3 className="font-semibold">Naya account</h3>
           <input name="name" required placeholder="Account ka naam" aria-label="Account ka naam" className={field} />
           <select name="kind" aria-label="Account qism" className={field}><option value="cash">Cash</option>{d.accounts.some((account) => account.is_farm_cash) && <><option value="bank">Bank</option><option value="person">Person</option></>}</select>
           <button disabled={busy} className="min-h-11 rounded-xl border border-berseem font-semibold text-berseem">Account save</button>

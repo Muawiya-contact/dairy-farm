@@ -50,7 +50,7 @@ export function ImportPreviewSection() {
   };
   return <section className="max-w-2xl rounded-2xl border border-line bg-paper p-5">
     <h2 className="font-display text-xl font-bold">Purana data tayyar karein</h2>
-    <p className="mt-1 text-sm text-muted">Template mein records bharein. File yahan sirf is browser mein check hoti hai; Supabase mein koi row save nahi hoti. Client ki files milne ke baad actual import alag PR mein banega.</p>
+    <p className="mt-1 text-sm text-muted">Template mein records bharein. File yahan sirf is browser mein jaanchi jati hai; farm ke data mein koi entry save nahi hoti. Asal records lane se pehle unki tasdeeq zaroori hai.</p>
     <div className="mt-4 grid gap-3 sm:grid-cols-2">
       <label className="font-semibold">Data ki qism<select value={kind} onChange={(event) => { setKind(event.target.value as ImportKind); setResult(null); setError(""); }} className="mt-1 min-h-11 w-full rounded-xl border border-line bg-paper px-3"><option value="animals">Janwar</option><option value="customers">Customers</option><option value="accounts">Accounts</option></select></label>
       <label className="font-semibold">CSV ya Excel file<input type="file" accept=".csv,.xlsx" disabled={busy} onChange={(event) => void choose(event)} className="mt-1 block w-full text-sm file:mr-3 file:min-h-11 file:rounded-xl file:border file:border-line file:bg-paper file:px-3" /></label>
@@ -60,9 +60,9 @@ export function ImportPreviewSection() {
     {busy && <p role="status" className="mt-3 text-muted">File check ho rahi hai…</p>}
     {error && <p role="alert" className="mt-3 text-udhaar">File nahi khuli: {error}</p>}
     {result && <div className="mt-4 border-t border-line pt-4">
-      <p role="status" className="font-semibold">{result.count} rows dekhin · {result.issues.length} maslay · Supabase mein 0 rows save huin</p>
+      <p role="status" className="font-semibold">{result.count} entries dekhin · {result.issues.length} maslay · farm ke data mein kuch save nahi hua</p>
       {result.issues.length > 0 && <ul className="mt-2 max-h-56 list-disc overflow-y-auto pl-5 text-sm text-udhaar">{result.issues.slice(0, 50).map((issue, index) => <li key={`${issue.row}-${index}`}>Row {issue.row}: {issue.message}</li>)}{result.issues.length > 50 && <li>Aur {result.issues.length - 50} maslay. File chhoti batches mein check karein.</li>}</ul>}
-      {result.issues.length === 0 && <p className="mt-2 text-sm text-berseem-deep">Format aur basic values theek hain. Existing database records se duplicates aur relations import ke waqt alag check honge.</p>}
+      {result.issues.length === 0 && <p className="mt-2 text-sm text-berseem-deep">Format aur basic values theek hain. Farm ke maujooda records ke sath dohray naam aur juri hui entries alag se jaanchni hongi.</p>}
       {result.rows.length > 0 && <div className="mt-3 max-h-64 overflow-auto rounded-xl border border-line"><table className="min-w-full text-left text-xs"><thead className="bg-ground"><tr>{columns.map((column) => <th key={column} className="whitespace-nowrap p-2">{column}</th>)}</tr></thead><tbody>{result.rows.map((row, index) => <tr key={index} className="border-t border-line">{columns.map((column) => <td key={column} className="max-w-40 truncate p-2" title={row[column]}>{row[column] || "—"}</td>)}</tr>)}</tbody></table></div>}
     </div>}
   </section>;

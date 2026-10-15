@@ -313,6 +313,7 @@ function CustomerList({ data, save, busy, error, success }: {
   const [kind, setKind] = useState<CustomerKind>("regular");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | "active" | "inactive">("all");
+  const createPending = useRef<{ id: string; signature: string } | null>(null);
   const list = [...data.customers].sort((a, b) =>
     amount(data.balances.find((x) => x.customer_id === b.id)?.balance) -
     amount(data.balances.find((x) => x.customer_id === a.id)?.balance));
@@ -324,8 +325,13 @@ function CustomerList({ data, save, busy, error, success }: {
   const onCreate = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const values = new FormData(event.currentTarget);
-    void save(() => createCustomer(parseNewCustomer(values, kind, data.today)), "Customer save ho gaya.")
-      .then((saved) => { if (saved) setAdding(false); });
+    void save(async () => {
+      const input = parseNewCustomer(values, kind, data.today);
+      const signature = JSON.stringify(input);
+      if (createPending.current?.signature !== signature) createPending.current = { id: crypto.randomUUID(), signature };
+      await createCustomer(input, createPending.current.id);
+      createPending.current = null;
+    }, "Customer save ho gaya.").then((saved) => { if (saved) setAdding(false); });
   };
   return <>
     <PageHeader title="Khata" sub={`${list.length} customers`} action={<button onClick={() => setAdding(!adding)} className="flex min-h-11 items-center gap-1 rounded-xl bg-berseem px-4 font-semibold text-white"><PlusIcon width={18} />Customer</button>} />
@@ -356,9 +362,9 @@ function CustomerList({ data, save, busy, error, success }: {
 }
 
 export default function FarmCustomers() {
-  const query = useFarmData();
-  const queryClient = useQueryClient();
   const id = useSearchParams().get("id") ?? "";
+  const query = useFarmData("customers", id);
+  const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [error, setError] = useState("");

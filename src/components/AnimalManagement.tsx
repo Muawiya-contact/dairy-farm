@@ -6,6 +6,7 @@ import { closeAnimal, longDate, money, updateAnimal, type Account, type Animal }
 import { friendlyError } from "@/lib/errors";
 import { parseAmount, parsePositiveAmount } from "@/lib/format";
 import { parseAnimalDates, type AnimalExit } from "@/lib/animal-life";
+import { refreshFarmViews } from "@/lib/query-refresh";
 import { Panel } from "./ui";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
@@ -31,8 +32,9 @@ export function AnimalManagement({ animal, animals, accounts, today, linkedBirth
     setBusy(true); setError("");
     try {
       await save();
-      await qc.invalidateQueries({ queryKey: ["farm-data"] });
       setMode(null);
+      try { await refreshFarmViews(qc, "animal"); }
+      catch { setError("Record save ho gaya, lekin naye hisaab nahi khulay. Page dobara kholein."); }
     } catch (e) {
       if (e instanceof Error && e.message === "ANIMAL_STALE") {
         setMode(null);
@@ -73,8 +75,8 @@ export function AnimalManagement({ animal, animals, accounts, today, linkedBirth
       <label className={label}>Naam<input name="name" defaultValue={animal.name ?? ""} placeholder="Naam (optional)" className={field} /></label>
       <label className={label}>Nasl<input name="breed" defaultValue={animal.breed ?? ""} placeholder="Nasl" className={field} /></label>
       {linkedBirth ? <p className="text-sm text-muted sm:col-span-2">Is bachay ki jins, qism, paidaish ki tareekh, maa aur farm par paida hone ka record paidaish entry se jura hai. Tag, naam aur baqi maloomat yahan badal sakte hain.</p> : <><label className={label}>Qism<select name="species" defaultValue={animal.species} className={field}><option value="cow">Gaye</option><option value="buffalo">Bhains</option></select></label>
-      <label className={label}>Jins<select name="sex" value={sex} onChange={(e) => setSex(e.target.value as Animal["sex"])} className={field}><option value="female">Female</option><option value="male">Male</option></select></label></>}
-      <label className={label}>Umar ka group<select name="category" defaultValue={animal.category} className={field}><option value="cow">Bari</option><option value="heifer">Heifer</option><option value="calf">Bacha</option><option value="bull">Bull</option></select></label>
+      <label className={label}>Jins<select name="sex" value={sex} onChange={(e) => setSex(e.target.value as Animal["sex"])} className={field}><option value="female">Mada</option><option value="male">Nar</option></select></label></>}
+      <label className={label}>Umar ka group<select name="category" defaultValue={animal.category} className={field}><option value="cow">Bari</option><option value="heifer">Bachhi</option><option value="calf">Bacha</option><option value="bull">Saand</option></select></label>
       <label className={label}>Doodh ki haalat<select name="milking" defaultValue={animal.milking_status} disabled={sex === "male"} className={field}><option value="none">Doodh nahi</option><option value="milking">Doodh de rahi</option><option value="dry">Khushk</option></select></label>
       {!linkedBirth && <><label className={label}>Paidaish ki tareekh {source === "born" ? "(zaroori)" : "(agar maloom ho)"}<input name="birth" type="date" required={source === "born"} max={today} defaultValue={animal.birth_date ?? ""} className={field} /></label>
       <label className={label}>Maa<select name="mother" defaultValue={animal.mother_id ?? ""} className={field}><option value="">Darj nahi</option>{animals.filter((a) => a.id !== animal.id && a.sex === "female").map((a) => <option value={a.id} key={a.id}>{a.tag}{a.name ? ` · ${a.name}` : ""}</option>)}</select></label></>}
@@ -88,9 +90,15 @@ export function AnimalManagement({ animal, animals, accounts, today, linkedBirth
     </form>}
     {mode === "exit" && <form className="grid gap-3 sm:grid-cols-2" onSubmit={(e: FormEvent<HTMLFormElement>) => {
       e.preventDefault(); const f = new FormData(e.currentTarget);
-      void run(() => closeAnimal({ animalId: animal.id, status: exitStatus, date: text(f.get("date")), reason: text(f.get("reason")),
-        price: exitStatus === "sold" ? parsePositiveAmount(text(f.get("price"))) : null,
-        accountId: exitStatus === "sold" ? text(f.get("account")) : null }));
+      if (busyRef.current) return;
+      let price: number | null = null;
+      try { if (exitStatus === "sold") price = parsePositiveAmount(text(f.get("price"))); }
+      catch (issue) { setError(friendlyError(issue)); return; }
+      const date = text(f.get("date"));
+      const action = exitStatus === "sold" ? `farokht ${money(price)}` : exitStatus === "dead" ? "wafat" : "farm se nikalna";
+      if (!window.confirm(`${animal.tag} ka ${action} ${longDate(date)} ko darj karein? Is ke baad yeh janwar active list se hat jayega.`)) return;
+      void run(() => closeAnimal({ animalId: animal.id, status: exitStatus, date, reason: text(f.get("reason")),
+        price, accountId: exitStatus === "sold" ? text(f.get("account")) : null }));
     }}>
       <p className="text-sm text-muted sm:col-span-2">Is action ke baad janwar active list aur doodh entry se hat jayega. Sirf farokht ki raqam account mein aayegi.</p>
       <label className={label}>Haalat<select name="status" value={exitStatus} onChange={(e) => setExitStatus(e.target.value as AnimalExit)} className={field}><option value="sold">Farokht</option><option value="dead">Wafat</option><option value="removed">Doosri wajah se nikla</option></select></label>

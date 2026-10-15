@@ -50,7 +50,7 @@ export function ImportPreviewSection() {
   };
   return <section className="max-w-2xl rounded-2xl border border-line bg-paper p-5">
     <h2 className="font-display text-xl font-bold">Purana data tayyar karein</h2>
-    <p className="mt-1 text-sm text-muted">Template mein asli records bharein. File yahan sirf is browser mein check hoti hai; abhi Supabase mein koi row save nahi hoti. Errors theek karne ke baad import ko staging par alag se test karein.</p>
+    <p className="mt-1 text-sm text-muted">Template mein records bharein. File yahan sirf is browser mein check hoti hai; Supabase mein koi row save nahi hoti. Client ki files milne ke baad actual import alag PR mein banega.</p>
     <div className="mt-4 grid gap-3 sm:grid-cols-2">
       <label className="font-semibold">Data ki qism<select value={kind} onChange={(event) => { setKind(event.target.value as ImportKind); setResult(null); setError(""); }} className="mt-1 min-h-11 w-full rounded-xl border border-line bg-paper px-3"><option value="animals">Janwar</option><option value="customers">Customers</option><option value="accounts">Accounts</option></select></label>
       <label className="font-semibold">CSV ya Excel file<input type="file" accept=".csv,.xlsx" disabled={busy} onChange={(event) => void choose(event)} className="mt-1 block w-full text-sm file:mr-3 file:min-h-11 file:rounded-xl file:border file:border-line file:bg-paper file:px-3" /></label>

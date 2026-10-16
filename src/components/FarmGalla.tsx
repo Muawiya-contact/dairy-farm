@@ -6,10 +6,10 @@ import { getAccounts } from "@/lib/accounts";
 import { friendlyError } from "@/lib/errors";
 import { amount, money, shortDate } from "@/lib/farm-data";
 import { addDays, formatMonth } from "@/lib/dates";
-import { getAccountBalanceOn, getAccountEntries, getAccountMonth, getCashCounts,
+import { getAccountBalanceOn, getAccountEntries, getAccountMonth, getAutomaticCashPaymentIds, getCashCounts,
   getGallaToday, monthBounds, recordCashCount, recordTransfer } from "@/lib/galla";
 import { parseCashCount, parseTransfer } from "@/lib/galla-forms";
-import { buildAccountLedger } from "@/lib/galla-ledger";
+import { buildAccountLedger, groupAutomaticCashReceipts, type DisplayLedgerRow } from "@/lib/galla-ledger";
 import { Body, PageHeader, Panel } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
 
@@ -43,6 +43,7 @@ export default function FarmGalla() {
   const validMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(month) && month <= today.slice(0, 7);
   const summary = useQuery({ queryKey: ["galla", "summary", month], queryFn: () => getAccountMonth(month), enabled: validMonth });
   const entries = useQuery({ queryKey: ["galla", "entries", accountId, month], queryFn: () => getAccountEntries(accountId, month), enabled: validMonth && !!accountId });
+  const autoCashIds = useQuery({ queryKey: ["galla", "auto-cash", accountId, month], queryFn: () => getAutomaticCashPaymentIds(accountId, month), enabled: validMonth && !!accountId && selected?.kind === "cash" });
   const counts = useQuery({ queryKey: ["galla", "counts", accountId, month], queryFn: () => getCashCounts(accountId, month), enabled: validMonth && !!accountId && selected?.kind === "cash" });
   const expected = useQuery({ queryKey: ["galla", "expected", accountId, countDate], queryFn: () => getAccountBalanceOn(accountId, countDate), enabled: !!accountId && selected?.kind === "cash" && /^\d{4}-\d{2}-\d{2}$/.test(countDate) && countDate <= today });
   const current = summary.data?.find((row) => row.account_id === accountId);
@@ -83,6 +84,9 @@ export default function FarmGalla() {
 
   if (!meta.data) return <FarmLoading error={meta.error} retry={() => void meta.refetch()} />;
   const ledger = validMonth ? buildAccountLedger(entries.data ?? [], selected ?? null, month, amount(current?.opening)) : [];
+  const displayLedger: DisplayLedgerRow[] = selected?.kind === "cash" && autoCashIds.data
+    ? groupAutomaticCashReceipts(ledger, new Set(autoCashIds.data), amount(current?.opening))
+    : ledger.map((row) => ({ ...row, key: `${row.entry_kind}-${row.ref_id}` }));
   const endingBalance = ledger.length ? ledger[ledger.length - 1].running : amount(current?.opening);
   const latestCount = counts.data?.[0];
   return <>
@@ -110,7 +114,12 @@ export default function FarmGalla() {
         <p className="mb-2 text-sm text-muted">{formatMonth(monthBounds(month).start)} · Shuru {money(current?.opening)} · Aakhir {money(current?.closing)}</p>
         {entries.isPending && <p role="status">Entries load ho rahi hain…</p>}
         {entries.isError && <p role="alert" className="text-udhaar">Entries nahi khuleen: {friendlyError(entries.error)} <button type="button" onClick={() => void entries.refetch()} className="underline">Dobara koshish</button></p>}
-        {entries.data && <ul className="divide-y divide-line">{ledger.map((entry) => <li key={`${entry.entry_kind}-${entry.ref_id}`} className="grid gap-1 py-3 text-sm sm:grid-cols-[5rem_minmax(0,1fr)_7rem_7rem_7rem] sm:items-center"><span className="text-muted">{shortDate(entry.entry_date)}</span><span>{entry.description}</span><span className="text-berseem">{amount(entry.money_in) ? `+ ${money(entry.money_in)}` : ""}</span><span className="text-udhaar">{amount(entry.money_out) ? `− ${money(entry.money_out)}` : ""}</span><strong>Baaki {money(entry.running)}</strong></li>)}{!ledger.length && <li className="py-3 text-muted">Is maheene koi entry nahi.</li>}</ul>}
+        {autoCashIds.isError && <p role="alert" className="text-udhaar">Naqd tafseel nahi khuli: {friendlyError(autoCashIds.error)} <button type="button" onClick={() => void autoCashIds.refetch()} className="underline">Dobara koshish</button></p>}
+        {entries.data && <ul className="divide-y divide-line">{displayLedger.map((entry) => <li key={entry.key} className="py-3 text-sm">
+          {entry.children ? <details><summary className="grid cursor-pointer gap-1 sm:grid-cols-[5rem_minmax(0,1fr)_7rem_7rem_7rem] sm:items-center"><span className="text-muted">{shortDate(entry.entry_date)}</span><span className="font-semibold">{entry.description}: {money(entry.money_in)}</span><span /><span /><strong>Baaki {money(entry.running)}</strong></summary>
+            <ul className="ml-4 mt-2 border-l border-line pl-3">{entry.children.map((child) => <li key={child.ref_id} className="flex flex-wrap justify-between gap-2 py-1"><span>{child.description}</span><span>{money(child.money_in)}</span></li>)}</ul>
+          </details> : <div className="grid gap-1 sm:grid-cols-[5rem_minmax(0,1fr)_7rem_7rem_7rem] sm:items-center"><span className="text-muted">{shortDate(entry.entry_date)}</span><span>{entry.description}</span><span className="text-berseem">{amount(entry.money_in) ? `+ ${money(entry.money_in)}` : ""}</span><span className="text-udhaar">{amount(entry.money_out) ? `− ${money(entry.money_out)}` : ""}</span><strong>Baaki {money(entry.running)}</strong></div>}
+        </li>)}{!ledger.length && <li className="py-3 text-muted">Is maheene koi entry nahi.</li>}</ul>}
         {entries.data && current && Math.abs(Math.round(endingBalance * 100) - Math.round(amount(current.closing) * 100)) > 1 && <p role="alert" className="mt-2 text-udhaar">Ledger aur khulasa nahi mil rahe. Page reload karein; phir bhi farq ho to entry check karein.</p>}
       </Panel>}
       <Panel title="Account se account transfer">

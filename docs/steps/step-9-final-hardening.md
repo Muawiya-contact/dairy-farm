@@ -28,18 +28,9 @@ production branch. A GitHub merge alone does not apply these migrations.
 ## Annual fee rule
 
 The private `farm_subscription` table has one optional `expires_on` date.
-It starts blank, so this PR does not lock the farm on deployment. Only the
-Supabase database administrator can change it; browser users cannot. To set
-the last paid day, run this in the **intended project's** SQL Editor:
-
-```sql
-update private.farm_subscription
-set expires_on = date '2027-10-15', updated_at = now()
-where singleton = true;
-```
-
-Replace the example date with the agreed paid-through date. The app warns
-users in Roman Urdu from seven days before that date through the date itself.
+It starts blank in a new installation. Only the Supabase database administrator
+can change it; browser users cannot. The app warns users in Roman Urdu from
+seven days before that date through the date itself.
 The warning has an X button; closing it hides the warning until the site is
 opened again. Once the date has passed in Pakistan time, the warning explains
 that records remain viewable. A small read-only strip remains after closing
@@ -48,12 +39,57 @@ writes made through RPCs. Navigation and filters continue to work. Extending
 `expires_on` restores writing without changing user accounts. Before a future
 migration adds a writable public table, give it the same subscription trigger.
 
-To remove an accidental date without deleting data:
+### Renew access after the client pays
+
+This is an owner-directed database operation, not a button in Settings. The
+owner's renewal request should state that payment was received and give the
+exact **last paid day** in `YYYY-MM-DD` format. If either fact is missing, ask
+for it. Do not assume payment or calculate a new date from today's date. Keep
+payment evidence outside this repository. No password, database connection
+string, service-role key, or receipt belongs in Git or chat. A routine renewal
+is a database value change; it needs no new migration, Git commit, or site
+deployment.
+
+1. Open the **production** Supabase project `ylipnghdygpyqlptqazx` and its
+   SQL Editor. The staging project `dlirssfoazlxzyamsltv` contains fictional
+   data and must not be used for a real renewal. Check the project identity
+   before running any update.
+2. Read the existing value first. This query must return exactly one row:
+
+   ```sql
+   select expires_on, public.farm_today() as today_pk
+   from private.farm_subscription
+   where singleton = true;
+   ```
+
+   `null` means there is no subscription lock. A date equal to or later than
+   `today_pk` permits writes through that day; an earlier date makes the app
+   read-only. If there is no row or the project is unexpected, stop and
+   investigate instead of inserting a replacement row.
+3. After the owner supplies the paid-through date, replace the placeholder
+   below with that exact date and run the update as a database administrator:
+
+   ```sql
+   update private.farm_subscription
+   set expires_on = date 'YYYY-MM-DD', updated_at = now()
+   where singleton = true
+   returning expires_on;
+   ```
+
+   The result must contain one row with the intended date. Re-run the read
+   query, then refresh the production website. A paid-through date of today or
+   later restores writes without changing accounts or redeploying. Report the
+   project and saved paid-through date to the owner; do not claim that the app
+   processed a payment.
+
+Only for an owner-authorized correction, clear an accidental date without
+deleting farm data:
 
 ```sql
 update private.farm_subscription
 set expires_on = null, updated_at = now()
-where singleton = true;
+where singleton = true
+returning expires_on;
 ```
 
 The farm should communicate fee terms outside the app. The date is an access

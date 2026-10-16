@@ -8,7 +8,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   amount, createCustomer, customerMonthReport, customerRate, insertRow, money, recordCustomerPayment,
   saveCustomerRate, updateCustomerProfile,
-  shortDate, useFarmData, type Customer, type FarmData,
+  shortDate, useFarmData, compareCustomers, type Customer, type FarmData,
 } from "@/lib/farm-data";
 import {
   parseCompanyBill, parseCustomerPayment, parseCustomerProfile, parseCustomerRate, parseNewCustomer,
@@ -314,9 +314,7 @@ function CustomerList({ data, save, busy, error, success }: {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | "active" | "inactive">("all");
   const createPending = useRef<{ id: string; signature: string } | null>(null);
-  const list = [...data.customers].sort((a, b) =>
-    amount(data.balances.find((x) => x.customer_id === b.id)?.balance) -
-    amount(data.balances.find((x) => x.customer_id === a.id)?.balance));
+  const list = [...data.customers].sort(compareCustomers);
   const visible = list.filter((customer) =>
     (status === "all" || customer.active === (status === "active")) &&
     `${customer.name} ${customer.phone ?? ""} ${customer.phone?.replace(/^\+92/, "0") ?? ""}`

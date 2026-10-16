@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, test } from "vitest";
 
-test("production denies anonymous execution of every public function", async () => {
+test("production grants anonymous execution only to keep_alive", async () => {
   const db = new PGlite();
   try {
     await db.exec(`
@@ -27,7 +27,7 @@ test("production denies anonymous execution of every public function", async () 
       where n.nspname = 'public' order by signature
     `);
     expect(publicFunctions.length).toBeGreaterThan(0);
-    expect(publicFunctions.filter((fn) => fn.anon_execute).map((fn) => fn.signature)).toEqual([]);
+    expect(publicFunctions.filter((fn) => fn.anon_execute).map((fn) => fn.signature)).toEqual(["keep_alive()"]);
     const { rows: exposedTables } = await db.query<{ table_name: string }>(`
       select c.relname as table_name from pg_class c
       join pg_namespace n on n.oid = c.relnamespace

@@ -14,6 +14,8 @@ import { MonthCloseSection } from "@/components/MonthCloseSection";
 import { ImportPreviewSection } from "@/components/ImportPreviewSection";
 import { ConnectionCheckSection } from "@/components/ConnectionCheckSection";
 import { UI_TEXT } from "@/lib/text";
+import { getSupabase } from "@/lib/supabase";
+import { SignOutIcon } from "@/components/icons";
 
 const inputClass = "mt-1 min-h-12 w-full rounded-xl border border-line bg-paper px-3 outline-none focus:border-berseem";
 type SettingsSectionId = "farm" | "breeding" | "accounts" | "month" | "data";
@@ -189,6 +191,7 @@ function AccountsSection() {
 
 export default function SettingsPage() {
   const query = useQuery({ queryKey: ["settings"], queryFn: getSettings });
+  const [logoutError, setLogoutError] = useState("");
   const [open, setOpen] = useState<SettingsSectionId | null>(() => {
     try {
       const saved = localStorage.getItem("farm-settings-section");
@@ -214,6 +217,11 @@ export default function SettingsPage() {
         <SettingsSection id="data" title="Import / Backup / Export" open={visibleOpen === "data"} onToggle={toggle}>
           <div className="grid gap-5"><ImportPreviewSection /><ConnectionCheckSection /><ExportPanel /></div>
         </SettingsSection>
+        {process.env.NEXT_PUBLIC_REQUIRE_AUTH === "true" && <div className="max-w-2xl">
+          <button type="button" onClick={() => { setLogoutError(""); void getSupabase().auth.signOut().then(({ error }) => { if (error) setLogoutError(friendlyError(error)); }); }}
+            className="flex min-h-12 items-center gap-2 rounded-xl border border-line bg-paper px-4 font-semibold text-berseem"><SignOutIcon width={19} height={19} />Bahar niklein</button>
+          {logoutError && <p role="alert" className="mt-2 text-udhaar">Bahar nahi niklay: {logoutError}</p>}
+        </div>}
       </Body>
     </>
   );

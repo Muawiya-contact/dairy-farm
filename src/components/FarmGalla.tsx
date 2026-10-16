@@ -15,6 +15,9 @@ import { FarmLoading } from "./FarmDashboard";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 type Pending = { id: string; signature: string };
+const personBalance = (name: string, value: number) => value < 0
+  ? `${name} ne farm par ${money(-value)} zyada lagaye`
+  : `${name} ke paas farm ke ${money(value)} hain`;
 
 export default function FarmGalla() {
   const qc = useQueryClient();
@@ -105,20 +108,20 @@ export default function FarmGalla() {
       {validMonth && summary.data && <Panel title="Account ka khulasa" className="lg:col-span-2">
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{summary.data.map((row) => <button key={row.account_id} type="button" onClick={() => setSelectedAccountId(row.account_id)} className={`rounded-xl border p-3 text-left ${row.account_id === accountId ? "border-berseem bg-berseem-soft" : "border-line"}`}>
           <span className="block font-semibold">{row.name}</span><span className="block text-xs text-muted">Shuru {money(row.opening)} · Aaya {money(row.money_in)} · Gaya {money(row.money_out)}</span>
-          <strong className={amount(row.closing) < 0 ? "text-udhaar" : "text-berseem-deep"}>Baqi {money(row.closing)}</strong>
+          <strong className={row.kind === "person" ? "text-ink" : amount(row.closing) < 0 ? "text-udhaar" : "text-berseem-deep"}>{row.kind === "person" ? personBalance(row.name, amount(row.closing)) : `Baqi ${money(row.closing)}`}</strong>
         </button>)}</div>
         {!summary.data.length && <p className="text-muted">Is maheene koi account nahi mila.</p>}
-        {summary.data.some((row) => amount(row.closing) < 0) && <p role="status" className="mt-3 text-sm text-udhaar">Kisi account ka balance manfi hai. Entry aur opening balance check karein.</p>}
+        {summary.data.some((row) => row.kind !== "person" && amount(row.closing) < 0) && <p role="status" className="mt-3 text-sm text-udhaar">Kisi account ka balance manfi hai. Entry aur opening balance check karein.</p>}
       </Panel>}
       {selected && validMonth && <Panel title={`${selected.name} ka register`} className="lg:col-span-2">
-        <p className="mb-2 text-sm text-muted">{formatMonth(monthBounds(month).start)} · Shuru {money(current?.opening)} · Aakhir {money(current?.closing)}</p>
+        <p className="mb-2 text-sm text-muted">{formatMonth(monthBounds(month).start)} · Shuru {money(current?.opening)} · {selected.kind === "person" ? personBalance(selected.name, amount(current?.closing)) : `Aakhir ${money(current?.closing)}`}</p>
         {entries.isPending && <p role="status">Entries load ho rahi hain…</p>}
         {entries.isError && <p role="alert" className="text-udhaar">Entries nahi khuleen: {friendlyError(entries.error)} <button type="button" onClick={() => void entries.refetch()} className="underline">Dobara koshish</button></p>}
         {autoCashIds.isError && <p role="alert" className="text-udhaar">Naqd tafseel nahi khuli: {friendlyError(autoCashIds.error)} <button type="button" onClick={() => void autoCashIds.refetch()} className="underline">Dobara koshish</button></p>}
         {entries.data && <ul className="divide-y divide-line">{displayLedger.map((entry) => <li key={entry.key} className="py-3 text-sm">
-          {entry.children ? <details><summary className="grid cursor-pointer gap-1 sm:grid-cols-[5rem_minmax(0,1fr)_7rem_7rem_7rem] sm:items-center"><span className="text-muted">{shortDate(entry.entry_date)}</span><span className="font-semibold">{entry.description}: {money(entry.money_in)}</span><span /><span /><strong>Baaki {money(entry.running)}</strong></summary>
+          {entry.children ? <details><summary className="grid cursor-pointer gap-1 sm:grid-cols-[5rem_minmax(0,1fr)_7rem_7rem_7rem] sm:items-center"><span className="text-muted">{shortDate(entry.entry_date)}</span><span className="font-semibold">{entry.description}: {money(entry.money_in)}</span><span /><span /><strong>{selected.kind === "person" ? personBalance(selected.name, entry.running) : `Baaki ${money(entry.running)}`}</strong></summary>
             <ul className="ml-4 mt-2 border-l border-line pl-3">{entry.children.map((child) => <li key={child.ref_id} className="flex flex-wrap justify-between gap-2 py-1"><span>{child.description}</span><span>{money(child.money_in)}</span></li>)}</ul>
-          </details> : <div className="grid gap-1 sm:grid-cols-[5rem_minmax(0,1fr)_7rem_7rem_7rem] sm:items-center"><span className="text-muted">{shortDate(entry.entry_date)}</span><span>{entry.description}</span><span className="text-berseem">{amount(entry.money_in) ? `+ ${money(entry.money_in)}` : ""}</span><span className="text-udhaar">{amount(entry.money_out) ? `− ${money(entry.money_out)}` : ""}</span><strong>Baaki {money(entry.running)}</strong></div>}
+          </details> : <div className="grid gap-1 sm:grid-cols-[5rem_minmax(0,1fr)_7rem_7rem_7rem] sm:items-center"><span className="text-muted">{shortDate(entry.entry_date)}</span><span>{entry.description}</span><span className="text-berseem">{amount(entry.money_in) ? `+ ${money(entry.money_in)}` : ""}</span><span className="text-udhaar">{amount(entry.money_out) ? `− ${money(entry.money_out)}` : ""}</span><strong>{selected.kind === "person" ? personBalance(selected.name, entry.running) : `Baaki ${money(entry.running)}`}</strong></div>}
         </li>)}{!ledger.length && <li className="py-3 text-muted">Is maheene koi entry nahi.</li>}</ul>}
         {entries.data && current && Math.abs(Math.round(endingBalance * 100) - Math.round(amount(current.closing) * 100)) > 1 && <p role="alert" className="mt-2 text-udhaar">Ledger aur khulasa nahi mil rahe. Page reload karein; phir bhi farq ho to entry check karein.</p>}
       </Panel>}

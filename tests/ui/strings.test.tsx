@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import ts from "typescript";
 import { expect, it } from "vitest";
 
-const banned = /\b(?:Supabase|PR|migration|Female|Male|Connection check|Invalid|valid|alag PR)\b/;
+const banned = /\b(?:Supabase|PR|migration|Female|Male|Connection check|Invalid|valid|alag PR|Opening balance|Opening date|Active|Sign in|offsets|service)\b/;
 
 function files(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

@@ -168,11 +168,15 @@ export function customerRate(data: Pick<FarmData, "rates" | "today">, id: string
     .sort((a, b) => b.effective_from.localeCompare(a.effective_from))[0]?.rate);
 }
 
+export function compareCustomers(a: Pick<Customer, "sort_order" | "name" | "id">, b: Pick<Customer, "sort_order" | "name" | "id">): number {
+  return (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id);
+}
+
 /** Keep old deliveries visible when a customer is later made inactive. */
 export function milkShiftCustomers(data: Pick<FarmData, "customers" | "deliveries">, date: string, shift: "morning" | "evening"): Customer[] {
   const historical = new Set(data.deliveries.filter((row) => row.delivery_date === date && row.shift === shift).map((row) => row.customer_id));
   return data.customers.filter((customer) => historical.has(customer.id) ||
-    (customer.active && customer.opening_date <= date));
+    (customer.active && customer.opening_date <= date)).sort(compareCustomers);
 }
 
 /** An old shift still needs animals that were milking then, even if they are now dry or sold. */

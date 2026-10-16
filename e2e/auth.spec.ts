@@ -7,11 +7,12 @@ test("wrong password is explained in Roman Urdu, then login and logout work", as
   await page.goto("/");
   await page.getByRole("textbox", { name: "Email" }).fill(email);
   await page.getByLabel("Password", { exact: true }).fill("WrongLocalPassword123!");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.getByRole("button", { name: "Login karein", exact: true }).click();
   await expect(page.getByRole("alert").filter({ hasText: "Email ya password ghalat hai." })).toBeVisible();
   await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.getByRole("button", { name: "Login karein", exact: true }).click();
   await expect(page.getByRole("heading", { name: /Assalam o Alaikum/ })).toBeVisible();
-  await page.getByRole("button", { name: "Bahar niklein" }).click();
-  await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
+  await page.goto("/settings/");
+  await page.locator("main").getByRole("button", { name: "Bahar niklein" }).click();
+  await expect(page.getByRole("button", { name: "Login karein", exact: true })).toBeVisible();
 });

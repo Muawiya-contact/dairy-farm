@@ -175,7 +175,7 @@ export function AnimalBreeding({ animal, animals, records, calvings, offspring, 
           <label className="text-sm font-semibold">Haalat<select name="status" value={editStatus} onChange={(event) => setEditStatus(event.target.value)} disabled={busy} className={field}><option value="pending">Nateeja baqi</option><option value="pregnant">Gaabhan</option><option value="empty">Khali</option><option value="aborted">Hamla zaya</option></select></label>
           {editStatus === "aborted" && <label className="text-sm font-semibold">Hamla zaya ki tareekh<input name="abortion_date" type="date" required defaultValue={record.abortion_date ?? ""} disabled={busy} className={field} /></label>}
           <label className="text-sm font-semibold sm:col-span-2">Notes<input name="notes" defaultValue={record.notes ?? ""} placeholder="Zaroori tafseel" disabled={busy} className={field} /></label>
-          <p className="text-sm text-muted sm:col-span-2 lg:col-span-3">Mutawaqqa tareekhein service ki tareekh se khud hisaab hoti hain.</p>
+          <p className="text-sm text-muted sm:col-span-2 lg:col-span-3">{UI_TEXT.naslExpectedDates}</p>
           {validation && <p role="alert" className="text-sm text-udhaar sm:col-span-2 lg:col-span-3">{validation}</p>}
           <button disabled={busy} className="min-h-11 rounded-xl bg-berseem px-4 font-bold text-white disabled:opacity-50 sm:col-span-2 lg:col-span-3">Badla hua record save karein</button>
         </form>}

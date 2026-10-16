@@ -151,7 +151,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
         <form onSubmit={signIn} className="mt-6 grid gap-3 rounded-2xl border border-line bg-paper p-5">
           <label className="grid gap-1 font-semibold">Email<input type="email" autoComplete="email" required placeholder="name@example.com" value={email} onChange={(event) => setEmail(event.target.value)} className="min-h-12 rounded-xl border border-line px-3" /></label>
           <label className="grid gap-1 font-semibold">Password<input type="password" autoComplete="current-password" required placeholder="Password" value={password} onChange={(event) => setPassword(event.target.value)} className="min-h-12 rounded-xl border border-line px-3" /></label>
-          <button disabled={busy} className="min-h-12 rounded-xl bg-berseem font-bold text-white disabled:opacity-50">{busy ? "Sign in ho raha hai…" : "Sign in"}</button>
+          <button disabled={busy} className="min-h-12 rounded-xl bg-berseem font-bold text-white disabled:opacity-50">{busy ? UI_TEXT.signingIn : UI_TEXT.signIn}</button>
           <button type="button" disabled={busy} onClick={() => { setForgotPassword(true); setError(""); }} className="min-h-12 font-semibold text-berseem disabled:opacity-50">Password bhool gaye?</button>
           {error && <p role="alert" className="text-udhaar">{error}</p>}
         </form>

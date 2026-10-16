@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { friendlyError } from "@/lib/errors";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { UI_TEXT } from "@/lib/text";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   amount, createCustomer, customerMonthReport, customerRate, insertRow, money, recordCustomerPayment,
@@ -175,7 +176,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
   };
 
   return <>
-    <PageHeader title={c.name} sub={`${c.active ? "Active" : "Band"} · ${c.kind === "free" ? `Muft: ${freeReasons[c.free_reason ?? "other"]} · ` : ""}${c.phone || "Phone darj nahi"} · Subah ${amount(c.default_morning)} L · Shaam ${amount(c.default_evening)} L${rate ? ` · ${money(rate)}/L` : ""}`} back="/khata/" />
+    <PageHeader title={c.name} sub={`${c.active ? UI_TEXT.active : "Band"} · ${c.kind === "free" ? `Muft: ${freeReasons[c.free_reason ?? "other"]} · ` : ""}${c.phone || "Phone darj nahi"} · Subah ${amount(c.default_morning)} L · Shaam ${amount(c.default_evening)} L${rate ? ` · ${money(rate)}/L` : ""}`} back="/khata/" />
     <Body className="grid gap-4 lg:grid-cols-2">
       <section className={`rounded-2xl p-5 text-white ${balance > 0 ? "bg-udhaar" : "bg-berseem"}`}>
         <p className="text-white/80">{balance > 0 ? "Baqi raqam" : balance < 0 ? "Customer ka advance" : "Hisaab saaf"}</p>
@@ -347,11 +348,11 @@ function CustomerList({ data, save, busy, error, success }: {
         <button disabled={busy} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50 sm:col-span-2">Customer save karein</button>
       </form></Panel>}
       <section className="rounded-2xl bg-udhaar p-5 text-white"><p className="text-white/80">Kul udhaar jo lena hai</p><p className="font-display text-[40px] font-extrabold">{money(totalDue)}</p></section>
-      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_12rem]"><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Naam ya phone dhoondein" aria-label="Customer dhoondein" className={field} /><select value={status} onChange={(event) => setStatus(event.target.value as typeof status)} aria-label="Customer status" className={field}><option value="all">Sab customers</option><option value="active">Active</option><option value="inactive">Band</option></select></div>
+      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_12rem]"><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Naam ya phone dhoondein" aria-label="Customer dhoondein" className={field} /><select value={status} onChange={(event) => setStatus(event.target.value as typeof status)} aria-label="Customer status" className={field}><option value="all">Sab customers</option><option value="active">{UI_TEXT.active}</option><option value="inactive">Band</option></select></div>
       <ul className="overflow-hidden rounded-2xl border border-line bg-paper">{visible.map((c) => {
         const balance = amount(data.balances.find((x) => x.customer_id === c.id)?.balance);
         const report = data.reports.find((x) => x.customer_id === c.id);
-        return <li key={c.id} className="border-b border-line last:border-0"><Link href={`/khata/?id=${c.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-ground"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ground font-display font-bold">{c.name.slice(0, 2).toUpperCase()}</span><span className="min-w-0 flex-1"><strong className="block truncate">{c.name}</strong><span className="text-sm text-muted">{c.active ? "Active" : "Band"} · Is maah {amount(report?.litres)} L</span></span><strong className={balance > 0 ? "text-udhaar" : "text-berseem"}>{balance > 0 ? money(balance) : balance < 0 ? `Advance ${money(-balance)}` : "Saaf"}</strong></Link></li>;
+        return <li key={c.id} className="border-b border-line last:border-0"><Link href={`/khata/?id=${c.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-ground"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ground font-display font-bold">{c.name.slice(0, 2).toUpperCase()}</span><span className="min-w-0 flex-1"><strong className="block truncate">{c.name}</strong><span className="text-sm text-muted">{c.active ? UI_TEXT.active : "Band"} · Is maah {amount(report?.litres)} L</span></span><strong className={balance > 0 ? "text-udhaar" : "text-berseem"}>{balance > 0 ? money(balance) : balance < 0 ? `Advance ${money(-balance)}` : "Saaf"}</strong></Link></li>;
       })}{!visible.length && <li className="p-5 text-muted">{list.length ? "Is talash mein koi customer nahi." : "Abhi koi customer nahi."}</li>}</ul>
       {success && <p role="status" className="text-berseem-deep">{success}</p>}
       {error && <p role="alert" className="text-udhaar">Save nahi hua: {error}</p>}

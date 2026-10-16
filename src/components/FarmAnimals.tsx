@@ -14,6 +14,7 @@ import { FarmLoading } from "./FarmDashboard";
 import { PlusIcon, SearchIcon } from "./icons";
 import { AnimalManagement } from "./AnimalManagement";
 import { AnimalBreeding } from "./AnimalBreeding";
+import { UI_TEXT } from "@/lib/text";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 const animalLabel = (a: Animal) => `${a.tag}${a.name ? ` · ${a.name}` : ""}`;
@@ -88,7 +89,7 @@ export default function FarmAnimals() {
       <textarea name="notes" aria-label="Janwar ke notes" placeholder="Janwar ke notes (optional)" className={`${field} min-h-24 py-2 sm:col-span-2`} />
       <button disabled={busy} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50 sm:col-span-2">Janwar save karein</button></form></Panel>}
     <label className="mt-4 flex min-h-12 items-center gap-2 rounded-xl border border-line bg-paper px-3"><SearchIcon className="text-muted" /><input value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Tag ya nasal" className="min-w-0 flex-1 bg-transparent outline-none" /></label>
-    <div className="my-3 flex gap-2 overflow-x-auto">{[["active","Active"],["all","Sab"],["cow","Gayein"],["buffalo","Bhainsein"],["milking","Doodh"],["dry","Khushk"],["sold","Farokht"],["dead","Wafat"],["removed","Doosre niklay"]].map(([value,label]) => <button key={value} onClick={() => setFilter(value)} className={`min-h-10 shrink-0 rounded-full border px-4 text-sm font-semibold ${filter === value ? "border-ink bg-ink text-white" : "border-line bg-paper"}`}>{label}</button>)}</div>
+    <div className="my-3 flex gap-2 overflow-x-auto">{[["active",UI_TEXT.active],["all","Sab"],["cow","Gayein"],["buffalo","Bhainsein"],["milking","Doodh"],["dry","Khushk"],["sold","Farokht"],["dead","Wafat"],["removed","Doosre niklay"]].map(([value,label]) => <button key={value} onClick={() => setFilter(value)} className={`min-h-10 shrink-0 rounded-full border px-4 text-sm font-semibold ${filter === value ? "border-ink bg-ink text-white" : "border-line bg-paper"}`}>{label}</button>)}</div>
     <ul className="overflow-hidden rounded-2xl border border-line bg-paper lg:grid lg:grid-cols-2">{list.map((a) => <li key={a.id} className="min-w-0 border-b border-line"><Link href={`/janwar/?id=${a.id}`} className="flex min-w-0 items-center gap-3 px-4 py-3 hover:bg-ground"><span className="flex min-h-12 min-w-14 max-w-32 shrink-0 items-center justify-center break-all rounded-lg border-2 border-berseem px-2 py-1 text-center font-display font-bold leading-tight">{a.tag}</span><span className="min-w-0 flex-1"><strong className="block truncate">{a.name || animalCategoryTitle(a)}</strong><span className="block truncate text-sm text-muted">{a.species === "buffalo" ? "Bhains" : "Gaye"} · {a.breed ?? "Nasl nahi"}</span></span><StatusTag status={a.life_status !== "active" ? a.life_status : a.category === "calf" ? "calf" : a.milking_status} /></Link></li>)}{list.length === 0 && <li className="p-6 text-muted">Koi janwar nahi mila.</li>}</ul>
     {error && <p role="alert" className="mt-3 text-udhaar">Save nahi hua: {error}</p>}</Body></>;
 }

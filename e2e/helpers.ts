@@ -14,7 +14,7 @@ export async function signIn(page: Page): Promise<void> {
   await page.goto("/");
   await page.getByRole("textbox", { name: "Email" }).fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.getByRole("button", { name: "Login karein", exact: true }).click();
   await expect(page.getByRole("heading", { name: /Assalam o Alaikum/ })).toBeVisible();
 }
 

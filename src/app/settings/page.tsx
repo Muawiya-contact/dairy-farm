@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 import { Body, PageHeader } from "@/components/ui";
 import { breedingFields, getSettings, updateSettings, validateSettings, type FarmSettings } from "@/lib/settings";
 import { parseAmount } from "@/lib/format";
@@ -15,8 +15,24 @@ import { ImportPreviewSection } from "@/components/ImportPreviewSection";
 import { ConnectionCheckSection } from "@/components/ConnectionCheckSection";
 
 const inputClass = "mt-1 min-h-12 w-full rounded-xl border border-line bg-paper px-3 outline-none focus:border-berseem";
+type SettingsSectionId = "farm" | "breeding" | "accounts" | "month" | "data";
+const subscribeHydration = () => () => {};
+const clientSnapshot = () => true;
+const serverSnapshot = () => false;
 
-function SettingsForm({ initial }: { initial: FarmSettings }) {
+function SettingsSection({ id, title, open, onToggle, children }: {
+  id: SettingsSectionId; title: string; open: boolean; onToggle: (id: SettingsSectionId) => void; children: ReactNode;
+}) {
+  return <section className="max-w-2xl rounded-2xl border border-line bg-paper">
+    <h2><button type="button" aria-expanded={open} aria-controls={`settings-${id}`} onClick={() => onToggle(id)}
+      className="flex min-h-14 w-full items-center justify-between gap-3 px-5 text-left font-display text-xl font-bold">
+      {title}<span aria-hidden="true">{open ? "−" : "+"}</span>
+    </button></h2>
+    <div id={`settings-${id}`} hidden={!open} className="border-t border-line p-5">{open ? children : null}</div>
+  </section>;
+}
+
+function SettingsForm({ initial, open, onToggle }: { initial: FarmSettings; open: SettingsSectionId | null; onToggle: (id: SettingsSectionId) => void }) {
   const client = useQueryClient();
   const [farm, setFarm] = useState(initial.farm_name);
   const [owner, setOwner] = useState(initial.owner_name);
@@ -59,7 +75,8 @@ function SettingsForm({ initial }: { initial: FarmSettings }) {
   };
 
   return (
-    <form noValidate onSubmit={submit} className="max-w-2xl rounded-2xl border border-line bg-paper p-5">
+    <form noValidate onSubmit={submit} className="grid gap-4">
+      <SettingsSection id="farm" title="Farm" open={open === "farm"} onToggle={onToggle}>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="font-semibold">Farm ka naam<input required disabled={mutation.isPending} placeholder="Farm ka naam" value={farm} onChange={(event) => { edit(); setFarm(event.target.value); }} className={inputClass} /></label>
         <label className="font-semibold">Maalik ka naam<input disabled={mutation.isPending} placeholder="Maalik ka naam" value={owner} onChange={(event) => { edit(); setOwner(event.target.value); }} className={inputClass} /></label>
@@ -67,9 +84,6 @@ function SettingsForm({ initial }: { initial: FarmSettings }) {
         <label className="font-semibold">Doodh ka default rate (Rs/L)<input required disabled={mutation.isPending} type="number" min="0.01" step="0.01" placeholder="Misal: 150" value={rate} onChange={(event) => { edit(); setRate(event.target.value); }} className={inputClass} /></label>
         <label className="font-semibold">WhatsApp bill ka paigham<input disabled={mutation.isPending} placeholder="Bill ke neeche paigham" value={footer} onChange={(event) => { edit(); setFooter(event.target.value); }} className={inputClass} /></label>
       </div>
-      <fieldset className="mt-5"><legend className="font-display text-lg font-bold">Nasl kashi ke din</legend><p className="mb-3 text-sm text-muted">Tabdeeli sirf nayi entries par lagegi.</p>
-        <div className="grid gap-4 sm:grid-cols-2">{breedingFields.map(({ key, label, min, max }) => <label key={key} className="font-semibold">{label} (din)<input required disabled={mutation.isPending} type="number" min={min} max={max} step="1" placeholder={`${min}–${max} din`} value={days[key]} onChange={(event) => { edit(); setDays((current) => ({ ...current, [key]: event.target.value })); }} className={inputClass} /></label>)}</div>
-      </fieldset>
       <fieldset className="mt-5 border-t border-line pt-5"><legend className="font-display text-lg font-bold">Gyarhwin doodh reminder</legend>
         <label className="mt-2 flex items-center gap-2 font-semibold"><input type="checkbox" disabled={mutation.isPending} checked={gyarhwinEnabled} onChange={(event) => { edit(); setGyarhwinEnabled(event.target.checked); }} /> Har Hijri maheene ki 9, 10 aur 11 tareekh par yaad dilayein</label>
         <p className="mt-2 text-sm text-muted">Yeh sirf yaad-dihani hai. Doodh ki miktar ya customer delivery khud se nahi badlegi.</p>
@@ -88,10 +102,18 @@ function SettingsForm({ initial }: { initial: FarmSettings }) {
         </div>
         <p className="mt-2 text-sm text-muted">Save ki hui pehli tareekh se teen din tak Eid card dikhega. Tareekh khali ho to koi Eid card nahi ayega.</p>
       </fieldset>
+      </SettingsSection>
+      <SettingsSection id="breeding" title="Nasl ke din" open={open === "breeding"} onToggle={onToggle}>
+      <fieldset className="mt-5"><legend className="font-display text-lg font-bold">Nasl kashi ke din</legend><p className="mb-3 text-sm text-muted">Tabdeeli sirf nayi entries par lagegi.</p>
+        <div className="grid gap-4 sm:grid-cols-2">{breedingFields.map(({ key, label, min, max }) => <label key={key} className="font-semibold">{label} (din)<input required disabled={mutation.isPending} type="number" min={min} max={max} step="1" placeholder={`${min}–${max} din`} value={days[key]} onChange={(event) => { edit(); setDays((current) => ({ ...current, [key]: event.target.value })); }} className={inputClass} /></label>)}</div>
+      </fieldset>
+      </SettingsSection>
+      {(open === "farm" || open === "breeding") && <div className="max-w-2xl">
       <button disabled={mutation.isPending} className="mt-5 min-h-12 rounded-xl bg-berseem px-5 font-bold text-white disabled:opacity-50">{mutation.isPending ? "Save ho raha hai…" : "Save karein"}</button>
       {validation && <p role="alert" className="mt-3 text-udhaar">{validation}</p>}
       {mutation.isSuccess && <p role="status" className="mt-3 text-berseem-deep">Settings farm ke data mein save ho gayi.</p>}
       {mutation.isError && <p role="alert" className="mt-3 text-udhaar">Save nahi hua: {friendlyError(mutation.error)}</p>}
+      </div>}
     </form>
   );
 }
@@ -166,18 +188,31 @@ function AccountsSection() {
 
 export default function SettingsPage() {
   const query = useQuery({ queryKey: ["settings"], queryFn: getSettings });
+  const [open, setOpen] = useState<SettingsSectionId | null>(() => {
+    try {
+      const saved = localStorage.getItem("farm-settings-section");
+      return saved === null ? "farm" : ["farm", "breeding", "accounts", "month", "data"].includes(saved) ? saved as SettingsSectionId : null;
+    } catch { return "farm"; }
+  });
+  const hydrated = useSyncExternalStore(subscribeHydration, clientSnapshot, serverSnapshot);
+  const visibleOpen = hydrated ? open : "farm";
+  const toggle = (id: SettingsSectionId) => {
+    const next = open === id ? null : id;
+    setOpen(next);
+    try { localStorage.setItem("farm-settings-section", next ?? ""); } catch { /* Private browsing may disable storage. */ }
+  };
   return (
     <>
       <PageHeader title="Settings" sub="Farm ki maloomat" />
       <Body className="grid gap-5">
         {query.isPending && <p role="status" className="text-muted">Settings load ho rahi hain…</p>}
         {query.isError && <p role="alert" className="text-udhaar">Settings load nahi huin: {friendlyError(query.error)} <button onClick={() => void query.refetch()} className="underline">Dobara koshish</button></p>}
-        {query.data && <SettingsForm initial={query.data} />}
-        <AccountsSection />
-        <MonthCloseSection />
-        <ImportPreviewSection />
-        <ConnectionCheckSection />
-        <ExportPanel />
+        {query.data && <SettingsForm initial={query.data} open={visibleOpen} onToggle={toggle} />}
+        <SettingsSection id="accounts" title="Accounts" open={visibleOpen === "accounts"} onToggle={toggle}><AccountsSection /></SettingsSection>
+        <SettingsSection id="month" title="Maheena band" open={visibleOpen === "month"} onToggle={toggle}><MonthCloseSection /></SettingsSection>
+        <SettingsSection id="data" title="Import / Backup / Export" open={visibleOpen === "data"} onToggle={toggle}>
+          <div className="grid gap-5"><ImportPreviewSection /><ConnectionCheckSection /><ExportPanel /></div>
+        </SettingsSection>
       </Body>
     </>
   );

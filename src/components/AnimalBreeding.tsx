@@ -6,6 +6,9 @@ import { getSupabase } from "@/lib/supabase";
 import { insertRow, shortDate, type Animal, type Calving, type CalvingOffspring, type Insemination } from "@/lib/farm-data";
 import { parseCalving } from "@/lib/breeding-register";
 import { Panel } from "./ui";
+import { ConfirmActionDialog } from "./ConfirmActionDialog";
+import { UI_TEXT } from "@/lib/text";
+import { friendlyError } from "@/lib/errors";
 
 const field = "mt-1 min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 const statusNames: Record<string, string> = { pending: "Nateeja baqi", pregnant: "Gaabhan", empty: "Khali", aborted: "Hamla zaya", calved: "Bacha paida" };
@@ -34,6 +37,11 @@ export function AnimalBreeding({ animal, animals, records, calvings, offspring, 
   const [calvingValidation, setCalvingValidation] = useState("");
   const [calfCount, setCalfCount] = useState<1 | 2>(1);
   const requests = useRef(new Map<string, string>());
+  const confirming = useRef(false);
+  const [confirmBusy, setConfirmBusy] = useState(false);
+  const [pendingCalving, setPendingCalving] = useState<{
+    recordId: string; values: ReturnType<typeof parseCalving>; form: HTMLFormElement; message: string;
+  } | null>(null);
   const editing = records.find((record) => record.id === editId);
   const active = animal.life_status === "active" && animal.sex === "female";
   const hasOpenService = records.some((record) => record.status === "pending" || record.status === "pregnant");
@@ -86,23 +94,35 @@ export function AnimalBreeding({ animal, animals, records, calvings, offspring, 
 
   const calve = (event: FormEvent<HTMLFormElement>, record: Insemination) => {
     event.preventDefault();
+    if (busy || confirming.current || pendingCalving) return;
     const form = event.currentTarget;
     let values: ReturnType<typeof parseCalving>;
     try { values = parseCalving(new FormData(form), calfCount, record.service_date, today); }
     catch (error) { setCalvingValidation(error instanceof Error ? error.message : "Paidaish ka form dobara dekhein."); return; }
     setCalvingValidation("");
-    const requestId = requests.current.get(record.id) ?? crypto.randomUUID();
-    requests.current.set(record.id, requestId);
+    const liveCount = values.offspring.filter((child) => child.outcome === "alive").length;
+    setPendingCalving({ recordId: record.id, values, form,
+      message: UI_TEXT.calvingMessage(animal.tag, shortDate(values.date), values.offspring.length, liveCount) });
+  };
+
+  const confirmCalving = () => {
+    if (!pendingCalving || busy || confirming.current) return;
+    confirming.current = true;
+    setConfirmBusy(true);
+    const { recordId, values, form } = pendingCalving;
+    const requestId = requests.current.get(recordId) ?? crypto.randomUUID();
+    requests.current.set(recordId, requestId);
     void run(async () => {
       const { error } = await getSupabase().rpc("record_calving_with_offspring", {
-        p_request_id: requestId, p_insemination_id: record.id, p_calving_date: values.date,
+        p_request_id: requestId, p_insemination_id: recordId, p_calving_date: values.date,
         p_offspring: values.offspring, p_ease_score: values.ease, p_notes: values.notes,
       });
       if (error) throw error;
-      requests.current.delete(record.id);
+      requests.current.delete(recordId);
       form.reset();
       setCalfCount(1);
-    });
+    }).catch((error: unknown) => setCalvingValidation(friendlyError(error)))
+      .finally(() => { confirming.current = false; setConfirmBusy(false); setPendingCalving(null); });
   };
 
   return <Panel title="Nasl kashi aur bachay ki paidaish" className="lg:col-span-2">
@@ -119,6 +139,9 @@ export function AnimalBreeding({ animal, animals, records, calvings, offspring, 
       <button disabled={busy} className="min-h-11 rounded-xl bg-berseem px-4 font-bold text-white disabled:opacity-50 sm:col-span-2 lg:col-span-3">Tukhm rezi save karein</button>
     </form>}
     {records.length === 0 && <p className="mt-4 text-sm text-muted">Abhi koi nasl kashi record nahi.</p>}
+    {pendingCalving && <ConfirmActionDialog title={UI_TEXT.calvingTitle} message={pendingCalving.message}
+      confirmLabel={UI_TEXT.calvingButton} busy={busy || confirmBusy} onConfirm={confirmCalving}
+      onCancel={() => setPendingCalving(null)} />}
     <div className="mt-4 grid gap-3">{records.map((record) => {
       const calving = calvings.find((item) => item.insemination_id === record.id);
       const open = record.status === "pending" || record.status === "pregnant";

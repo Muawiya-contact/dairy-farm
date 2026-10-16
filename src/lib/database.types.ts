@@ -532,6 +532,21 @@ export type Database = {
         }
         Relationships: []
       }
+      expense_audit: {
+        Row: {
+          id: string; request_id: string; expense_id: string; before_row: Json;
+          after_row: Json; reason: string; actor_id: string | null; changed_at: string
+        }
+        Insert: {
+          id?: string; request_id: string; expense_id: string; before_row: Json;
+          after_row: Json; reason: string; actor_id?: string | null; changed_at?: string
+        }
+        Update: {
+          id?: string; request_id?: string; expense_id?: string; before_row?: Json;
+          after_row?: Json; reason?: string; actor_id?: string | null; changed_at?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           account_id: string
@@ -542,6 +557,7 @@ export type Database = {
           id: string
           note: string | null
           quantity: number | null
+          revision: number
           salary_period_id: string | null
           staff_id: string | null
           unit: string | null
@@ -555,6 +571,7 @@ export type Database = {
           id?: string
           note?: string | null
           quantity?: number | null
+          revision?: number
           salary_period_id?: string | null
           staff_id?: string | null
           unit?: string | null
@@ -568,6 +585,7 @@ export type Database = {
           id?: string
           note?: string | null
           quantity?: number | null
+          revision?: number
           salary_period_id?: string | null
           staff_id?: string | null
           unit?: string | null
@@ -1340,6 +1358,13 @@ export type Database = {
         Args: { p_month: string; p_note?: string | null }
         Returns: boolean
       }
+      correct_expense: {
+        Args: {
+          p_request_id: string; p_id: string; p_revision: number; p_date: string;
+          p_category: string; p_account: string; p_amount: number; p_note: string | null; p_reason: string
+        }
+        Returns: number
+      }
       correct_manual_payment: {
         Args: {
           p_account: string | null
@@ -1380,6 +1405,21 @@ export type Database = {
             }
             Returns: string
           }
+      create_customer_once: {
+        Args: {
+          p_request_id: string
+          p_name: string
+          p_kind: string
+          p_phone: string
+          p_morning: number
+          p_evening: number
+          p_rate: number
+          p_opening_balance: number
+          p_opening_date: string
+          p_free_reason: string | null
+        }
+        Returns: string
+      }
       customer_month_report: {
         Args: { p_month: string }
         Returns: {
@@ -1444,6 +1484,10 @@ export type Database = {
           profit: number
           total_income: number
         }[]
+      }
+      subscription_status: {
+        Args: never
+        Returns: { expires_on: string | null; farm_date: string; days_remaining: number | null; read_only: boolean }[]
       }
       rate_on: { Args: { p_customer: string; p_day: string }; Returns: number }
       record_calving: {

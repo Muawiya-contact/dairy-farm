@@ -9,6 +9,9 @@ import { friendlyError } from "@/lib/errors";
 import { parseAgreedAmount, parsePayment, parsePeriod, parseStaff, paidCents, remainingCents } from "@/lib/salary-forms";
 import { createStaff, loadSalaryData, openSalaryPeriod, recordSalaryPayment, updateSalaryPeriod, updateStaff } from "@/lib/salary";
 import { Body, PageHeader, Panel } from "./ui";
+import { ConfirmActionDialog } from "./ConfirmActionDialog";
+import { UI_TEXT } from "@/lib/text";
+import { refreshFarmViews } from "@/lib/query-refresh";
 
 const field = "mt-1 min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 type Pending = { id: string; signature: string };
@@ -26,6 +29,9 @@ export default function StaffSalary() {
   const paymentPending = useRef<Pending | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [pendingPayment, setPendingPayment] = useState<{
+    fields: ReturnType<typeof parsePayment>; categoryId: string; form: HTMLFormElement; message: string;
+  } | null>(null);
 
   const run = async (action: () => Promise<void>, message: string) => {
     if (busyRef.current) return;
@@ -33,13 +39,9 @@ export default function StaffSalary() {
     try {
       await action();
       try {
-        await Promise.all([
-          qc.invalidateQueries({ queryKey: ["salary"] }, { throwOnError: true }),
-          qc.invalidateQueries({ queryKey: ["farm-data"] }, { throwOnError: true }),
-          qc.invalidateQueries({ queryKey: ["galla"] }, { throwOnError: true }),
-        ]);
+        await refreshFarmViews(qc, "salary");
         setSuccess(message);
-      } catch { setSuccess("Supabase mein save ho gaya. Naye totals load nahi hue; page reload karein."); }
+      } catch { setSuccess("farm ke data mein save ho gaya. Naye totals load nahi hue; page reload karein."); }
     } catch (issue) {
       setError(friendlyError(issue));
       void qc.invalidateQueries({ queryKey: ["salary"] });
@@ -77,7 +79,7 @@ export default function StaffSalary() {
       setStaffId(staffPending.current.id);
       staffPending.current = null;
       form.reset();
-    }, "Mulazim Supabase mein save ho gaya.");
+    }, "Mulazim farm ke data mein save ho gaya.");
   };
 
   const onOpenPeriod = (event: FormEvent<HTMLFormElement>) => {
@@ -94,13 +96,24 @@ export default function StaffSalary() {
 
   const onPay = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!period || !salaryCategory) return;
+    if (!period || !salaryCategory || busyRef.current) return;
     const form = event.currentTarget;
+    let fields: ReturnType<typeof parsePayment>;
+    try { fields = parsePayment(new FormData(form), today, period, accounts, data.payments); }
+    catch (issue) { setError(friendlyError(issue)); return; }
+    const account = accounts.find((item) => item.id === fields.accountId);
+    setPendingPayment({ fields, categoryId: salaryCategory.id, form,
+      message: UI_TEXT.salaryMessage(selected?.name ?? "Mulazim", money(fields.amount), account?.name ?? "account", longDate(fields.date)) });
+  };
+
+  const confirmPayment = () => {
+    if (!pendingPayment || busyRef.current) return;
+    const { fields, categoryId, form } = pendingPayment;
+    setPendingPayment(null);
     void run(async () => {
-      const fields = parsePayment(new FormData(form), today, period, accounts, data.payments);
-      const signature = JSON.stringify({ categoryId: salaryCategory.id, ...fields });
+      const signature = JSON.stringify({ categoryId, ...fields });
       if (paymentPending.current?.signature !== signature) paymentPending.current = { id: crypto.randomUUID(), signature };
-      await recordSalaryPayment(paymentPending.current.id, salaryCategory.id, fields);
+      await recordSalaryPayment(paymentPending.current.id, categoryId, fields);
       paymentPending.current = null;
       form.reset();
     }, "Tankhwah ada ho gayi. Galla aur farm kharcha update ho gaye.");
@@ -189,6 +202,8 @@ export default function StaffSalary() {
       </Panel>}
 
       <p className="text-xs text-muted lg:col-span-2">Farm munafa adaigi ki tareekh par cash basis se badalta hai. Tankhwah ka maheena baqi hisaab ke liye hai. Advance aur paid entry ki correction baad ke kaam mein hain.</p>
+      {pendingPayment && <ConfirmActionDialog title={UI_TEXT.salaryTitle} message={pendingPayment.message}
+        confirmLabel={UI_TEXT.salaryButton} busy={busy} onCancel={() => setPendingPayment(null)} onConfirm={confirmPayment} />}
       {success && <p role="status" className="text-berseem-deep lg:col-span-2">{success}</p>}
       {error && <p role="alert" className="text-udhaar lg:col-span-2">Save nahi hua: {error} Connection tootne par dobara save se pehle record check karein.</p>}
     </Body>

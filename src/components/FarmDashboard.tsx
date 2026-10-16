@@ -16,7 +16,7 @@ import { FarmObservances } from "./FarmObservances";
 
 export function FarmLoading({ error, retry }: { error?: Error | null; retry?: () => void }) {
   return <Body className="py-8"><div role={error ? "alert" : "status"} className="rounded-2xl border border-line bg-paper p-5 text-muted">
-    {error ? <>Supabase se data nahi mila: {friendlyError(error)} <button onClick={retry} className="font-semibold text-berseem underline">Dobara koshish</button></> : "Supabase se data load ho raha hai…"}
+    {error ? <>Data nahi khula: {friendlyError(error)} <button onClick={retry} className="font-semibold text-berseem underline">Dobara koshish</button></> : "Data khul raha hai…"}
   </div></Body>;
 }
 
@@ -28,7 +28,7 @@ function MonthCloseReminder({ today, goLiveDate }: { today: string; goLiveDate: 
 }
 
 export default function FarmDashboard() {
-  const query = useFarmData();
+  const query = useFarmData("dashboard");
   if (!query.data) return <FarmLoading error={query.error} retry={() => void query.refetch()} />;
   const d = query.data;
   const shifts = d.shifts.filter((s) => s.milk_date === d.today);

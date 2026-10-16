@@ -12,6 +12,9 @@
 
 # testing
 /coverage
+/playwright-report/
+/test-results/
+/e2e/.local-auth.json
 
 # next.js
 /.next/

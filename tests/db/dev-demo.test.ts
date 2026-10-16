@@ -184,8 +184,10 @@ describe("staging demo seed", () => {
 });
 
 describe("checked daily milk entry", () => {
+  // PGlite decodes timestamptz as a JS Date, losing PostgreSQL's microseconds.
+  // PostgREST returns the full-precision string that the app sends back.
   const save = `select public.save_milk_entry_checked(coalesce($1::date, public.farm_today()), $2::text, $3::numeric,
-    $4::text, $5::jsonb, $6::jsonb, $7::timestamptz, $8::text) as version`;
+    $4::text, $5::jsonb, $6::jsonb, $7::timestamptz, $8::text)::text as version`;
 
   it("saves exact per-animal litres, note, delivery and cash receipt; rejects stale corrections", async () => {
     await db.exec("begin");
@@ -226,8 +228,14 @@ describe("checked daily milk entry", () => {
       await expectRejected(save, ["2999-01-01", "evening", 1, "total", "[]", delivery, null, ""], /FUTURE_DATE/);
       expect(Number((await db.query<{ count: string }>("select count(*) from public.milk_shifts where milk_date = $1 and shift = 'evening'", [date])).rows[0].count)).toBe(0);
       await db.query(save, base);
-      const before = (await db.query<{ version: string }>("select updated_at as version from public.milk_shifts where milk_date = $1 and shift = 'evening'", [date])).rows[0].version;
+      // Simulate a clock correction: the next write must advance the version
+      // even when the wall clock is earlier than the stored timestamp.
+      await db.exec("alter table public.milk_shifts disable trigger milk_shifts_touch");
+      await db.query("update public.milk_shifts set updated_at = clock_timestamp() + interval '1 minute' where milk_date = $1 and shift = 'evening'", [date]);
+      await db.exec("alter table public.milk_shifts enable trigger milk_shifts_touch");
+      const before = (await db.query<{ version: string }>("select updated_at::text as version from public.milk_shifts where milk_date = $1 and shift = 'evening'", [date])).rows[0].version;
       await db.query("update public.milk_deliveries set litres = 0.5 where delivery_date = $1 and shift = 'evening'", [date]);
+      expect((await db.query<{ advanced: boolean }>("select updated_at > $2::timestamptz as advanced from public.milk_shifts where milk_date = $1 and shift = 'evening'", [date, before])).rows[0].advanced).toBe(true);
       await expectRejected(save, [...base.slice(0, 6), before, ""], /MILK_STALE/);
     } finally { await db.exec("rollback"); }
   });

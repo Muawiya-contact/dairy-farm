@@ -141,7 +141,7 @@ export default function StaffSalary() {
         <label className="text-sm">Naam<input name="name" required maxLength={100} defaultValue={selected.name} className={field} /></label>
         <label className="text-sm">Kaam<input name="role" maxLength={100} defaultValue={selected.role ?? ""} placeholder="Kaam (optional)" className={field} /></label>
         <label className="text-sm">Naye mahine ki default tankhwah (Rs, optional)<input name="monthly_salary" type="number" min="0" step="0.01" defaultValue={selected.monthly_salary > 0 ? selected.monthly_salary : ""} placeholder="Raqam likhein ya khali chhorein" className={field} /></label>
-        <label className="text-sm"><input name="active" type="checkbox" defaultChecked={selected.active} /> Active mulazim</label>
+        <label className="text-sm"><input name="active" type="checkbox" defaultChecked={selected.active} /> {UI_TEXT.active} mulazim</label>
         <button disabled={busy} className="min-h-11 rounded-xl border border-berseem font-semibold text-berseem-deep disabled:opacity-50">Maloomat save karein</button>
       </form> : <p className="text-sm text-muted">Pehle mulazim shamil karein.</p>}</Panel>
 
@@ -188,7 +188,7 @@ export default function StaffSalary() {
           <label className="text-sm">Note (optional)<input name="note" maxLength={500} placeholder="Misal: pehli qist" className={field} /></label>
           <button disabled={busy || !accounts.length} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50 sm:col-span-2">Tankhwah save karein</button>
         </form>}
-        {!salaryCategory && <p role="alert" className="text-sm text-udhaar">Active Tankhwah category nahi mili. Category setup check karein.</p>}
+        {!salaryCategory && <p role="alert" className="text-sm text-udhaar">{UI_TEXT.active} Tankhwah category nahi mili. Category setup check karein.</p>}
         {!accounts.length && remaining > 0 && <p role="alert" className="text-sm text-udhaar">Pehle active account shamil karein.</p>}
         {remaining <= 0 && <p className="text-sm text-berseem-deep">Is mahine ki tankhwah poori ada ho gayi.</p>}
       </Panel>}

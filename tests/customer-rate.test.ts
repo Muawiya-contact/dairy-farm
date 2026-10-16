@@ -18,9 +18,9 @@ test("milk entry uses the rate effective on its selected date", () => {
 test("editing an old milk shift keeps a later-deactivated customer's delivery", () => {
   const data = {
     customers: [
-      { id: "active", active: true, opening_date: "2026-09-01" },
-      { id: "old", active: false, opening_date: "2026-09-01" },
-      { id: "unused", active: false, opening_date: "2026-09-01" },
+      { id: "active", name: "Active customer", sort_order: 1, active: true, opening_date: "2026-09-01" },
+      { id: "old", name: "Old customer", sort_order: 2, active: false, opening_date: "2026-09-01" },
+      { id: "unused", name: "Unused customer", sort_order: 3, active: false, opening_date: "2026-09-01" },
     ],
     deliveries: [{ customer_id: "old", delivery_date: "2026-10-01", shift: "morning" }],
   } as unknown as Parameters<typeof milkShiftCustomers>[0];
@@ -31,8 +31,8 @@ test("editing an old milk shift keeps a later-deactivated customer's delivery", 
 test("backdated milk entry excludes customers who opened later", () => {
   const data = {
     customers: [
-      { id: "existing", active: true, opening_date: "2026-10-01" },
-      { id: "new", active: true, opening_date: "2026-10-10" },
+      { id: "existing", name: "Existing customer", sort_order: 1, active: true, opening_date: "2026-10-01" },
+      { id: "new", name: "New customer", sort_order: 2, active: true, opening_date: "2026-10-10" },
     ],
     deliveries: [],
   } as unknown as Parameters<typeof milkShiftCustomers>[0];

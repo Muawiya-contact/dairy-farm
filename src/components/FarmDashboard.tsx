@@ -34,6 +34,8 @@ export default function FarmDashboard() {
   const shifts = d.shifts.filter((s) => s.milk_date === d.today);
   const morning = amount(shifts.find((s) => s.shift === "morning")?.total_litres);
   const evening = amount(shifts.find((s) => s.shift === "evening")?.total_litres);
+  const morningEntered = shifts.some((s) => s.shift === "morning");
+  const eveningEntered = shifts.some((s) => s.shift === "evening");
   const yDate = addDays(d.today, -1);
   const yMilk = sumMilkLitres(d.shifts.filter((s) => s.milk_date === yDate).map((s) => amount(s.total_litres)));
   const todayMilk = sumMilkLitres([morning, evening]);
@@ -64,7 +66,9 @@ export default function FarmDashboard() {
       <MonthCloseReminder today={d.today} goLiveDate={d.settings.go_live_date} />
       <section className="rounded-3xl bg-berseem-deep p-5 text-white lg:col-span-2 lg:p-7"><div className="flex items-end justify-between gap-4"><div className="min-w-0">
         <p className="text-[15px] text-[#cfe3cf]">Aaj ka doodh</p><p className="font-display text-[64px] font-extrabold leading-[0.95] tracking-[-0.03em] tnum lg:text-[84px]">{litres(todayMilk).replace(/ L$/, "")}<span className="ml-2 text-[24px] font-bold tracking-normal text-[#cfe3cf]">litre</span></p>
-        <p className="mt-2 text-[15px] text-[#cfe3cf]">Kal se {litres(Math.abs(remainingMilk(todayMilk, yMilk)))} {todayMilk < yMilk ? "kam" : "zyada"}</p>
+        {morningEntered && eveningEntered
+          ? <p className="mt-2 text-[15px] text-[#cfe3cf]">Kal se {litres(Math.abs(remainingMilk(todayMilk, yMilk)))} {todayMilk < yMilk ? "kam" : "zyada"}</p>
+          : <div className="mt-2 text-[15px] text-[#cfe3cf]"><p>{!morningEntered && !eveningEntered ? "Aaj ka doodh abhi nahi likha" : `${morningEntered ? "Shaam" : "Subah"} ka doodh abhi nahi likha`}</p><Link href="/doodh/" className="mt-2 inline-flex min-h-10 items-center rounded-xl border border-white px-3 font-semibold text-white">Doodh likhein</Link></div>}
         <dl className="mt-5 flex gap-6"><div><dt className="text-[14px] text-[#cfe3cf]">Subah</dt><dd className="font-display text-[24px] font-bold tnum">{litres(morning)}</dd></div><div><dt className="text-[14px] text-[#cfe3cf]">Shaam</dt><dd className="font-display text-[24px] font-bold tnum">{litres(evening)}</dd></div></dl>
       </div><MilkCan morning={morning} evening={evening} /></div></section>
       <Panel title="Aaj ka hisaab"><dl className="divide-y divide-line"><div className="flex justify-between py-2.5"><dt>Kamai</dt><dd className="font-bold tnum">{money(sale)}</dd></div><div className="flex justify-between py-2.5"><dt>Farm kharcha</dt><dd className="font-bold tnum">{money(expense)}</dd></div><div className="flex justify-between py-2.5"><dt>Munafa</dt><dd className="font-bold tnum">{money(sale - expense)}</dd></div></dl><div className="mt-3 grid grid-cols-2 gap-2"><Link href="/doodh/" className="flex min-h-12 items-center justify-center gap-1 rounded-xl bg-berseem font-semibold text-white"><PlusIcon width={18} />Doodh</Link><Link href="/kharcha/" className="flex min-h-12 items-center justify-center gap-1 rounded-xl border border-berseem font-semibold text-berseem"><PlusIcon width={18} />Kharcha</Link></div></Panel>

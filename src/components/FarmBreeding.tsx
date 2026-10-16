@@ -8,6 +8,7 @@ import { BREEDING_COLUMNS, exportRows, fetchBreedingRegister, type ExportFormat 
 import { friendlyError } from "@/lib/errors";
 import { Body, PageHeader, Panel } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
+import { UI_TEXT } from "@/lib/text";
 
 const statusName: Record<string, string> = { pending: "Nateeja baqi", pregnant: "Gaabhan", empty: "Khali", aborted: "Hamla zaya", calved: "Bacha paida" };
 
@@ -51,7 +52,7 @@ export default function FarmBreeding() {
   return <><PageHeader title="Nasl kashi" sub={`${data.inseminations.length} records · ${dueCount} ka kaam due`} back="/janwar/" />
     <Body className="space-y-4 pb-8">
       <Panel title="Register aur due kaam">
-        <p className="text-sm text-muted">Tukhm rezi, checkup, khushk hone aur paidaish ki tareekhein. Asal nateeja janwar ke record mein darj karein. Mutawaqqa tareekhein Settings ke offsets se service ke waqt banti hain.</p>
+        <p className="text-sm text-muted">{UI_TEXT.naslHelp}</p>
         <div className="mt-3 flex flex-wrap gap-2">{(["due", "pending", "pregnant", "calved", "empty", "aborted", "all"] as const).map((value) => <button key={value} type="button" onClick={() => setFilter(value)} className={`min-h-10 rounded-full border px-3 text-sm font-semibold ${filter === value ? "border-ink bg-ink text-white" : "border-line"}`}>{value === "due" ? "Due / late" : value === "all" ? "Sab" : statusName[value]}</button>)}</div>
         <label className="mt-3 block text-sm font-semibold">Tag, naam ya semen se dhoondein<input value={term} onChange={(event) => setTerm(event.target.value)} placeholder="Misal: 123" className="mt-1 min-h-11 w-full rounded-xl border border-line bg-paper px-3" /></label>
         <div className="mt-3 flex flex-wrap items-center gap-2"><span className="text-sm font-semibold">Poora register export:</span>{(["csv", "xlsx", "pdf"] as const).map((format) => <button key={format} disabled={exporting} onClick={() => void save(format)} className="min-h-10 rounded-xl border border-berseem px-3 text-sm font-semibold uppercase text-berseem disabled:opacity-50">{format === "xlsx" ? "Excel" : format}</button>)}</div>

@@ -90,3 +90,22 @@ export function animalLifeEvents(animal: Animal, data: Pick<FarmData, "health" |
     detail: [animal.exit_reason, animal.sale_price == null ? "" : `Rs ${Number(animal.sale_price).toLocaleString("en-PK")}`].filter(Boolean).join(" · ") });
   return events.sort((a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id));
 }
+/** Ear tags that are entirely digits are ordered by their numeric value. */
+export function compareAnimalTags(a: { tag: string }, b: { tag: string }): number {
+  const aNumeric = /^\d+$/.test(a.tag);
+  const bNumeric = /^\d+$/.test(b.tag);
+  if (aNumeric !== bNumeric) return aNumeric ? -1 : 1;
+  if (aNumeric && bNumeric) {
+    const left = BigInt(a.tag);
+    const right = BigInt(b.tag);
+    if (left !== right) return left < right ? -1 : 1;
+  }
+  return a.tag.localeCompare(b.tag, "en", { numeric: true });
+}
+
+export function animalCategoryTitle(animal: { species: "cow" | "buffalo"; category: "cow" | "heifer" | "calf" | "bull" }): string {
+  if (animal.category === "heifer") return "Bachhi";
+  if (animal.category === "calf") return "Bacha";
+  if (animal.category === "bull") return "Saand";
+  return animal.species === "buffalo" ? "Bhains" : "Gaye";
+}

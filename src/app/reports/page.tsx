@@ -8,7 +8,7 @@ import { getSettings } from "@/lib/settings";
 import { formatMonth, todayPK } from "@/lib/dates";
 import { friendlyError } from "@/lib/errors";
 import LogoMark from "@/components/LogoMark";
-import { allRows, compareCustomers, type Customer } from "@/lib/farm-data";
+import { compareCustomers } from "@/lib/farm-data";
 import { rs } from "@/lib/format";
 
 const number = (value: unknown) => Number(value ?? 0).toLocaleString("en-PK", { maximumFractionDigits: 2 });
@@ -21,14 +21,13 @@ export default function ReportsPage() {
     queryKey: ["print-report", month],
     enabled: /^\d{4}-(0[1-9]|1[0-2])$/.test(month),
     queryFn: async () => {
-      const [settings, customers, customerOrder, expenses, milk, pnl] = await Promise.all([
-        getSettings(), fetchReport("customer_month_report", month), allRows<Customer>("customers"), fetchReport("expense_month_report", month),
+      const [settings, customers, expenses, milk, pnl] = await Promise.all([
+        getSettings(), fetchReport("customer_month_report", month), fetchReport("expense_month_report", month),
         fetchReport("milk_month_summary", month), fetchReport("pnl_month", month),
       ]);
-      const order = new Map(customerOrder.map((customer) => [customer.id, customer]));
       customers.sort((a, b) => compareCustomers(
-        order.get(String(a.customer_id)) ?? { id: String(a.customer_id), name: String(a.name), sort_order: 0 },
-        order.get(String(b.customer_id)) ?? { id: String(b.customer_id), name: String(b.name), sort_order: 0 },
+        { id: String(a.customer_id), name: String(a.name), sort_order: Number(a.sort_order ?? 0) },
+        { id: String(b.customer_id), name: String(b.name), sort_order: Number(b.sort_order ?? 0) },
       ));
       return { settings, customers, expenses, milk: milk[0], pnl: pnl[0] };
     },

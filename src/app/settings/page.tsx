@@ -49,6 +49,7 @@ function SettingsForm({ initial, open, onToggle }: { initial: FarmSettings; open
   const [days, setDays] = useState(() => Object.fromEntries(breedingFields.map(({ key }) => [key, String(initial[key])])) as Record<(typeof breedingFields)[number]["key"], string>);
   const [reminderDays, setReminderDays] = useState(String(initial.reminder_days));
   const [calvingReminderDays, setCalvingReminderDays] = useState(String(initial.calving_reminder_days));
+  const [noonDraft, setNoonDraft] = useState<boolean | null>(null);
   const noonQuery = useQuery({ queryKey: ["noon-enabled"], queryFn: async () => {
     const { data, error } = await getSupabase().rpc("noon_enabled_on", { p_date: todayPK() });
     if (error) throw error;
@@ -60,9 +61,10 @@ function SettingsForm({ initial, open, onToggle }: { initial: FarmSettings; open
     return data;
   }, onSuccess: (enabled) => {
     client.setQueryData(["noon-enabled"], enabled);
+    setNoonDraft(null);
     void client.invalidateQueries({ queryKey: ["farm-data"] });
     void client.invalidateQueries({ queryKey: ["settings"] });
-  } });
+  }, onError: () => setNoonDraft(null) });
   const adjustmentDays = Number(hijriAdjustment);
   const today = todayPK();
   const hijriToday = estimatedHijriDate(today, adjustmentDays);
@@ -124,9 +126,9 @@ function SettingsForm({ initial, open, onToggle }: { initial: FarmSettings; open
       </fieldset>
       </SettingsSection>
       <SettingsSection id="milk" title="Doodh ke auqaat" open={open === "milk"} onToggle={onToggle}>
-        <label className="flex items-center gap-3 font-semibold"><input type="checkbox" checked={noonQuery.data ?? false}
+        <label className="flex items-center gap-3 font-semibold"><input type="checkbox" checked={noonDraft ?? noonQuery.data ?? false}
           disabled={noonQuery.isPending || noonMutation.isPending || noonQuery.isError}
-          onChange={(event) => noonMutation.mutate(event.target.checked)} />Dopehr ka doodh (din mein 3 dafa)</label>
+          onChange={(event) => { setNoonDraft(event.target.checked); noonMutation.mutate(event.target.checked); }} />Dopehr ka doodh (din mein 3 dafa)</label>
         <p className="mt-2 text-sm text-muted">Band karne se purana dopehr ka data delete nahi hoga. Naya rule aaj se lagega.</p>
         {noonQuery.isError && <p role="alert" className="text-udhaar">Dopehr ka rule nahi khula: {friendlyError(noonQuery.error)}</p>}
         {noonMutation.isError && <p role="alert" className="text-udhaar">Rule save nahi hua: {friendlyError(noonMutation.error)}</p>}

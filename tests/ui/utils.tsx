@@ -9,7 +9,7 @@ const fixtures = vi.hoisted(() => ({
     category: "cow", milking_status: "milking", life_status: "active", source: "purchased",
     arrival_date: "2025-01-01", birth_date: "2023-01-01", updated_at: "2026-10-15T12:00:00Z" },
   account: { id: "account-1", name: "Farm galla", active: true, is_farm_cash: true },
-  customer: { id: "customer-1", name: "Naqd", kind: "cash", default_morning: 0, default_evening: 0 },
+  customer: { id: "customer-1", name: "Naqd", kind: "cash", default_morning: 0, default_noon: 0, default_evening: 0 },
 }));
 
 const farmMocks = vi.hoisted(() => ({
@@ -37,6 +37,7 @@ export function makeFarmData(overrides: Record<string, unknown> = {}) {
     accounts: [fixtures.account],
     customers: [fixtures.customer],
     shifts: [], animalMilk: [], deliveries: [], rates: [], settings: {},
+    milkShiftConfig: [{ effective_from: fixtures.today, noon_enabled: true }],
     health: [], inseminations: [], calvings: [], calvingOffspring: [], categories: [],
     ...overrides,
   };

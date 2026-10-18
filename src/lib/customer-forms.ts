@@ -5,10 +5,10 @@ import { normalizePhone } from "./phone";
 export type CustomerKind = "regular" | "contractor" | "company" | "cash" | "free";
 export type FreeReason = "owner" | "staff" | "charity" | "calves" | "other";
 export type NewCustomer = {
-  name: string; phone: string; kind: CustomerKind; morning: number; evening: number;
+  name: string; phone: string; kind: CustomerKind; morning: number; noon: number; evening: number;
   rate: number; openingBalance: number; openingDate: string; freeReason: FreeReason | null;
 };
-export type CustomerProfile = { name: string; phone: string; morning: number; evening: number; active: boolean; freeReason: FreeReason | null };
+export type CustomerProfile = { name: string; phone: string; morning: number; noon: number; evening: number; active: boolean; freeReason: FreeReason | null };
 export type CustomerPayment = { date: string; amount: number; method: string; accountId: string };
 export type CustomerCompanyBill = { from: string; to: string; litres: number; amount: number };
 
@@ -63,6 +63,7 @@ export function parseNewCustomer(form: FormData, kind: CustomerKind, today: stri
   return {
     name: name(form), phone: normalizePhone(text(form, "phone")), kind,
     morning: decimal(form, "morning", "Subah doodh", { max: 5000 }),
+    noon: decimal(form, "noon", "Dopehr doodh", { max: 5000 }),
     evening: decimal(form, "evening", "Shaam doodh", { max: 5000 }),
     rate: kind === "free" || kind === "company" ? 0 : decimal(form, "rate", "Doodh ka rate", { required: true, min: 0.01, max: RATE_MAX }),
     openingBalance: kind === "free" || kind === "cash" ? 0 : decimal(form, "openingBalance", "Pichla baqaya", { signed: true }),
@@ -74,6 +75,7 @@ export function parseCustomerProfile(form: FormData, kind: CustomerKind): Custom
   return {
     name: name(form), phone: normalizePhone(text(form, "phone")),
     morning: decimal(form, "morning", "Subah doodh", { max: 5000 }),
+    noon: decimal(form, "noon", "Dopehr doodh", { max: 5000 }),
     evening: decimal(form, "evening", "Shaam doodh", { max: 5000 }),
     active: form.get("active") === "on", freeReason: freeReason(form, kind),
   };

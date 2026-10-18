@@ -5,6 +5,7 @@ import { friendlyError } from "@/lib/errors";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { UI_TEXT } from "@/lib/text";
+import { noonEnabledOn } from "@/lib/milk-shifts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   amount, createCustomer, customerMonthReport, customerRate, insertRow, money, recordCustomerPayment,
@@ -63,8 +64,9 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
   useEffect(() => { pendingShare.current = null; }, [data, month, report]);
   const rate = customerRate(data, c.id);
   const ledger = statementLines(data, c.id, month);
+  const noonLitres = ledger.filter((line) => line.detail === "Dopehr doodh").reduce((sum, line) => sum + (line.litres ?? 0), 0);
   const phone = whatsappNumber(c.phone);
-  const wa = report ? whatsappChatUrl(c.phone, statementMessage(data.settings, c, month, report)) : null;
+  const wa = report ? whatsappChatUrl(c.phone, statementMessage(data.settings, c, month, report, noonLitres)) : null;
   const activeAccounts = data.accounts.filter((account) => account.active);
   const onProfile = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -153,7 +155,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
         : await buildPaymentReceiptPdf({ farm: data.settings, customer: c, payment: payment! }));
       const filename = documentFilename(c, kind, kind === "bill" ? month : payment!.id);
       if (action === "share") {
-        const message = kind === "bill" ? statementMessage(data.settings, c, month, report!) : receiptMessage(data.settings, c, payment!);
+        const message = kind === "bill" ? statementMessage(data.settings, c, month, report!, noonLitres) : receiptMessage(data.settings, c, payment!);
         const outcome = await shareCustomerPdf(filename, bytes, `${data.settings.farm_name} - ${c.name}`, message);
         if (outcome === "retry" && !cached) {
           pendingShare.current = { key, bytes };
@@ -176,7 +178,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
   };
 
   return <>
-    <PageHeader title={c.name} sub={`${c.active ? UI_TEXT.active : "Band"} · ${c.kind === "free" ? `Muft: ${freeReasons[c.free_reason ?? "other"]} · ` : ""}${c.phone || "Phone darj nahi"} · Subah ${amount(c.default_morning)} L · Shaam ${amount(c.default_evening)} L${rate ? ` · ${money(rate)}/L` : ""}`} back="/khata/" />
+    <PageHeader title={c.name} sub={`${c.active ? UI_TEXT.active : "Band"} · ${c.kind === "free" ? `Muft: ${freeReasons[c.free_reason ?? "other"]} · ` : ""}${c.phone || "Phone darj nahi"} · Subah ${amount(c.default_morning)} L · Dopehr ${amount(c.default_noon)} L · Shaam ${amount(c.default_evening)} L${rate ? ` · ${money(rate)}/L` : ""}`} back="/khata/" />
     <Body className="grid gap-4 lg:grid-cols-2">
       <section className={`rounded-2xl p-5 text-white ${balance > 0 ? "bg-udhaar" : "bg-berseem"}`}>
         <p className="text-white/80">{balance > 0 ? "Baqi raqam" : balance < 0 ? "Customer ka advance" : "Hisaab saaf"}</p>
@@ -187,7 +189,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
         {editing && <form onSubmit={onProfile} className="mt-3 grid gap-2">
           <label className="text-sm font-semibold">Naam<input name="name" required defaultValue={c.name} className={field} /></label>
           <label className="text-sm font-semibold">Phone<input name="phone" type="tel" defaultValue={c.phone ?? ""} placeholder="03xxxxxxxxx (optional)" className={field} /></label>
-          <div className="grid gap-2 sm:grid-cols-2"><label className="text-sm font-semibold">Subah (L)<input name="morning" type="number" min="0" max="5000" step="0.01" defaultValue={c.default_morning || ""} placeholder="Khali = 0" className={field} /></label><label className="text-sm font-semibold">Shaam (L)<input name="evening" type="number" min="0" max="5000" step="0.01" defaultValue={c.default_evening || ""} placeholder="Khali = 0" className={field} /></label></div>
+          <div className="grid gap-2 sm:grid-cols-2"><label className="text-sm font-semibold">Subah (L)<input name="morning" type="number" min="0" max="5000" step="0.01" defaultValue={c.default_morning || ""} placeholder="Khali = 0" className={field} /></label>{noonEnabledOn(data.today, data.milkShiftConfig) ? <label className="text-sm font-semibold">Dopehr (L)<input name="noon" type="number" min="0" max="5000" step="0.01" defaultValue={c.default_noon || ""} placeholder="Khali = 0" className={field} /></label> : <input type="hidden" name="noon" value={c.default_noon} />}<label className="text-sm font-semibold">Shaam (L)<input name="evening" type="number" min="0" max="5000" step="0.01" defaultValue={c.default_evening || ""} placeholder="Khali = 0" className={field} /></label></div>
           {c.kind === "free" && <label className="text-sm font-semibold">Muft doodh ki wajah<select name="freeReason" defaultValue={c.free_reason ?? "other"} required className={field}>{Object.entries(freeReasons).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>}
           <label className="flex items-center gap-2 text-sm font-semibold"><input name="active" type="checkbox" defaultChecked={c.active} /> Doodh entry mein active rakhein</label>
           <p className="text-xs text-muted">Qism aur pichla baqaya badalne se purana hisaab badal sakta hai; yahan sirf rozmarra maloomat badlein.</p>
@@ -342,6 +344,7 @@ function CustomerList({ data, save, busy, error, success }: {
         {kind === "free" && <label className="text-sm text-muted">Muft doodh ki wajah<select name="freeReason" defaultValue="" required className={field}><option value="" disabled>Wajah chunein</option>{Object.entries(freeReasons).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>}
         <label className="text-sm text-muted">Doodh ka rate (Rs/L) · Settings se<input name="rate" type="number" min="0.01" step="0.01" defaultValue={data.settings.default_milk_rate} placeholder="Rate Rs/L" disabled={kind === "company" || kind === "free"} className={field} /></label>
         <input name="morning" type="number" min="0" max="5000" step="0.01" placeholder="Subah L (khali = 0)" aria-label="Subah litres" className={field} />
+        {noonEnabledOn(data.today, data.milkShiftConfig) && <input name="noon" type="number" min="0" max="5000" step="0.01" placeholder="Dopehr L (khali = 0)" aria-label="Dopehr litres" className={field} />}
         <input name="evening" type="number" min="0" max="5000" step="0.01" placeholder="Shaam L (khali = 0)" aria-label="Shaam litres" className={field} />
         <label className="text-sm text-muted">Pichla baqaya (Rs)<input name="openingBalance" type="number" step="0.01" placeholder="Khali = 0; advance ke liye - raqam" aria-label="Pichla baqaya" disabled={kind === "cash" || kind === "free"} className={field} /><span className="text-xs">Positive = lena hai; negative = customer ka advance.</span></label>
         <label className="text-sm text-muted">Pichla hisaab kis tareekh se?<input name="openingDate" type="date" max={data.today} defaultValue={data.today} required className={field} /></label>

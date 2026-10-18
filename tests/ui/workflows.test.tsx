@@ -50,6 +50,34 @@ it("refreshes galla and customer reports after saving milk", async () => {
   expect(invalidate).toHaveBeenCalledWith({ queryKey: ["galla"] }, { throwOnError: true });
 });
 
+it("shows the noon tab and prefills the customer's noon default", async () => {
+  const user = userEvent.setup();
+  farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({ customers: [{ ...fixtures.customer,
+    active: true, opening_date: "2025-01-01", default_noon: 2 }] }), error: null });
+  renderWithQuery(<FarmMilk />);
+  expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Subah", "Dopehr", "Shaam"]);
+  await user.click(screen.getByRole("tab", { name: "Dopehr" }));
+  expect(screen.getByRole("spinbutton", { name: "Naqd litres" })).toHaveValue(2);
+});
+
+it("hides noon when off but keeps an already recorded historical noon tab", () => {
+  farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({
+    milkShiftConfig: [{ effective_from: fixtures.today, noon_enabled: false }],
+  }), error: null });
+  const view = renderWithQuery(<FarmMilk />);
+  expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Subah", "Shaam"]);
+  view.unmount();
+  farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({
+    milkShiftConfig: [{ effective_from: fixtures.today, noon_enabled: false }],
+    shifts: [{ id: "noon-1", milk_date: fixtures.today, shift: "noon", total_litres: 3, mode: "total", updated_at: "2026-10-16T12:00:00Z" }],
+  }), error: null });
+  renderWithQuery(<FarmMilk />);
+  expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Subah", "Dopehr*", "Shaam"]);
+  expect(screen.getByText(/pehle se darj entry hai; nayi Dopehr entry nahi banegi/)).toBeVisible();
+  fireEvent.click(screen.getByRole("tab", { name: "Dopehr*" }));
+  expect(screen.getByRole("button", { name: "Darj Dopehr entry durust karein" })).toBeVisible();
+});
+
 it("confirms an animal sale before writing and refreshes all dependent views", async () => {
   const user = userEvent.setup();
   const { client } = renderWithQuery(<AnimalManagement animal={fixtures.cow as never} animals={[fixtures.cow] as never} accounts={[fixtures.account] as never} today={fixtures.today} />);

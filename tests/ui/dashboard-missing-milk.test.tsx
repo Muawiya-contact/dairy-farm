@@ -22,11 +22,12 @@ it("shows a milk entry link instead of comparing an unentered shift with yesterd
   expect(screen.queryByText(/Kal se/)).not.toBeInTheDocument();
 });
 
-it("compares yesterday only after both shifts are entered, including real zero entries", () => {
-  farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({ ...base, shifts: [
+it("compares only two complete days, including real zero entries", () => {
+  farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({ ...base, milkShiftConfig: [{ effective_from: "2026-10-16", noon_enabled: false }], shifts: [
     { id: "morning", milk_date: "2026-10-16", shift: "morning", total_litres: 0 },
     { id: "evening", milk_date: "2026-10-16", shift: "evening", total_litres: 0 },
     { id: "yesterday", milk_date: "2026-10-15", shift: "morning", total_litres: 10 },
+    { id: "yesterday-evening", milk_date: "2026-10-15", shift: "evening", total_litres: 0 },
   ] }), error: null });
   renderWithQuery(<FarmDashboard />);
   expect(screen.getByText(/Kal se 10 L kam/)).toBeInTheDocument();

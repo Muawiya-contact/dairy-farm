@@ -7,13 +7,14 @@ type SettingsRow = Database["public"]["Tables"]["settings"]["Row"];
 export type FarmSettings = Pick<SettingsRow,
   "farm_name" | "owner_name" | "contact_phone" | "default_milk_rate" | "ultrasound_days" |
   "checkup_days" | "dry_off_days" | "calving_days" | "fresh_days" | "whatsapp_footer" |
+  "reminder_days" | "calving_reminder_days" |
   "gyarhwin_reminder_enabled" | "hijri_date_adjustment" |
   "eid_fitr_start_date" | "eid_adha_start_date"> & { id: 1 };
 export type LoadedFarmSettings = FarmSettings & Pick<SettingsRow, "go_live_date">;
 
 export const breedingFields = [
   { key: "ultrasound_days", label: "Ultrasound", min: 1, max: 400 },
-  { key: "checkup_days", label: "Checkup", min: 1, max: 400 },
+  { key: "checkup_days", label: "Checkup (ultrasound ke baad)", min: 1, max: 400 },
   { key: "dry_off_days", label: "Khushk", min: 1, max: 400 },
   { key: "calving_days", label: "Bachha", min: 200, max: 320 },
   { key: "fresh_days", label: "Fresh", min: 1, max: 200 },
@@ -34,6 +35,8 @@ export function validateSettings(input: Omit<FarmSettings, "id">): string | null
       return `${field.label} ke din ${field.min} se ${field.max} tak likhein.`;
     }
   }
+  if (!Number.isInteger(input.reminder_days) || input.reminder_days < 1 || input.reminder_days > 30) return "Yaad-dihani 1 se 30 din tak rakhein.";
+  if (!Number.isInteger(input.calving_reminder_days) || input.calving_reminder_days < 1 || input.calving_reminder_days > 60) return "Paidaish ki yaad-dihani 1 se 60 din tak rakhein.";
   if (!Number.isInteger(input.hijri_date_adjustment) || input.hijri_date_adjustment < -2 || input.hijri_date_adjustment > 2) {
     return "Hijri tareekh ki adjustment -2 se +2 din tak likhein.";
   }
@@ -50,7 +53,7 @@ export function validateSettings(input: Omit<FarmSettings, "id">): string | null
   return null;
 }
 
-const columns = "id,farm_name,owner_name,contact_phone,go_live_date,default_milk_rate,ultrasound_days,checkup_days,dry_off_days,calving_days,fresh_days,whatsapp_footer,gyarhwin_reminder_enabled,hijri_date_adjustment,eid_fitr_start_date,eid_adha_start_date";
+const columns = "id,farm_name,owner_name,contact_phone,go_live_date,default_milk_rate,ultrasound_days,checkup_days,dry_off_days,calving_days,fresh_days,reminder_days,calving_reminder_days,whatsapp_footer,gyarhwin_reminder_enabled,hijri_date_adjustment,eid_fitr_start_date,eid_adha_start_date";
 
 export async function getSettings(): Promise<LoadedFarmSettings> {
   const { data, error } = await getSupabase().from("settings").select(columns).eq("id", 1).single();

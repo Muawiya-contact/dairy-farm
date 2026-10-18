@@ -463,6 +463,7 @@ export type Database = {
           created_at: string
           default_evening: number
           default_morning: number
+          default_noon: number
           free_reason: string | null
           id: string
           kind: string
@@ -478,6 +479,7 @@ export type Database = {
           created_at?: string
           default_evening?: number
           default_morning?: number
+          default_noon?: number
           free_reason?: string | null
           id?: string
           kind: string
@@ -493,6 +495,7 @@ export type Database = {
           created_at?: string
           default_evening?: number
           default_morning?: number
+          default_noon?: number
           free_reason?: string | null
           id?: string
           kind?: string
@@ -823,6 +826,12 @@ export type Database = {
           },
         ]
       }
+      milk_shift_config: {
+        Row: { effective_from: string; noon_enabled: boolean; changed_at: string }
+        Insert: { effective_from: string; noon_enabled: boolean; changed_at?: string }
+        Update: { effective_from?: string; noon_enabled?: boolean; changed_at?: string }
+        Relationships: []
+      }
       milk_shifts: {
         Row: {
           created_at: string
@@ -1112,6 +1121,8 @@ export type Database = {
       }
       settings: {
         Row: {
+          reminder_days: number
+          calving_reminder_days: number
           calving_days: number
           checkup_days: number
           contact_phone: string
@@ -1130,6 +1141,8 @@ export type Database = {
           whatsapp_footer: string
         }
         Insert: {
+          reminder_days?: number
+          calving_reminder_days?: number
           calving_days?: number
           checkup_days?: number
           contact_phone?: string
@@ -1148,6 +1161,8 @@ export type Database = {
           whatsapp_footer?: string
         }
         Update: {
+          reminder_days?: number
+          calving_reminder_days?: number
           calving_days?: number
           checkup_days?: number
           contact_phone?: string
@@ -1377,34 +1392,21 @@ export type Database = {
         }
         Returns: number
       }
-      create_customer:
-        | {
-            Args: {
-              p_evening: number
-              p_kind: string
-              p_morning: number
-              p_name: string
-              p_opening_balance: number
-              p_opening_date: string
-              p_phone: string
-              p_rate: number
-            }
-            Returns: string
-          }
-        | {
-            Args: {
-              p_evening: number
-              p_free_reason: string | null
-              p_kind: string
-              p_morning: number
-              p_name: string
-              p_opening_balance: number
-              p_opening_date: string
-              p_phone: string
-              p_rate: number
-            }
-            Returns: string
-          }
+      create_customer: {
+        Args: {
+          p_evening: number
+          p_free_reason?: string | null
+          p_kind: string
+          p_morning: number
+          p_noon?: number
+          p_name: string
+          p_opening_balance: number
+          p_opening_date: string
+          p_phone: string
+          p_rate: number
+        }
+        Returns: string
+      }
       create_customer_once: {
         Args: {
           p_request_id: string
@@ -1412,6 +1414,7 @@ export type Database = {
           p_kind: string
           p_phone: string
           p_morning: number
+          p_noon?: number
           p_evening: number
           p_rate: number
           p_opening_balance: number
@@ -1452,12 +1455,17 @@ export type Database = {
         }[]
       }
       farm_today: { Args: never; Returns: string }
+      noon_enabled_on: { Args: { p_date: string }; Returns: boolean }
+      expected_shifts: { Args: { p_date: string }; Returns: string[] }
+      milk_shift_history: { Args: never; Returns: { effective_from: string; noon_enabled: boolean }[] }
+      set_noon_milk: { Args: { p_enabled: boolean }; Returns: boolean }
       herd_alerts: {
         Args: { p_today: string }
         Returns: {
           alert_kind: string
           animal_id: string
           due_date: string
+          days_left: number
           message: string
           severity: string
           tag: string

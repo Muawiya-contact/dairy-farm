@@ -14,7 +14,7 @@ export const DATASETS: { table: Table; label: string; key: string; columns: stri
   { table: "milk_shifts", label: "Doodh ki shifts", key: "id", columns: ["id", "milk_date", "shift", "total_litres", "mode", "notes", "created_at", "updated_at"] },
   { table: "animal_milk", label: "Har janwar ka doodh", key: "id", columns: ["id", "shift_id", "animal_id", "litres"] },
   { table: "milk_deliveries", label: "Doodh ki delivery", key: "id", columns: ["id", "delivery_date", "shift", "customer_id", "litres", "rate", "amount", "created_at"] },
-  { table: "customers", label: "Customers", key: "id", columns: ["id", "name", "phone", "kind", "free_reason", "default_morning", "default_evening", "opening_balance", "opening_date", "active", "sort_order", "notes", "created_at"] },
+  { table: "customers", label: "Customers", key: "id", columns: ["id", "name", "phone", "kind", "free_reason", "default_morning", "default_noon", "default_evening", "opening_balance", "opening_date", "active", "sort_order", "notes", "created_at"] },
   { table: "customer_rates", label: "Doodh ke rate", key: "id", columns: ["id", "customer_id", "rate", "effective_from"] },
   { table: "company_bills", label: "Company bills", key: "id", columns: ["id", "customer_id", "from_date", "to_date", "litres", "amount", "notes", "created_at"] },
   { table: "payments", label: "Wusooli", key: "id", columns: ["id", "customer_id", "payment_date", "amount", "kind", "method", "account_id", "delivery_id", "note", "revision", "created_at"] },

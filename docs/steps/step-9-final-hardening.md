@@ -39,6 +39,53 @@ writes made through RPCs. Navigation and filters continue to work. Extending
 `expires_on` restores writing without changing user accounts. Before a future
 migration adds a writable public table, give it the same subscription trigger.
 
+Migration `20261018000001_subscription_guard_coverage.sql` closes a follow-up
+gap: the month-close and reopen RPCs write to tables that do not have browser
+`INSERT` grants, so the original grant-based trigger install missed them. It
+also protects the server-written payment audit table. Apply this migration to
+staging, then production, before claiming that expiry makes every workflow
+read-only.
+
+### Verify the production state without changing the date
+
+In the **production** Supabase SQL Editor, run this read-only query. It must
+return exactly one row. A blank `expires_on` means no warning or lock is
+configured; it is not an automatic one-year subscription.
+
+```sql
+select expires_on, public.farm_today() as today_pk,
+  case
+    when expires_on is null then 'not configured'
+    when expires_on < public.farm_today() then 'read only'
+    when expires_on <= public.farm_today() + 7 then 'warning'
+    else 'active'
+  end as expected_state
+from private.farm_subscription
+where singleton = true;
+```
+
+After applying the follow-up migration, this read-only coverage check must
+return **no rows**. If it lists a public table, investigate before relying on
+the read-only lock:
+
+```sql
+select c.relname as unguarded_table
+from pg_class c join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public' and c.relkind = 'r'
+  and not exists (
+    select 1 from pg_trigger t
+    where t.tgrelid = c.oid and t.tgname = 'subscription_write_guard'
+      and not t.tgisinternal
+  )
+order by c.relname;
+```
+
+If the real paid-through date is within seven days, the production site shows
+the warning; X hides it until the site is opened again. After that date, the
+site shows the read-only notice and the database blocks changes. Verify the
+expired write behavior with automated tests or in staging; do not set a false
+past expiry in production just to exercise the lock.
+
 ### Renew access after the client pays
 
 This is an owner-directed database operation, not a button in Settings. The

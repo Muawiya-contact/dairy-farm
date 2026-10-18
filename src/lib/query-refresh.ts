@@ -2,7 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 
 const affectedKeys = {
   milk: ["farm-data", "galla", "customer-report"],
-  animal: ["farm-data", "galla", "customer-report"],
+  animal: ["farm-data", "galla", "customer-report", "herd-alerts"],
   salary: ["salary", "farm-data", "galla", "customer-report"],
 } as const;
 

@@ -1,12 +1,17 @@
 import { expect, test } from "@playwright/test";
 import { go, section, signIn, testId } from "./helpers";
 
+async function openMilkSettings(page: import("@playwright/test").Page) {
+  const section = page.getByRole("button", { name: "Doodh ke auqaat" });
+  if (await section.getAttribute("aria-expanded") !== "true") await section.click();
+}
+
 test("Dopehr toggle, customer default, milk can and bill stay in sync", async ({ page }, info) => {
   test.skip(info.project.name !== "desktop", "This final flow runs after the shared milk specs in the desktop project.");
   const customer = testId(info, "Dopehr buyer");
   await signIn(page);
   await page.goto("/settings/");
-  await page.getByRole("button", { name: "Doodh ke auqaat" }).click();
+  await openMilkSettings(page);
   const toggle = page.getByRole("checkbox", { name: /Dopehr ka doodh/ });
   await expect(toggle).toBeChecked();
   await toggle.uncheck();
@@ -15,7 +20,7 @@ test("Dopehr toggle, customer default, milk can and bill stay in sync", async ({
   await expect(page.getByRole("tab", { name: "Dopehr" })).toHaveCount(0);
 
   await page.goto("/settings/");
-  await page.getByRole("button", { name: "Doodh ke auqaat" }).click();
+  await openMilkSettings(page);
   await toggle.check();
   await expect(toggle).toBeChecked();
   await go(page, "Khata");

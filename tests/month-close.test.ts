@@ -28,3 +28,13 @@ test("a changed monthly total or missing shift invalidates the owner's review", 
   expect(sameMonthCloseSummary(reviewed, { ...reviewed, sales: 21100 })).toBe(false);
   expect(sameMonthCloseSummary(reviewed, { ...reviewed, missingShifts: 1 })).toBe(false);
 });
+
+test("month close uses the shift rule effective on each day", () => {
+  const rows = [{ effective_from: "2026-09-02", noon_enabled: true }, { effective_from: "2026-09-03", noon_enabled: false }];
+  const entered = [
+    { milk_date: "2026-09-01", shift: "morning" }, { milk_date: "2026-09-01", shift: "evening" },
+    { milk_date: "2026-09-02", shift: "morning" }, { milk_date: "2026-09-02", shift: "evening" },
+    { milk_date: "2026-09-03", shift: "morning" }, { milk_date: "2026-09-03", shift: "evening" },
+  ];
+  expect(countMissingMilkShifts("2026-09-01", "2026-09-04", "2026-09-01", entered, rows)).toBe(1);
+});

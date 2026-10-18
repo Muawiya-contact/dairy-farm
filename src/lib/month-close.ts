@@ -1,7 +1,9 @@
 import { getSupabase } from "./supabase";
-import { addDays, daysBetween, monthStart, todayPK } from "./dates";
+import { addDays, monthStart, todayPK } from "./dates";
 import { getAccountMonth, monthBounds } from "./galla";
 import type { Database } from "./database.types";
+import { expectedShifts, type MilkShiftConfig } from "./milk-shifts";
+import { milkShiftHistory } from "./farm-data";
 
 export type MonthLock = Database["public"]["Tables"]["month_locks"]["Row"];
 export type MonthLockEvent = Database["public"]["Tables"]["month_lock_events"]["Row"];
@@ -34,12 +36,16 @@ export function recentClosedMonths(today = todayPK()): string[] {
 }
 
 export function countMissingMilkShifts(start: string, end: string, goLive: string,
-  shifts: readonly { milk_date: string; shift: string }[]): number {
+  shifts: readonly { milk_date: string; shift: string }[], config: readonly MilkShiftConfig[] = []): number {
   const first = start > goLive ? start : goLive;
   if (first >= end) return 0;
   const recorded = new Set(shifts.filter((row) => row.milk_date >= first && row.milk_date < end)
     .map((row) => `${row.milk_date}:${row.shift}`));
-  return Math.max(0, daysBetween(first, end) * 2 - recorded.size);
+  let missing = 0;
+  for (let date = first; date < end; date = addDays(date, 1)) {
+    for (const shift of expectedShifts(date, config)) if (!recorded.has(`${date}:${shift}`)) missing++;
+  }
+  return missing;
 }
 
 export async function getMonthCloseSummary(month: string) {
@@ -47,12 +53,13 @@ export async function getMonthCloseSummary(month: string) {
   if (issue) throw new RangeError(issue);
   const { start, end } = monthBounds(month);
   const supabase = getSupabase();
-  const [milk, pnl, accounts, settings, shifts] = await Promise.all([
+  const [milk, pnl, accounts, settings, shifts, config] = await Promise.all([
     supabase.rpc("milk_month_summary", { p_month: start }),
     supabase.rpc("pnl_month", { p_month: start }),
     getAccountMonth(month),
     supabase.from("settings").select("go_live_date").eq("id", 1).single(),
     supabase.from("milk_shifts").select("milk_date,shift").gte("milk_date", start).lt("milk_date", end),
+    milkShiftHistory(),
   ]);
   for (const result of [milk, pnl, settings, shifts]) if (result.error) throw result.error;
   const galla = accounts.find((account) => account.is_farm_cash);
@@ -62,7 +69,7 @@ export async function getMonthCloseSummary(month: string) {
     expenses: Number(pnl.data?.[0]?.farm_expenses ?? 0),
     profit: Number(pnl.data?.[0]?.profit ?? 0),
     gallaClosing: galla ? Number(galla.closing) : null,
-    missingShifts: countMissingMilkShifts(start, end, settings.data!.go_live_date, shifts.data ?? []),
+    missingShifts: countMissingMilkShifts(start, end, settings.data!.go_live_date, shifts.data ?? [], config),
   };
 }
 

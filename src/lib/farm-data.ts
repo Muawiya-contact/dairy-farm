@@ -8,6 +8,7 @@ import { addDays } from "./dates";
 import { rs } from "./format";
 import type { CustomerKind, CustomerPayment, CustomerProfile, FreeReason, NewCustomer } from "./customer-forms";
 import type { Database } from "./database.types";
+import type { MilkShiftConfig, MilkShiftName } from "./milk-shifts";
 
 export type Animal = {
   id: string; tag: string; name: string | null; species: "cow" | "buffalo";
@@ -26,10 +27,10 @@ export type Insemination = Database["public"]["Tables"]["inseminations"]["Row"];
 export type Calving = Database["public"]["Tables"]["calvings"]["Row"];
 export type CalvingOffspring = Database["public"]["Tables"]["calving_offspring"]["Row"];
 export type AnimalMilk = { id: string; shift_id: string; animal_id: string; litres: number };
-export type Customer = { id: string; name: string; phone: string | null; kind: CustomerKind; free_reason: FreeReason | null; default_morning: number; default_evening: number; opening_balance: number; opening_date: string; active: boolean; sort_order: number };
+export type Customer = { id: string; name: string; phone: string | null; kind: CustomerKind; free_reason: FreeReason | null; default_morning: number; default_noon: number; default_evening: number; opening_balance: number; opening_date: string; active: boolean; sort_order: number };
 export type CustomerRate = { id: string; customer_id: string; rate: number; effective_from: string };
-export type MilkShift = { id: string; milk_date: string; shift: "morning" | "evening"; total_litres: number; mode: "total" | "per_animal"; notes: string | null; updated_at: string };
-export type MilkDelivery = { id: string; delivery_date: string; shift: "morning" | "evening"; customer_id: string; litres: number; rate: number | null; amount: number };
+export type MilkShift = { id: string; milk_date: string; shift: MilkShiftName; total_litres: number; mode: "total" | "per_animal"; notes: string | null; updated_at: string };
+export type MilkDelivery = { id: string; delivery_date: string; shift: MilkShiftName; customer_id: string; litres: number; rate: number | null; amount: number };
 export type Payment = { id: string; customer_id: string; payment_date: string; amount: number; kind: string; method: string | null; account_id: string | null; delivery_id: string | null; note: string | null; revision: number };
 export type ExpenseCategory = { id: string; name: string; is_farm_cost: boolean; is_salary: boolean; active: boolean; sort_order: number };
 export type Expense = { id: string; expense_date: string; category_id: string; amount: number; account_id: string; note: string | null; salary_period_id: string | null; revision: number };
@@ -38,13 +39,13 @@ export type CompanyBill = { id: string; customer_id: string; from_date: string; 
 export type OtherIncome = { id: string; income_date: string; amount: number };
 export type CustomerReport = { customer_id: string; name: string; kind: string; litres: number; amount: number; previous_balance: number; paid: number; discount: number; balance: number };
 export type CustomerBalance = { customer_id: string; balance: number };
-export type HerdAlert = { alert_kind: string; severity: string; due_date: string; animal_id: string; tag: string; message: string };
+export type HerdAlert = { alert_kind: string; severity: "overdue" | "today" | "soon" | "upcoming"; due_date: string; animal_id: string; tag: string; message: string; days_left: number };
 export type Pnl = { milk_income: number; other_income: number; total_income: number; farm_expenses: number; personal_expenses: number; profit: number };
 
 export type FarmData = {
   today: string; settings: LoadedFarmSettings; animals: Animal[]; animalStatus: AnimalStatus[];
   health: HealthEvent[]; inseminations: Insemination[]; calvings: Calving[]; calvingOffspring: CalvingOffspring[]; animalMilk: AnimalMilk[];
-  customers: Customer[]; rates: CustomerRate[]; shifts: MilkShift[]; deliveries: MilkDelivery[];
+  customers: Customer[]; rates: CustomerRate[]; shifts: MilkShift[]; deliveries: MilkDelivery[]; milkShiftConfig: MilkShiftConfig[];
   payments: Payment[]; categories: ExpenseCategory[]; expenses: Expense[]; accounts: Account[];
   companyBills: CompanyBill[]; otherIncome: OtherIncome[]; reports: CustomerReport[];
   balances: CustomerBalance[]; alerts: HerdAlert[]; monthlyPnl: { month: string; data: Pnl }[];
@@ -102,6 +103,12 @@ async function report<T>(name: Report, args: Record<string, string>): Promise<T[
   return (data ?? []) as T[];
 }
 
+export async function milkShiftHistory(): Promise<MilkShiftConfig[]> {
+  const { data, error } = await getSupabase().rpc("milk_shift_history");
+  if (error) throw error;
+  return data ?? [];
+}
+
 export type FarmScope = "dashboard" | "animals" | "milk" | "customers" | "expenses" | "breeding";
 const only = <T>(needed: boolean, load: () => Promise<T[]>) => needed ? load() : Promise.resolve([] as T[]);
 const eq = (column: string, value: string): RowFilter[] => [{ column, op: "eq", value }];
@@ -118,7 +125,7 @@ export async function loadFarmData(scope: FarmScope, id = "", date = farmToday()
   const customerDetail = scope === "customers" && !!id;
   const monthStart = `${month}-01`;
   const months = scope === "dashboard" ? Array.from({ length: Number(today.slice(5, 7)) }, (_, i) => `${today.slice(0, 4)}-${String(i + 1).padStart(2, "0")}-01`) : scope === "expenses" ? [monthStart] : [];
-  const [settings, animals, animalStatus, health, inseminations, calvings, customers, rates, shifts, deliveries,
+  const [settings, animals, animalStatus, health, inseminations, calvings, customers, rates, shifts, deliveries, milkShiftConfig,
     payments, categories, expenses, accounts, companyBills, otherIncome, reports, balances, alerts, pnl] = await Promise.all([
     getSettings(),
     only(["dashboard", "animals", "milk", "breeding"].includes(scope), () => allRows<Animal>("animals")),
@@ -132,6 +139,7 @@ export async function loadFarmData(scope: FarmScope, id = "", date = farmToday()
       scope === "dashboard" ? since("milk_date", addDays(today, -1)) : eq("milk_date", date))),
     only(scope === "dashboard" || scope === "milk" || customerDetail, () => allRows<MilkDelivery>("milk_deliveries", "id",
       scope === "dashboard" ? monthRows("delivery_date", month) : scope === "milk" ? eq("delivery_date", date) : eq("customer_id", id))),
+    only(["dashboard", "milk", "customers"].includes(scope), milkShiftHistory),
     only(customerDetail, () => allRows<Payment>("payments", "id", eq("customer_id", id))),
     only(["dashboard", "animals", "expenses"].includes(scope), () => allRows<ExpenseCategory>("expense_categories")),
     only(scope === "dashboard" || scope === "expenses", () => allRows<Expense>("expenses", "id", monthRows("expense_date", month))),
@@ -155,7 +163,7 @@ export async function loadFarmData(scope: FarmScope, id = "", date = farmToday()
   ]);
   const relevantShifts = detail && animalMilk.length ? await rowsForIds<MilkShift>("milk_shifts", "id", animalMilk.map((r) => r.shift_id)) : shifts;
   return { today, settings, animals, animalStatus, health, inseminations, calvings, calvingOffspring, animalMilk,
-    customers, rates, shifts: relevantShifts, deliveries, payments, categories, expenses, accounts,
+    customers, rates, shifts: relevantShifts, deliveries, milkShiftConfig, payments, categories, expenses, accounts,
     companyBills, otherIncome, reports, balances, alerts, monthlyPnl: pnl };
 }
 
@@ -173,7 +181,7 @@ export function compareCustomers(a: Pick<Customer, "sort_order" | "name" | "id">
 }
 
 /** Keep old deliveries visible when a customer is later made inactive. */
-export function milkShiftCustomers(data: Pick<FarmData, "customers" | "deliveries">, date: string, shift: "morning" | "evening"): Customer[] {
+export function milkShiftCustomers(data: Pick<FarmData, "customers" | "deliveries">, date: string, shift: MilkShiftName): Customer[] {
   const historical = new Set(data.deliveries.filter((row) => row.delivery_date === date && row.shift === shift).map((row) => row.customer_id));
   return data.customers.filter((customer) => historical.has(customer.id) ||
     (customer.active && customer.opening_date <= date)).sort(compareCustomers);
@@ -193,7 +201,7 @@ export function milkShiftAnimals(data: Pick<FarmData, "animals" | "animalMilk">,
   });
 }
 
-export async function saveMilkEntry(input: { date: string; shift: "morning" | "evening"; total: number; mode: "total" | "per_animal"; animals: { animal_id: string; litres: number }[]; deliveries: { customer_id: string; litres: number }[]; expectedUpdatedAt: string | null; notes: string }) {
+export async function saveMilkEntry(input: { date: string; shift: MilkShiftName; total: number; mode: "total" | "per_animal"; animals: { animal_id: string; litres: number }[]; deliveries: { customer_id: string; litres: number }[]; expectedUpdatedAt: string | null; notes: string }) {
   const { data, error } = await getSupabase().rpc("save_milk_entry_checked", {
     p_date: input.date, p_shift: input.shift, p_total: input.total, p_mode: input.mode,
     p_animals: input.animals, p_deliveries: input.deliveries,
@@ -236,7 +244,7 @@ export async function createCustomer(input: NewCustomer, requestId: string) {
   const { error } = await getSupabase().rpc("create_customer_once", {
     p_request_id: requestId,
     p_name: input.name, p_kind: input.kind, p_phone: input.phone,
-    p_morning: input.morning, p_evening: input.evening, p_rate: input.rate,
+    p_morning: input.morning, p_noon: input.noon, p_evening: input.evening, p_rate: input.rate,
     p_opening_balance: input.openingBalance, p_opening_date: input.openingDate,
     p_free_reason: input.freeReason,
   });
@@ -246,7 +254,7 @@ export async function createCustomer(input: NewCustomer, requestId: string) {
 export async function updateCustomerProfile(id: string, input: CustomerProfile): Promise<void> {
   const { data, error } = await getSupabase().from("customers").update({
     name: input.name, phone: input.phone || null,
-    default_morning: input.morning, default_evening: input.evening, active: input.active,
+    default_morning: input.morning, default_noon: input.noon, default_evening: input.evening, active: input.active,
     free_reason: input.freeReason,
   }).eq("id", id).select("id").maybeSingle();
   if (error) throw error;

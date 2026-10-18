@@ -4,7 +4,7 @@ import { normalizePhone } from "./phone";
 
 export const IMPORT_TEMPLATES = {
   animals: ["tag", "name", "species", "breed", "sex", "category", "arrival_date", "birth_date", "estimated_age_months_at_arrival", "source", "notes"],
-  customers: ["name", "phone", "kind", "opening_date", "default_morning", "default_evening", "rate", "opening_balance", "free_reason"],
+  customers: ["name", "phone", "kind", "opening_date", "default_morning", "default_noon", "default_evening", "rate", "opening_balance", "free_reason"],
   accounts: ["name", "kind", "opening_date", "opening_balance"],
 } as const;
 export type ImportKind = keyof typeof IMPORT_TEMPLATES;
@@ -78,6 +78,7 @@ function validateRow(kind: ImportKind, row: Record<string, string>, today: strin
     date(row.opening_date, today, "Opening date", issues);
     try { normalizePhone(row.phone); } catch { issues.push("Phone number sahi likhein."); }
     amount(row.default_morning, "Morning litres", issues, { max: 5000 });
+    amount(row.default_noon, "Dopehr litres", issues, { max: 5000 });
     amount(row.default_evening, "Evening litres", issues, { max: 5000 });
     const freeOrCompany = row.kind === "free" || row.kind === "company";
     const rate = amount(row.rate, "Rate", issues, { max: 99_999_999.99 });
@@ -99,7 +100,12 @@ function validateRow(kind: ImportKind, row: Record<string, string>, today: strin
 export function previewImport(matrix: string[][], kind: ImportKind, today: string): ImportPreview {
   const columns = [...IMPORT_TEMPLATES[kind]];
   const [header = [], ...body] = matrix;
-  if (header.map((cell) => cell.trim().toLowerCase()).join("|") !== columns.join("|")) {
+  const actual = header.map((cell) => {
+    const value = cell.trim().toLowerCase();
+    return kind === "customers" && ["dopehr", "dopahar", "noon"].includes(value) ? "default_noon" : value;
+  });
+  const legacy = kind === "customers" && actual.join("|") === columns.filter((column) => column !== "default_noon").join("|");
+  if (!legacy && actual.join("|") !== columns.join("|")) {
     throw new RangeError("Column names aur tartib template se milni chahiye.");
   }
   const filled = body.map((cells, index) => ({ cells, line: index + 2 })).filter(({ cells }) => cells.some((cell) => cell.trim()));
@@ -108,10 +114,11 @@ export function previewImport(matrix: string[][], kind: ImportKind, today: strin
   const issues: ImportIssue[] = [];
   const seen = new Set<string>();
   for (const { cells, line } of filled) {
-    const row = Object.fromEntries(columns.map((column, i) => [column, (cells[i] ?? "").trim()]));
+    const row = Object.fromEntries(actual.map((column, i) => [column, (cells[i] ?? "").trim()]));
+    if (legacy) row.default_noon = "";
     rows.push(row);
     const problems = validateRow(kind, row, today);
-    if (cells.length !== columns.length) problems.push("Column count template se nahi milta.");
+    if (cells.length !== actual.length) problems.push("Column count template se nahi milta.");
     const identity = (kind === "animals" ? row.tag : row.name).toLowerCase();
     if (identity) {
       if (seen.has(identity)) problems.push("Is file mein tag ya naam dobara aaya hai.");

@@ -87,13 +87,13 @@ describe("staging demo seed", () => {
       }
     }
   });
-  it("balances all 14 days of milk production and delivery", async () => {
+  it("balances morning, evening and the recent noon shifts", async () => {
     const { rows } = await db.query<{ produced: number; delivered: number }>(`
       select sum(total_litres) produced,
              (select sum(litres) from milk_deliveries) delivered
       from milk_shifts`);
-    expect(Number(rows[0].produced)).toBe(14 * 150);
-    expect(Number(rows[0].delivered)).toBe(14 * 150);
+    expect(Number(rows[0].produced)).toBe(14 * 150 + 3 * 25);
+    expect(Number(rows[0].delivered)).toBe(14 * 150 + 3 * 25);
   });
 
   it("gives Farm galla the expected balance after demo transactions", async () => {
@@ -117,7 +117,7 @@ describe("staging demo seed", () => {
     const { rows } = await db.query<{ balance: number }>(
       "select balance from customer_balances where name = 'Ahmed'",
     );
-    expect(Number(rows[0].balance)).toBe(23000);
+    expect(Number(rows[0].balance)).toBe(23900);
   });
 
   it("keeps demo customers private until staging access is enabled", async () => {
@@ -179,7 +179,7 @@ describe("staging demo seed", () => {
     expect(after.map((row) => row.litres).sort()).toEqual(["2.00", "6.00"]);
     expect((await db.query<{ total_litres: string }>("select total_litres from milk_shifts where milk_date = $1 and shift = 'morning'", [date])).rows[0].total_litres).toBe("8.00");
     await expect(db.query("select save_milk_entry($1::date, 'evening', 1, 'total', '[]'::jsonb, $2::jsonb)",
-      [date, JSON.stringify([{ customer_id: animals[0].id, litres: -1 }])])).rejects.toThrow(/negative/);
+      [date, JSON.stringify([{ customer_id: animals[0].id, litres: -1 }])])).rejects.toThrow(/MILK_INVALID/);
   });
 });
 

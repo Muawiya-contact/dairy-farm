@@ -14,6 +14,7 @@ const messages: [RegExp, string][] = [
   [/MONTH_INVALID/i, "Sirf guzra hua poora maheena band karein."],
   [/MONTH_REASON_REQUIRED/i, "Dobara kholne ki wajah 5 se 500 harf tak likhein."],
   [/MILK_STALE/i, "Doodh ki is shift ka record badal chuka hai. Page reload karke nayi entry dekhein."],
+  [/NOON_SHIFT_OFF/i, "Is tareekh par dopehr ka doodh band hai. Settings mein rule dekhein."],
   [/MILK_INVALID/i, "Doodh ki miktar, customer, janwar aur tareekh dobara check karein."],
   [/EXPENSE_BEFORE_ACCOUNT/i, "Account khulne ke baad ki tareekh chunein."],
   [/ACCOUNT_INACTIVE/i, "Active account chunein."],

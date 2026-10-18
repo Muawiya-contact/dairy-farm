@@ -11,11 +11,11 @@ import { Body, PageHeader, Panel } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
 import { MinusIcon, PlusIcon } from "./icons";
 import { FarmObservances } from "./FarmObservances";
+import { SHIFT_LABELS, visibleShifts, type MilkShiftName } from "@/lib/milk-shifts";
 
-type Shift = "morning" | "evening";
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 
-function ShiftForm({ data, date, shift }: { data: FarmData; date: string; shift: Shift }) {
+function ShiftForm({ data, date, shift }: { data: FarmData; date: string; shift: MilkShiftName }) {
   const qc = useQueryClient();
   const existing = data.shifts.find((s) => s.milk_date === date && s.shift === shift);
   const active = milkShiftCustomers(data, date, shift);
@@ -27,7 +27,7 @@ function ShiftForm({ data, date, shift }: { data: FarmData; date: string; shift:
     return [a.id, litres ? String(litres) : ""];
   })));
   const [qty, setQty] = useState<Record<string, string>>(() => Object.fromEntries(active.map((c) => {
-    const litres = amount(data.deliveries.find((x) => x.delivery_date === date && x.shift === shift && x.customer_id === c.id)?.litres ?? (existing ? 0 : shift === "morning" ? c.default_morning : c.default_evening));
+    const litres = amount(data.deliveries.find((x) => x.delivery_date === date && x.shift === shift && x.customer_id === c.id)?.litres ?? (existing ? 0 : shift === "morning" ? c.default_morning : shift === "noon" ? c.default_noon : c.default_evening));
     return [c.id, litres ? String(litres) : ""];
   })));
   const [busy, setBusy] = useState(false);
@@ -92,9 +92,11 @@ function ShiftForm({ data, date, shift }: { data: FarmData; date: string; shift:
 export default function FarmMilk() {
   const [date, setDate] = useState("");
   const query = useFarmData("milk", "", date);
-  const [shift, setShift] = useState<Shift>("morning");
+  const [shift, setShift] = useState<MilkShiftName>("morning");
   if (!query.data) return <FarmLoading error={query.error} retry={() => void query.refetch()} />;
   const d = query.data;
   const chosen = date || d.today;
-  return <><PageHeader title="Doodh entry" sub={longDate(chosen)} /><Body><div className="mb-4 grid gap-2 sm:grid-cols-2"><label className="text-sm font-semibold">Tareekh<input type="date" value={chosen} max={d.today} onChange={(e) => setDate(e.target.value)} className={field} /></label><div role="tablist" aria-label="Shift" className="flex gap-1 rounded-xl bg-ground p-1">{(["morning", "evening"] as const).map((s) => <button key={s} role="tab" aria-selected={shift === s} onClick={() => setShift(s)} className={`min-h-11 flex-1 rounded-lg font-bold ${shift === "morning" ? "bg-paper" : "text-muted"}`}>{s === "morning" ? "Subah" : "Shaam"}</button>)}</div></div><FarmObservances today={d.today} settings={d.settings} className="mb-4" /><ShiftForm key={`${chosen}-${shift}`} data={d} date={chosen} shift={shift} /></Body></>;
+  const tabs = visibleShifts(chosen, d.milkShiftConfig, d.shifts);
+  const selected = tabs.includes(shift) ? shift : "morning";
+  return <><PageHeader title="Doodh entry" sub={longDate(chosen)} /><Body><div className="mb-4 grid gap-2 sm:grid-cols-2"><label className="text-sm font-semibold">Tareekh<input type="date" value={chosen} max={d.today} onChange={(e) => setDate(e.target.value)} className={field} /></label><div role="tablist" aria-label="Shift" className="flex gap-1 rounded-xl bg-ground p-1">{tabs.map((s) => <button key={s} role="tab" aria-selected={selected === s} onClick={() => setShift(s)} className={`min-h-11 flex-1 rounded-lg font-bold ${selected === s ? "bg-paper" : "text-muted"}`}>{SHIFT_LABELS[s]}</button>)}</div></div><FarmObservances today={d.today} settings={d.settings} className="mb-4" /><ShiftForm key={`${chosen}-${selected}`} data={d} date={chosen} shift={selected} /></Body></>;
 }

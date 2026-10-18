@@ -28,6 +28,14 @@ PostgreSQL documents [row locking for application consistency](https://www.postg
 
 The project-wide [definition of done](../DOCUMENTATION.md#definition-of-done-for-every-step) applies here.
 
+## Dopehr shift extension (2026-10-18)
+
+- Settings → **Doodh ke auqaat** turns the Dopehr shift on or off. It starts on. The saved rule has an effective farm date; older days keep their two-shift expectation. Turning it off never deletes a noon shift or customer default, and a saved noon entry remains editable while its month is open.
+- Each day uses **Subah → Dopehr → Shaam** order. The milk form, customer defaults, bill lines, WhatsApp summary, CSV/Excel export and import preview use the same order. Older customer import files without a Dopehr column remain valid. A new noon entry is blocked on a day when the rule was off.
+- Home's drum stacks the three quantities in that order and hides the blue noon layer when it has no milk. A partial day does not show a misleading comparison with yesterday's complete day. Month-close missing-shift counts use the rule recorded for each date.
+- Migration `20261018000002_noon_milk.sql` adds the dated configuration and customer default, extends the milk constraints/RPCs, and keeps direct configuration reads private. Staging demo visitors can use the toggle through its narrow RPC; production follows the existing authenticated farm access. Apply this migration to staging before testing the preview. Never run `supabase/seed/dev-demo.sql` on production.
+- Browser checks: switch Dopehr off and on, enter a noon delivery, confirm the three drum colours and the customer's bill. Database and component tests cover old rules, repeat toggles, locked writes, retained historical entries, report totals, imports and screen tabs. The new Playwright flow runs against a disposable local Supabase database in CI.
+
 ## Validation on 2026-10-15
 
 - The initial `npm run check` passed with 118 tests across 26 files, TypeScript, and a static build. ESLint reported no errors and one existing font warning in `src/app/layout.tsx`. After the phone review, 13 focused tests passed for exact quantities and backdated animals; targeted ESLint passed. GitHub CI checks the final branch again.

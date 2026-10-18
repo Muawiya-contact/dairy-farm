@@ -24,7 +24,7 @@ it("accepts a customer advance but rejects negative rates and milk quantities", 
 
 it("validates edits, payments and effective rates before writing", () => {
   expect(parseCustomerProfile(form({ name: "Ahmed", phone: "", morning: "", evening: "0", active: "on" }), "regular")).toEqual({
-    name: "Ahmed", phone: "", morning: 0, evening: 0, active: true, freeReason: null,
+    name: "Ahmed", phone: "", morning: 0, noon: 0, evening: 0, active: true, freeReason: null,
   });
   expect(() => parseCustomerProfile(form({ name: "Ahmed", morning: "-0.01" }), "regular")).toThrow(/Subah doodh/);
   const payment = { date: today, amount: "500", method: "cash", account: "farm-account" };

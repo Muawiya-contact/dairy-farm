@@ -36,7 +36,13 @@ it("permits reads but blocks direct and RPC writes after expiry; browser roles c
     await expect(db.exec("select reopen_farm_month(date_trunc('month', farm_today() - interval '2 months')::date, 'Annual lock test')"))
       .rejects.toThrow(/SUBSCRIPTION_EXPIRED/);
     await expect(db.exec("update private.farm_subscription set expires_on = farm_today()+365")).rejects.toThrow();
-    await db.exec("reset role; update private.farm_subscription set expires_on = public.farm_today()+7; set role authenticated");
+    await db.exec("reset role");
+    await expect(db.exec("insert into public.month_lock_events(month, action) values (date_trunc('month', public.farm_today())::date, 'close')"))
+      .rejects.toThrow(/SUBSCRIPTION_EXPIRED/);
+    await expect(db.exec(`insert into public.payment_audit(payment_id, customer_id, action, before_row, reason)
+      values (gen_random_uuid(), gen_random_uuid(), 'update', '{}'::jsonb, 'Test')`))
+      .rejects.toThrow(/SUBSCRIPTION_EXPIRED/);
+    await db.exec("update private.farm_subscription set expires_on = public.farm_today()+7; set role authenticated");
     expect((await db.query<{ days_remaining: number; read_only: boolean }>("select days_remaining, read_only from subscription_status()")).rows)
       .toEqual([{ days_remaining: 7, read_only: false }]);
     await db.exec("insert into animals(tag, arrival_date) values ('ALLOWED', farm_today())");

@@ -37,6 +37,7 @@ export function AnimalBreeding({ animal, animals, records, calvings, offspring, 
   const [calvingValidation, setCalvingValidation] = useState("");
   const [calfCount, setCalfCount] = useState<1 | 2>(1);
   const requests = useRef(new Map<string, string>());
+  const newAiForm = useRef<HTMLFormElement>(null);
   const confirming = useRef(false);
   const [confirmBusy, setConfirmBusy] = useState(false);
   const [pendingCalving, setPendingCalving] = useState<{
@@ -45,6 +46,10 @@ export function AnimalBreeding({ animal, animals, records, calvings, offspring, 
   const editing = records.find((record) => record.id === editId);
   const active = animal.life_status === "active" && animal.sex === "female";
   const hasOpenService = records.some((record) => record.status === "pending" || record.status === "pregnant");
+  const current = records[0];
+  const currentCalving = calvings.find((item) => item.insemination_id === current?.id);
+  const currentCalf = offspring.find((child) => child.calving_id === currentCalving?.id && child.animal_id);
+  const currentCalfTag = animals.find((entry) => entry.id === currentCalf?.animal_id)?.tag ?? currentCalf?.tag_at_birth;
 
   const add = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -126,9 +131,21 @@ export function AnimalBreeding({ animal, animals, records, calvings, offspring, 
   };
 
   return <Panel title="Nasl kashi aur bachay ki paidaish" className="lg:col-span-2">
+    {current && <section className="mb-4 rounded-xl border border-line bg-ground p-4" aria-label="Maujooda nasl cycle"><h3 className="font-semibold">Maujooda cycle</h3><dl className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
+      <div><dt className="text-muted">Tag / Nasl</dt><dd>{animal.tag} / {animal.breed || "—"}</dd></div>
+      <div><dt className="text-muted">Tukhm rezi</dt><dd>{shortDate(current.service_date)}</dd></div>
+      <div><dt className="text-muted">Ultrasound</dt><dd>{current.ultrasound_date ? shortDate(current.ultrasound_date) : `Mutawaqqa ${shortDate(current.ultrasound_due)}`} {current.ultrasound_result ? `· ${current.ultrasound_result === "empty" ? "Khali" : "Gaabhan"}` : ""}</dd></div>
+      <div><dt className="text-muted">Haalat</dt><dd>{statusNames[current.status] ?? current.status}</dd></div>
+      <div><dt className="text-muted">Checkup</dt><dd>{current.checkup_date ? shortDate(current.checkup_date) : `Mutawaqqa ${shortDate(current.checkup_due)}`}</dd></div>
+      <div><dt className="text-muted">Khushk</dt><dd>{current.dry_off_date ? shortDate(current.dry_off_date) : `Mutawaqqa ${shortDate(current.dry_off_due)}`}</dd></div>
+      <div><dt className="text-muted">Mutawaqqa paidaish</dt><dd>{shortDate(current.calving_due)}</dd></div>
+      <div><dt className="text-muted">Asal paidaish</dt><dd>{currentCalving ? shortDate(currentCalving.calving_date) : "—"}</dd></div>
+      <div><dt className="text-muted">Bacha</dt><dd>{currentCalf?.animal_id ? <Link href={`/janwar/?id=${currentCalf.animal_id}`} className="text-berseem underline">{currentCalfTag}</Link> : "—"}</dd></div>
+    </dl></section>}
     {animal.sex === "male" && <p className="text-sm text-muted">Nasl kashi aur paidaish ki entries sirf mada janwar ke liye hain.</p>}
     {active && hasOpenService && <p className="text-sm text-muted">Nayi tukhm rezi se pehle khuli entry ka nateeja darj karein.</p>}
-    {active && !hasOpenService && <form onSubmit={add} className="grid gap-3 rounded-xl border border-line p-3 sm:grid-cols-2 lg:grid-cols-3">
+    {active && !hasOpenService && current?.status === "empty" && <button type="button" onClick={() => { newAiForm.current?.scrollIntoView({ behavior: "smooth" }); newAiForm.current?.querySelector<HTMLInputElement>('input[name="service_date"]')?.focus(); }} className="mb-3 min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem">Nayi tukhm rezi darj karein</button>}
+    {active && !hasOpenService && <form ref={newAiForm} onSubmit={add} className="grid gap-3 rounded-xl border border-line p-3 sm:grid-cols-2 lg:grid-cols-3">
       <h3 className="font-semibold sm:col-span-2 lg:col-span-3">Nayi tukhm rezi</h3>
       <label className="text-sm font-semibold">Tukhm rezi ki tareekh<input name="service_date" type="date" required min={animal.arrival_date ?? animal.birth_date ?? undefined} max={today} defaultValue={today} disabled={busy} className={field} /></label>
       <label className="text-sm font-semibold">Semen ki qism<select name="semen_type" disabled={busy} className={field}><option value="normal">Normal</option><option value="sexed">Sexed</option><option value="bull">Bull</option></select></label>

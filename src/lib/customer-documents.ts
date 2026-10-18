@@ -4,6 +4,7 @@ import { formatDay, formatMonth } from "./dates";
 import { downloadBlob } from "./export-data";
 import { installCustomerPdfFont } from "./customer-pdf-font";
 import { loadPdfLogo } from "./pdf-brand";
+import { SHIFT_LABELS } from "./milk-shifts";
 
 export type StatementLine = {
   id: string; date: string; detail: string; litres: number | null; charge: number; credit: number;
@@ -13,13 +14,17 @@ const numeric = (value: number | string | null | undefined) => Number(value ?? 0
 const decimal = (value: number) => Math.abs(value).toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const pdfMoney = (value: number) => `${value < 0 ? "-" : ""}${decimal(value)}`;
 const textMoney = (value: number) => `${value < 0 ? "-" : ""}Rs ${decimal(value)}`;
+const shiftRank = (detail: string) => {
+  const rank = ["Subah doodh", "Dopehr doodh", "Shaam doodh"].indexOf(detail);
+  return rank < 0 ? 3 : rank;
+};
 
 /** The detail lines come from saved Supabase records; totals remain authoritative in the SQL report. */
 export function statementLines(data: Pick<FarmData, "deliveries" | "companyBills" | "payments">, customerId: string, month: string): StatementLine[] {
   const within = (date: string) => date.slice(0, 7) === month;
   return [
     ...data.deliveries.filter((row) => row.customer_id === customerId && within(row.delivery_date)).map((row) => ({
-      id: row.id, date: row.delivery_date, detail: `${row.shift === "morning" ? "Subah" : "Shaam"} doodh`,
+      id: row.id, date: row.delivery_date, detail: `${SHIFT_LABELS[row.shift]} doodh`,
       litres: numeric(row.litres), charge: numeric(row.amount), credit: 0,
     })),
     ...data.companyBills.filter((row) => row.customer_id === customerId && within(row.to_date)).map((row) => ({
@@ -30,19 +35,21 @@ export function statementLines(data: Pick<FarmData, "deliveries" | "companyBills
       id: row.id, date: row.payment_date, detail: row.kind === "discount" ? "Riayat" : "Wusooli",
       litres: null, charge: 0, credit: numeric(row.amount),
     })),
-  ].sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+  ].sort((a, b) => a.date.localeCompare(b.date)
+    || shiftRank(a.detail) - shiftRank(b.detail) || a.id.localeCompare(b.id));
 }
 
 export function balanceLabel(balance: number): string {
   return balance > 0 ? `Baqi ${textMoney(balance)}` : balance < 0 ? `Customer ka advance ${textMoney(-balance)}` : "Hisaab saaf";
 }
 
-export function statementMessage(farm: FarmSettings, customer: Customer, month: string, report: CustomerReport): string {
+export function statementMessage(farm: FarmSettings, customer: Customer, month: string, report: CustomerReport, noonLitres = 0): string {
   return [
     farm.farm_name, farm.contact_phone ? `Rabtay ka number: ${farm.contact_phone}` : "",
     `Assalam o Alaikum ${customer.name},`, `${formatMonth(`${month}-01`)} ka doodh hisaab:`,
     `Pichla baqaya: ${textMoney(numeric(report.previous_balance))}`,
     `Doodh delivery: ${numeric(report.litres)} L`,
+    noonLitres > 0 ? `Dopehr delivery: ${noonLitres} L` : "",
     `Doodh / parchi ki raqam: ${textMoney(numeric(report.amount))}`,
     `Wusooli: ${textMoney(numeric(report.paid))}`,
     `Riayat: ${textMoney(numeric(report.discount))}`,

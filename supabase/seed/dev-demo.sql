@@ -26,6 +26,8 @@ insert into customers (name, kind, free_reason, phone, default_morning, default_
   ('Nestle',       'company',    null,     null,          0,  0,  0,     farm_today() - 30, 5),
   ('Ghar',         'free',       'owner',  null,          2,  2,  0,     farm_today() - 30, 6),
   ('Bachhre',      'free',       'calves', null,          4,  4,  0,     farm_today() - 30, 7);
+update customers set default_noon = case name when 'Ahmed' then 2 when 'Bilal Hotel' then 2
+  when 'Rana Sweets' then 3 when 'Ghar' then 1 else 0 end;
 
 insert into customer_rates (customer_id, rate, effective_from)
 select id, 150, farm_today() - 30 from customers where kind in ('regular','cash','contractor');
@@ -64,19 +66,23 @@ select id, farm_today() - 10, 'sexed', 'Dolce' from animals where tag = '105';
 insert into health_events (animal_id, event_date, kind, title, next_due_date)
 select id, farm_today() - 175, 'vaccine', 'Mun-khur (FMD)', farm_today() + 5 from animals where tag = '106';
 
--- ── Milk: last 14 days (not today), 80 L morning + 70 L evening ────
+-- ── Milk: last 14 days; the most recent 3 also have a 25 L noon shift ──
+insert into milk_shift_config(effective_from,noon_enabled) values(farm_today()-3,true);
 insert into milk_shifts (milk_date, shift, total_litres)
-select d::date, s.shift, case s.shift when 'morning' then 80 else 70 end
+select d::date, s.shift, case s.shift when 'morning' then 80 when 'noon' then 25 else 70 end
 from generate_series(farm_today() - 14, farm_today() - 1, interval '1 day') d
-cross join (values ('morning'), ('evening')) s(shift);
+cross join (values ('morning'), ('noon'), ('evening')) s(shift)
+where s.shift <> 'noon' or d::date >= farm_today()-3;
 
 -- Everyone gets their default; Nestle takes the rest (36 morning, 32 evening) => farq 0
 insert into milk_deliveries (delivery_date, shift, customer_id, litres)
 select ms.milk_date, ms.shift, c.id,
-       case when c.kind = 'company' then case ms.shift when 'morning' then 36 else 32 end
-            when ms.shift = 'morning' then c.default_morning else c.default_evening end
+       case when c.kind = 'company' then case ms.shift when 'morning' then 36 when 'noon' then 17 else 32 end
+            when ms.shift = 'morning' then c.default_morning
+            when ms.shift = 'noon' then c.default_noon else c.default_evening end
 from milk_shifts ms cross join customers c
-where (c.kind = 'company') or (case ms.shift when 'morning' then c.default_morning else c.default_evening end) > 0;
+where (c.kind = 'company') or (case ms.shift when 'morning' then c.default_morning
+  when 'noon' then c.default_noon else c.default_evening end) > 0;
 
 -- Nestle slip for the first 7 days: 7 x 68 = 476 L at ~Rs 132
 insert into company_bills (customer_id, from_date, to_date, litres, amount)

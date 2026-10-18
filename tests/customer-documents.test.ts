@@ -47,6 +47,18 @@ it("includes farm identity and exact payment reference in share text", () => {
   expect(statementMessage(farm, customer, "2026-10", report)).toContain("Baqi Rs 800.00");
   expect(statementMessage(farm, customer, "2026-10", report)).toContain("Doodh delivery: 10 L");
   expect(receiptMessage(farm, customer, payment)).toContain("payment-1");
+  expect(statementMessage(farm, customer, "2026-10", report)).not.toContain("Dopehr delivery");
+  expect(statementMessage(farm, customer, "2026-10", report, 2)).toContain("Dopehr delivery: 2 L");
+});
+
+it("keeps saved shift details in Subah, Dopehr, Shaam order on a bill", () => {
+  const lines = statementLines({ ...data, deliveries: [
+    { ...data.deliveries[0], id: "shaam", shift: "evening", litres: 3 },
+    { ...data.deliveries[0], id: "dopehr", shift: "noon", litres: 2 },
+    data.deliveries[0],
+  ] }, "c1", "2026-10");
+  expect(lines.filter((line) => line.detail.endsWith("doodh")).map((line) => line.detail))
+    .toEqual(["Subah doodh", "Dopehr doodh", "Shaam doodh"]);
 });
 
 it("generates separate readable statement and payment PDFs", async () => {

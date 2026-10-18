@@ -9,10 +9,11 @@ import { litres } from "@/lib/format";
 import { sumMilkLitres, remainingMilk } from "@/lib/milk-entry";
 import { getMonthLocks, shouldRemindCloseMonth } from "@/lib/month-close";
 import { Body, Panel } from "./ui";
-import { BellIcon, PlusIcon } from "./icons";
+import { PlusIcon } from "./icons";
 import MilkCan from "./MilkCan";
 import ProfitChart from "./ProfitChart";
 import { FarmObservances } from "./FarmObservances";
+import { expectedShifts, noonEnabledOn } from "@/lib/milk-shifts";
 
 export function FarmLoading({ error, retry }: { error?: Error | null; retry?: () => void }) {
   return <Body className="py-8"><div role={error ? "alert" : "status"} className="rounded-2xl border border-line bg-paper p-5 text-muted">
@@ -33,12 +34,15 @@ export default function FarmDashboard() {
   const d = query.data;
   const shifts = d.shifts.filter((s) => s.milk_date === d.today);
   const morning = amount(shifts.find((s) => s.shift === "morning")?.total_litres);
+  const noon = amount(shifts.find((s) => s.shift === "noon")?.total_litres);
   const evening = amount(shifts.find((s) => s.shift === "evening")?.total_litres);
-  const morningEntered = shifts.some((s) => s.shift === "morning");
-  const eveningEntered = shifts.some((s) => s.shift === "evening");
+  const expectedToday = expectedShifts(d.today, d.milkShiftConfig);
+  const missingToday = expectedToday.filter((name) => !shifts.some((s) => s.shift === name));
   const yDate = addDays(d.today, -1);
-  const yMilk = sumMilkLitres(d.shifts.filter((s) => s.milk_date === yDate).map((s) => amount(s.total_litres)));
-  const todayMilk = sumMilkLitres([morning, evening]);
+  const yesterdayShifts = d.shifts.filter((s) => s.milk_date === yDate);
+  const yesterdayComplete = expectedShifts(yDate, d.milkShiftConfig).every((name) => yesterdayShifts.some((s) => s.shift === name));
+  const yMilk = sumMilkLitres(yesterdayShifts.map((s) => amount(s.total_litres)));
+  const todayMilk = sumMilkLitres([morning, noon, evening]);
   const sale = d.deliveries.filter((x) => x.delivery_date === d.today).reduce((n, x) => n + amount(x.amount), 0)
     + d.companyBills.filter((x) => x.to_date === d.today).reduce((n, x) => n + amount(x.amount), 0)
     + d.otherIncome.filter((x) => x.income_date === d.today).reduce((n, x) => n + amount(x.amount), 0);
@@ -59,18 +63,17 @@ export default function FarmDashboard() {
   return <>
     <header className="flex items-center justify-between gap-3 px-4 pt-5 pb-2 sm:px-6 lg:px-8 lg:pt-8">
       <div><p className="text-[15px] text-muted">{longDate(d.today)}</p><h1 className="font-display text-[24px] font-bold leading-tight lg:text-[30px]">Assalam o Alaikum, {d.settings.owner_name || "Maalik"}</h1></div>
-      <a href="#alerts" aria-label={`${d.alerts.length} alerts`} className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-paper"><BellIcon /><span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-udhaar px-1 text-[11px] font-bold text-white">{d.alerts.length}</span></a>
     </header>
     <Body className="mt-2 grid gap-4 lg:grid-cols-3">
       <FarmObservances today={d.today} settings={d.settings} className="lg:col-span-3" />
       <MonthCloseReminder today={d.today} goLiveDate={d.settings.go_live_date} />
       <section className="rounded-3xl bg-berseem-deep p-5 text-white lg:col-span-2 lg:p-7"><div className="flex items-end justify-between gap-4"><div className="min-w-0">
         <p className="text-[15px] text-[#cfe3cf]">Aaj ka doodh</p><p className="font-display text-[64px] font-extrabold leading-[0.95] tracking-[-0.03em] tnum lg:text-[84px]">{litres(todayMilk).replace(/ L$/, "")}<span className="ml-2 text-[24px] font-bold tracking-normal text-[#cfe3cf]">litre</span></p>
-        {morningEntered && eveningEntered
+        {missingToday.length === 0 && yesterdayComplete
           ? <p className="mt-2 text-[15px] text-[#cfe3cf]">Kal se {litres(Math.abs(remainingMilk(todayMilk, yMilk)))} {todayMilk < yMilk ? "kam" : "zyada"}</p>
-          : <div className="mt-2 text-[15px] text-[#cfe3cf]"><p>{!morningEntered && !eveningEntered ? "Aaj ka doodh abhi nahi likha" : `${morningEntered ? "Shaam" : "Subah"} ka doodh abhi nahi likha`}</p><Link href="/doodh/" className="mt-2 inline-flex min-h-10 items-center rounded-xl border border-white px-3 font-semibold text-white">Doodh likhein</Link></div>}
-        <dl className="mt-5 flex gap-6"><div><dt className="text-[14px] text-[#cfe3cf]">Subah</dt><dd className="font-display text-[24px] font-bold tnum">{litres(morning)}</dd></div><div><dt className="text-[14px] text-[#cfe3cf]">Shaam</dt><dd className="font-display text-[24px] font-bold tnum">{litres(evening)}</dd></div></dl>
-      </div><MilkCan morning={morning} evening={evening} /></div></section>
+          : missingToday.length > 0 ? <div className="mt-2 text-[15px] text-[#cfe3cf]"><p>{shifts.length === 0 ? "Aaj ka doodh abhi nahi likha" : `${missingToday.map((name) => ({ morning: "Subah", noon: "Dopehr", evening: "Shaam" })[name]).join(", ")} ka doodh abhi nahi likha`}</p><Link href="/doodh/" className="mt-2 inline-flex min-h-10 items-center rounded-xl border border-white px-3 font-semibold text-white">Doodh likhein</Link></div> : null}
+        <dl className="mt-5 flex gap-6"><div><dt className="text-[14px] text-[#cfe3cf]">Subah</dt><dd className="font-display text-[24px] font-bold tnum">{litres(morning)}</dd></div>{(noonEnabledOn(d.today,d.milkShiftConfig) || noon > 0) && <div><dt className="text-[14px] text-[#cfe3cf]">Dopehr</dt><dd className="font-display text-[24px] font-bold tnum">{litres(noon)}</dd></div>}<div><dt className="text-[14px] text-[#cfe3cf]">Shaam</dt><dd className="font-display text-[24px] font-bold tnum">{litres(evening)}</dd></div></dl>
+      </div><MilkCan morning={morning} noon={noon} evening={evening} noonEnabled={noonEnabledOn(d.today,d.milkShiftConfig)} /></div></section>
       <Panel title="Aaj ka hisaab"><dl className="divide-y divide-line"><div className="flex justify-between py-2.5"><dt>Kamai</dt><dd className="font-bold tnum">{money(sale)}</dd></div><div className="flex justify-between py-2.5"><dt>Farm kharcha</dt><dd className="font-bold tnum">{money(expense)}</dd></div><div className="flex justify-between py-2.5"><dt>Munafa</dt><dd className="font-bold tnum">{money(sale - expense)}</dd></div></dl><div className="mt-3 grid grid-cols-2 gap-2"><Link href="/doodh/" className="flex min-h-12 items-center justify-center gap-1 rounded-xl bg-berseem font-semibold text-white"><PlusIcon width={18} />Doodh</Link><Link href="/kharcha/" className="flex min-h-12 items-center justify-center gap-1 rounded-xl border border-berseem font-semibold text-berseem"><PlusIcon width={18} />Kharcha</Link></div></Panel>
       <div className="lg:col-span-2"><ProfitChart daily={daily} monthly={monthly} dailyLabel={`${shortDate(firstDay)} se ${shortDate(d.today)}`} monthlyLabel={`${d.today.slice(0, 4)}, January se ab tak`} year={{ label: `${d.today.slice(0, 4)}, January se ab tak`, sales: yearSales, expenses: yearExpenses }} /></div>
       <div className="grid gap-4"><Panel title={`Janwar (${active.length})`} aside={<Link href="/janwar/" className="text-sm font-semibold text-berseem underline">Sab dekhein</Link>}><dl className="grid grid-cols-2 gap-3">{[["Doodh de rahe", active.filter((a) => a.milking_status === "milking").length],["Gaabhan", d.animalStatus.filter((s) => active.some((a) => a.id === s.id) && s.breeding_status === "pregnant").length],["Khushk", active.filter((a) => a.milking_status === "dry").length],["Bachay", active.filter((a) => a.category === "calf").length]].map(([label,value]) => <div key={label}><dt className="text-sm text-muted">{label}</dt><dd className="font-display text-2xl font-bold tnum">{value}</dd></div>)}</dl></Panel>

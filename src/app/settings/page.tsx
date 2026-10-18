@@ -18,7 +18,7 @@ import { getSupabase } from "@/lib/supabase";
 import { SignOutIcon } from "@/components/icons";
 
 const inputClass = "mt-1 min-h-12 w-full rounded-xl border border-line bg-paper px-3 outline-none focus:border-berseem";
-type SettingsSectionId = "farm" | "breeding" | "accounts" | "month" | "data";
+type SettingsSectionId = "farm" | "milk" | "breeding" | "accounts" | "month" | "data";
 const subscribeHydration = () => () => {};
 const clientSnapshot = () => true;
 const serverSnapshot = () => false;
@@ -47,6 +47,24 @@ function SettingsForm({ initial, open, onToggle }: { initial: FarmSettings; open
   const [eidFitrDate, setEidFitrDate] = useState(initial.eid_fitr_start_date ?? "");
   const [eidAdhaDate, setEidAdhaDate] = useState(initial.eid_adha_start_date ?? "");
   const [days, setDays] = useState(() => Object.fromEntries(breedingFields.map(({ key }) => [key, String(initial[key])])) as Record<(typeof breedingFields)[number]["key"], string>);
+  const [reminderDays, setReminderDays] = useState(String(initial.reminder_days));
+  const [calvingReminderDays, setCalvingReminderDays] = useState(String(initial.calving_reminder_days));
+  const [noonDraft, setNoonDraft] = useState<boolean | null>(null);
+  const noonQuery = useQuery({ queryKey: ["noon-enabled"], queryFn: async () => {
+    const { data, error } = await getSupabase().rpc("noon_enabled_on", { p_date: todayPK() });
+    if (error) throw error;
+    return data;
+  } });
+  const noonMutation = useMutation({ mutationFn: async (enabled: boolean) => {
+    const { data, error } = await getSupabase().rpc("set_noon_milk", { p_enabled: enabled });
+    if (error) throw error;
+    return data;
+  }, onSuccess: (enabled) => {
+    client.setQueryData(["noon-enabled"], enabled);
+    setNoonDraft(null);
+    void client.invalidateQueries({ queryKey: ["farm-data"] });
+    void client.invalidateQueries({ queryKey: ["settings"] });
+  }, onError: () => setNoonDraft(null) });
   const adjustmentDays = Number(hijriAdjustment);
   const today = todayPK();
   const hijriToday = estimatedHijriDate(today, adjustmentDays);
@@ -54,7 +72,7 @@ function SettingsForm({ initial, open, onToggle }: { initial: FarmSettings; open
   const [validation, setValidation] = useState("");
   const mutation = useMutation({
     mutationFn: updateSettings,
-    onSuccess: (value) => { client.setQueryData(["settings"], value); void client.invalidateQueries({ queryKey: ["farm-data"] }); },
+    onSuccess: (value) => { client.setQueryData(["settings"], value); void client.invalidateQueries({ queryKey: ["farm-data"] }); void client.invalidateQueries({ queryKey: ["herd-alerts"] }); },
   });
   const edit = () => { setValidation(""); mutation.reset(); };
 
@@ -69,6 +87,7 @@ function SettingsForm({ initial, open, onToggle }: { initial: FarmSettings; open
       whatsapp_footer: footer.trim(), ultrasound_days: Number(days.ultrasound_days),
       checkup_days: Number(days.checkup_days), dry_off_days: Number(days.dry_off_days),
       calving_days: Number(days.calving_days), fresh_days: Number(days.fresh_days),
+      reminder_days: Number(reminderDays), calving_reminder_days: Number(calvingReminderDays),
       gyarhwin_reminder_enabled: gyarhwinEnabled, hijri_date_adjustment: Number(hijriAdjustment),
       eid_fitr_start_date: eidFitrDate || null, eid_adha_start_date: eidAdhaDate || null,
     };
@@ -106,9 +125,18 @@ function SettingsForm({ initial, open, onToggle }: { initial: FarmSettings; open
         <p className="mt-2 text-sm text-muted">Save ki hui pehli tareekh se teen din tak Eid card dikhega. Tareekh khali ho to koi Eid card nahi ayega.</p>
       </fieldset>
       </SettingsSection>
+      <SettingsSection id="milk" title="Doodh ke auqaat" open={open === "milk"} onToggle={onToggle}>
+        <label className="flex items-center gap-3 font-semibold"><input type="checkbox" checked={noonDraft ?? noonQuery.data ?? false}
+          disabled={noonQuery.isPending || noonMutation.isPending || noonQuery.isError}
+          onChange={(event) => { setNoonDraft(event.target.checked); noonMutation.mutate(event.target.checked); }} />Dopehr ka doodh (din mein 3 dafa)</label>
+        <p className="mt-2 text-sm text-muted">Band karne se purana dopehr ka data delete nahi hoga. Pehle se darj Dopehr entry durusti ke liye dikhegi; nayi entry nahi banegi. Naya rule aaj se lagega.</p>
+        {noonQuery.isError && <p role="alert" className="text-udhaar">Dopehr ka rule nahi khula: {friendlyError(noonQuery.error)}</p>}
+        {noonMutation.isError && <p role="alert" className="text-udhaar">Rule save nahi hua: {friendlyError(noonMutation.error)}</p>}
+      </SettingsSection>
       <SettingsSection id="breeding" title="Nasl ke din" open={open === "breeding"} onToggle={onToggle}>
       <fieldset className="mt-5"><legend className="font-display text-lg font-bold">Nasl kashi ke din</legend><p className="mb-3 text-sm text-muted">Tabdeeli sirf nayi entries par lagegi.</p>
         <div className="grid gap-4 sm:grid-cols-2">{breedingFields.map(({ key, label, min, max }) => <label key={key} className="font-semibold">{label} (din)<input required disabled={mutation.isPending} type="number" min={min} max={max} step="1" placeholder={`${min}–${max} din`} value={days[key]} onChange={(event) => { edit(); setDays((current) => ({ ...current, [key]: event.target.value })); }} className={inputClass} /></label>)}</div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2"><label className="font-semibold">Ultrasound, checkup, khushk aur sehat ki yaad-dihani (din pehle)<input type="number" min="1" max="30" step="1" value={reminderDays} onChange={(event) => { edit(); setReminderDays(event.target.value); }} className={inputClass} /></label><label className="font-semibold">Paidaish ki yaad-dihani (din pehle)<input type="number" min="1" max="60" step="1" value={calvingReminderDays} onChange={(event) => { edit(); setCalvingReminderDays(event.target.value); }} className={inputClass} /></label></div>
       </fieldset>
       </SettingsSection>
       {(open === "farm" || open === "breeding") && <div className="max-w-2xl">
@@ -195,7 +223,7 @@ export default function SettingsPage() {
   const [open, setOpen] = useState<SettingsSectionId | null>(() => {
     try {
       const saved = localStorage.getItem("farm-settings-section");
-      return saved === null ? "farm" : ["farm", "breeding", "accounts", "month", "data"].includes(saved) ? saved as SettingsSectionId : null;
+      return saved === null ? "farm" : ["farm", "milk", "breeding", "accounts", "month", "data"].includes(saved) ? saved as SettingsSectionId : null;
     } catch { return "farm"; }
   });
   const hydrated = useSyncExternalStore(subscribeHydration, clientSnapshot, serverSnapshot);

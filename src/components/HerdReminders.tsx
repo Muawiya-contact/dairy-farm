@@ -51,7 +51,7 @@ export function HerdReminders() {
         <ul className="mt-2 divide-y divide-line">{alerts.map((alert) => <li key={alertId(alert)}><Link href={`/janwar/?id=${alert.animal_id}`} onClick={() => setOpen(false)} className="block py-2 text-sm"><strong className={severityClass[alert.severity]}>{severityLabel[alert.severity]}: </strong>{alert.message}</Link></li>)}</ul>
       </section>}
     </div></div>
-    {counts && <aside role="status" className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-haldi bg-paper p-3 text-sm">
+    {counts && !open && <aside role="status" className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-haldi bg-paper p-3 text-sm">
       <strong>Aaj ke kaam: {counts.overdue} late, {counts.today} aaj, {counts.soon} jald</strong>
       <button type="button" onClick={() => setOpen(true)} className="font-semibold text-berseem underline">Dekhein</button>
       <button type="button" onClick={dismiss} className="ml-auto rounded-lg border border-line px-3 py-2 font-semibold">Theek hai</button>

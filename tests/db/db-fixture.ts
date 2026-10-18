@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 export async function freshFarmDb(options: { farmDay?: string; demo?: boolean } = {}): Promise<PGlite> {
   const db = new PGlite();
   try {
+    if (options.farmDay && !/^\d{4}-\d{2}-\d{2}$/.test(options.farmDay)) throw new RangeError("Use an ISO farm day");
     await db.exec(`
       create role anon;
       create role authenticated;
@@ -17,11 +18,12 @@ export async function freshFarmDb(options: { farmDay?: string; demo?: boolean } 
     const dir = resolve("supabase/migrations");
     for (const name of readdirSync(dir).filter((file) => file.endsWith(".sql")).sort()) {
       await db.exec(readFileSync(resolve(dir, name), "utf8"));
-    }
-    if (options.farmDay) {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(options.farmDay)) throw new RangeError("Use an ISO farm day");
-      await db.exec(`create or replace function public.farm_today() returns date language sql stable
-        as $$ select date '${options.farmDay}' $$`);
+      // The first migration creates farm_today(); later migrations seed dated
+      // rows from it, so freeze the clock before those migrations run.
+      if (options.farmDay && name === "20261011000001_schema.sql") {
+        await db.exec(`create or replace function public.farm_today() returns date language sql stable
+          as $$ select date '${options.farmDay}' $$`);
+      }
     }
     if (options.demo) await db.exec(readFileSync(resolve("supabase/seed/dev-demo.sql"), "utf8"));
     return db;

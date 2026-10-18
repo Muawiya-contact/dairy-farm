@@ -21,12 +21,14 @@ async function rejects(sql: string, reason: RegExp) {
   finally { await db.exec("rollback to savepoint expected_error; release savepoint expected_error"); }
 }
 
-test("migration enables ordered noon today and keeps pre-config days two-shift", async () => {
-  const { rows } = await db.query<{ enabled: boolean; shifts: string[]; old: string[] }>(`
+test("migration seeds the chosen farm day and keeps earlier days two-shift", async () => {
+  const { rows } = await db.query<{ first_day: string; enabled: boolean; shifts: string[]; old: string[] }>(`
     select public.noon_enabled_on(public.farm_today()) enabled,
+      (select effective_from::text from public.milk_shift_config order by effective_from limit 1) first_day,
       public.expected_shifts(public.farm_today()) shifts,
-      public.expected_shifts(date '2026-10-17') old`);
-  expect(rows[0]).toEqual({ enabled: true, shifts: ["morning", "noon", "evening"], old: ["morning", "evening"] });
+      public.expected_shifts(date '2026-10-19') old`);
+  expect(rows[0]).toEqual({ first_day: "2026-10-20", enabled: true,
+    shifts: ["morning", "noon", "evening"], old: ["morning", "evening"] });
 });
 
 test("same-day toggle updates one row; OFF rejects new noon while retaining all saved data", async () => {

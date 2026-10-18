@@ -250,6 +250,9 @@ export default function SettingsPage() {
             className="flex min-h-12 items-center gap-2 rounded-xl border border-line bg-paper px-4 font-semibold text-berseem"><SignOutIcon width={19} height={19} />Bahar niklein</button>
           {logoutError && <p role="alert" className="mt-2 text-udhaar">Bahar nahi niklay: {logoutError}</p>}
         </div>}
+        <footer className="max-w-2xl border-t border-line pt-5 text-center text-sm text-muted">
+          Developed by <a href="https://codingmoves.netlify.app/services/" target="_blank" rel="noopener noreferrer" className="font-semibold text-berseem underline underline-offset-2">Coding Moves</a>
+        </footer>
       </Body>
     </>
   );

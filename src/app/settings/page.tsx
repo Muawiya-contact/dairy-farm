@@ -129,7 +129,7 @@ function SettingsForm({ initial, open, onToggle }: { initial: FarmSettings; open
         <label className="flex items-center gap-3 font-semibold"><input type="checkbox" checked={noonDraft ?? noonQuery.data ?? false}
           disabled={noonQuery.isPending || noonMutation.isPending || noonQuery.isError}
           onChange={(event) => { setNoonDraft(event.target.checked); noonMutation.mutate(event.target.checked); }} />Dopehr ka doodh (din mein 3 dafa)</label>
-        <p className="mt-2 text-sm text-muted">Band karne se purana dopehr ka data delete nahi hoga. Naya rule aaj se lagega.</p>
+        <p className="mt-2 text-sm text-muted">Band karne se purana dopehr ka data delete nahi hoga. Pehle se darj Dopehr entry durusti ke liye dikhegi; nayi entry nahi banegi. Naya rule aaj se lagega.</p>
         {noonQuery.isError && <p role="alert" className="text-udhaar">Dopehr ka rule nahi khula: {friendlyError(noonQuery.error)}</p>}
         {noonMutation.isError && <p role="alert" className="text-udhaar">Rule save nahi hua: {friendlyError(noonMutation.error)}</p>}
       </SettingsSection>

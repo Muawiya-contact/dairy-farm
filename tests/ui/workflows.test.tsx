@@ -72,7 +72,10 @@ it("hides noon when off but keeps an already recorded historical noon tab", () =
     shifts: [{ id: "noon-1", milk_date: fixtures.today, shift: "noon", total_litres: 3, mode: "total", updated_at: "2026-10-16T12:00:00Z" }],
   }), error: null });
   renderWithQuery(<FarmMilk />);
-  expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Subah", "Dopehr", "Shaam"]);
+  expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Subah", "Dopehr*", "Shaam"]);
+  expect(screen.getByText(/pehle se darj entry hai; nayi Dopehr entry nahi banegi/)).toBeVisible();
+  fireEvent.click(screen.getByRole("tab", { name: "Dopehr*" }));
+  expect(screen.getByRole("button", { name: "Darj Dopehr entry durust karein" })).toBeVisible();
 });
 
 it("confirms an animal sale before writing and refreshes all dependent views", async () => {

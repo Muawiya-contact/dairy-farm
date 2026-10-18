@@ -24,6 +24,7 @@ test("ultrasound reminder dismisses for today and an empty result offers a new A
   await expect(banner).toBeVisible();
   await page.getByRole("button", { name: /yaad-dihaniyan/ }).click();
   await expect(page.getByRole("region", { name: "Nasl aur sehat ki yaad-dihaniyan" })).toContainText(`${tag}: ultrasound — 2 din baad`);
+  await page.getByRole("button", { name: /yaad-dihaniyan/ }).click();
   await banner.getByRole("button", { name: "Theek hai" }).click();
   await page.reload();
   await expect(banner).toHaveCount(0);

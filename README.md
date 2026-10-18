@@ -2,6 +2,10 @@
 
 A Roman Urdu dairy farm web app for phone and laptop. The dashboard, animals, milk shifts, customer accounts, expenses, and Settings read from Supabase. Entries save to Supabase and refresh the affected screens. The app contains no hardcoded farm dataset.
 
+## License
+
+This project is available under the [MIT License](LICENSE). You may use, modify, and redistribute it, including for your own local installation, as long as you keep the copyright and license notice. The bundled fonts have their own license in [public/fonts/LICENSE.txt](public/fonts/LICENSE.txt).
+
 ## Environments
 
 | Site | Supabase project | Access | Data |

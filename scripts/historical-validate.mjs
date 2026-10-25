@@ -6,11 +6,18 @@ const stable = (value) => Array.isArray(value) ? value.map(stable)
   : value && typeof value === "object" ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, stable(value[key])])) : value;
 const digest = (value) => sha256(JSON.stringify(stable(value)));
 
+// node-postgres parses PostgreSQL DATE as local midnight. UTC formatting can
+// turn a Pakistan calendar date into the previous day.
+export function pgDateKey(value) {
+  if (!(value instanceof Date)) return String(value);
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+}
+
 export function sameAsBackup(actual, expected) {
   if (expected === null || actual === null) return actual === expected;
   if (typeof expected === "number") return Number(actual) === expected;
   if (typeof expected === "string" && /^\d{4}-\d{2}-\d{2}$/.test(expected) && actual instanceof Date) {
-    return actual.toISOString().slice(0, 10) === expected;
+    return pgDateKey(actual) === expected;
   }
   if (typeof expected === "string" && /^\d{4}-\d{2}-\d{2}T/.test(expected)) {
     return (actual instanceof Date ? actual.getTime() : Date.parse(String(actual))) === Date.parse(expected);

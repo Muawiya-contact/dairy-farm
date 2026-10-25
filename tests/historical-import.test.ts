@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { sha256, sameAsBackup, validateArchive } from "../scripts/historical-validate.mjs";
+import { pgDateKey, sha256, sameAsBackup, validateArchive } from "../scripts/historical-validate.mjs";
 
 const stable = (value: unknown): unknown => Array.isArray(value) ? value.map(stable)
   : value && typeof value === "object" ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, stable((value as Record<string, unknown>)[key])])) : value;
@@ -38,4 +38,11 @@ test("backup comparison handles PostgreSQL numerics, dates and precise timestamp
     changed: new Date("2026-10-25T11:14:32.208Z") },
   { amount: 1250, opened: "2026-10-23", changed: "2026-10-25T11:14:32.208+00:00" })).toBe(true);
   expect(sameAsBackup({ amount: "1251.00" }, { amount: 1250 })).toBe(false);
+});
+
+test("PostgreSQL calendar dates use local day, including month-lock keys", () => {
+  const date = new Date(2026, 9, 23); // node-postgres DATE parser uses local midnight
+  expect(pgDateKey(date)).toBe("2026-10-23");
+  expect(sameAsBackup({ opening_date: date }, { opening_date: "2026-10-23" })).toBe(true);
+  expect(sameAsBackup({ opening_date: date }, { opening_date: "2026-10-24" })).toBe(false);
 });

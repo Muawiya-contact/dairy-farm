@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import pg from "pg";
 import { INSERT_HISTORICAL_ROWS_SQL } from "./historical-sql.mjs";
-import { sameAsBackup, sha256, validateArchive } from "./historical-validate.mjs";
+import { pgDateKey, sameAsBackup, sha256, validateArchive } from "./historical-validate.mjs";
 
 function argument(name) {
   const index = process.argv.indexOf(name);
@@ -58,13 +58,12 @@ try {
       const { rows } = await client.query(`select * from public."${name}"`);
       if (rows.length !== expected) throw new Error(`Production ${name} changed since backup; export again`);
       const key = name === "month_locks" ? "month" : name === "historical_records" ? "source_key" : "id";
-      const keyText = (value) => value instanceof Date ? value.toISOString().slice(0, 10) : String(value);
-      const remaining = new Map(backup.tables[name].map((row) => [keyText(row[key]), row]));
+      const remaining = new Map(backup.tables[name].map((row) => [pgDateKey(row[key]), row]));
       if (remaining.size !== expected) throw new Error(`Backup ${name} has duplicate keys`);
       for (const row of rows) {
-        const saved = remaining.get(keyText(row[key]));
+        const saved = remaining.get(pgDateKey(row[key]));
         if (!saved || !sameAsBackup(row, saved)) throw new Error(`Production ${name} changed since backup; export again`);
-        remaining.delete(keyText(row[key]));
+        remaining.delete(pgDateKey(row[key]));
       }
     }
   }

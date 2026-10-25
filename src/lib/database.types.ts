@@ -21,6 +21,7 @@ export type Database = {
           record_date: string | null
           source_label: string | null
           canonical_label: string | null
+          customer_id: string | null
           source_workbook: string
           source_sheet: string
           source_cell: string
@@ -43,6 +44,7 @@ export type Database = {
           record_date?: string | null
           source_label?: string | null
           canonical_label?: string | null
+          customer_id?: string | null
           source_workbook: string
           source_sheet: string
           source_cell: string
@@ -65,6 +67,7 @@ export type Database = {
           record_date?: string | null
           source_label?: string | null
           canonical_label?: string | null
+          customer_id?: string | null
           source_workbook?: string
           source_sheet?: string
           source_cell?: string
@@ -81,7 +84,15 @@ export type Database = {
           flags?: string[]
           imported_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "historical_records_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       accounts: {
         Row: {

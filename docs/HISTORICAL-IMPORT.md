@@ -11,6 +11,68 @@ category, and page filters and shows the workbook/sheet/cell of each entry.
 The archive has no effect on live Khata, Galla, milk totals, profit, or reports.
 The regular farm backup includes its rows after the migration is applied.
 
+## Link old names to current customer profiles
+
+Migration `20261025000003_historical_customer_link.sql` adds an optional
+`customer_id` foreign key to the archive. The Khata customer page links to a
+read-only archive filtered by that ID. This is a navigation and identity link;
+historical charges and payments do **not** change the customer's opening
+balance, current bill, payment history, Galla, or reports.
+
+The owner confirmed these identities: old **Shoukat** is current **Shaukat**,
+old **Munwar** is current **Munawar**, and Haider, Imran, Iqbal, Mubashir,
+and Nestle match by name. **Shoukat Multani is a different person.** The
+production import generator links only these seven verified current profiles.
+Other labels, including possible customers, staff, free milk recipients, and
+sheet totals, remain visible in the overall archive with no customer link.
+Do not guess identities, create live customers, or carry forward historical
+balances from those rows without a separate owner reconciliation.
+
+### One-command production archive import
+
+The private SQL file is generated locally from the validated extraction, the
+original 17 XLSX files, and a production Settings backup taken within 24 hours.
+The generator verifies workbook hashes, the backup checksum, all backup row
+counts, and the seven confirmed customer IDs. It writes the SQL with mode 0600
+under the ignored `client-data-review/` directory. It makes **no database
+write**. The SQL checks the production environment, backup age, current table
+counts, customer IDs/names/opening balances, and existing source hashes before
+any insert. It then imports all rows and their verified customer links in one
+transaction. A failure rolls it back. Repeating the same SQL on the same
+database adds no duplicate archive rows.
+
+Generate it after obtaining a new backup and while the original files are
+available at the source directory:
+
+```bash
+node scripts/build-historical-sql.mjs \
+  --file client-data-review/historical-records-private.json \
+  --backup '/absolute/path/to/fresh-production-backup.json' \
+  --source-dir '/absolute/path/to/original-workbooks' \
+  --output client-data-review/production-historical-import.sql
+```
+
+Apply migration `20261025000003_historical_customer_link.sql` to production
+with recorded migration history **after its code is merged to the production
+branch**. Check `npx supabase migration list --project-ref
+ylipnghdygpyqlptqazx` before `db push`; do not repeat a migration already
+run manually in the SQL Editor. Then connect `psql` using a private production
+database URL; never put a database password in Git, chat, or a shell command
+that stores it in history. One command imports the whole SQL file:
+
+```bash
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f client-data-review/production-historical-import.sql
+```
+
+The output must end with `imported_rows = 7676`,
+`linked_customer_rows = 1804`, and `COMMIT`. If the backup became stale or a
+live table/customer changed, download a fresh production backup and regenerate
+the SQL into a new private filename after reviewing the changes. Do not edit
+the SQL's safety checks. After import, open one confirmed customer's **Purana
+record dekhein** link, verify an unlinked label in the overall archive, and
+download another full production backup. Keep both backups and the original
+XLSX files privately.
+
 ## 25 October 2026 progress
 
 Staging has both archive migrations and 1,200 wholly fictional rows (240 of

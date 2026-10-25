@@ -185,7 +185,10 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
         <p className="font-display text-[44px] font-extrabold">{money(Math.abs(balance))}</p>
       </section>
       <Panel title="Customer ki maloomat">
-        <button type="button" onClick={() => setEditing(!editing)} className="min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem">{editing ? "Form band karein" : "Maloomat badlein"}</button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setEditing(!editing)} className="min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem">{editing ? "Form band karein" : "Maloomat badlein"}</button>
+          <Link href={`/history/?customer=${c.id}`} className="inline-flex min-h-11 items-center rounded-xl border border-line px-4 font-semibold">Purana record dekhein</Link>
+        </div>
         {editing && <form onSubmit={onProfile} className="mt-3 grid gap-2">
           <label className="text-sm font-semibold">Naam<input name="name" required defaultValue={c.name} className={field} /></label>
           <label className="text-sm font-semibold">Phone<input name="phone" type="tel" defaultValue={c.phone ?? ""} placeholder="03xxxxxxxxx (optional)" className={field} /></label>

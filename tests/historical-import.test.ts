@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { pgDateKey, sha256, sameAsBackup, validateArchive } from "../scripts/historical-validate.mjs";
+import { backupIsFresh, pgDateKey, sha256, sameAsBackup, validateArchive } from "../scripts/historical-validate.mjs";
 
 const stable = (value: unknown): unknown => Array.isArray(value) ? value.map(stable)
   : value && typeof value === "object" ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, stable((value as Record<string, unknown>)[key])])) : value;
@@ -45,4 +45,12 @@ test("PostgreSQL calendar dates use local day, including month-lock keys", () =>
   expect(pgDateKey(date)).toBe("2026-10-23");
   expect(sameAsBackup({ opening_date: date }, { opening_date: "2026-10-23" })).toBe(true);
   expect(sameAsBackup({ opening_date: date }, { opening_date: "2026-10-24" })).toBe(false);
+});
+
+test("production backup freshness rejects invalid, absent and stale timestamps", () => {
+  const now = Date.parse("2026-10-25T12:00:00Z");
+  expect(backupIsFresh("2026-10-25T11:00:00Z", now)).toBe(true);
+  expect(backupIsFresh("not a date", now)).toBe(false);
+  expect(backupIsFresh(undefined, now)).toBe(false);
+  expect(backupIsFresh("2026-10-24T11:59:59Z", now)).toBe(false);
 });

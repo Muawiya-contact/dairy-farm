@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import pg from "pg";
 import { INSERT_HISTORICAL_ROWS_SQL } from "./historical-sql.mjs";
-import { pgDateKey, sameAsBackup, sha256, validateArchive } from "./historical-validate.mjs";
+import { backupIsFresh, pgDateKey, sameAsBackup, sha256, validateArchive } from "./historical-validate.mjs";
 
 function argument(name) {
   const index = process.argv.indexOf(name);
@@ -28,7 +28,7 @@ if (target === "production") {
   if (backup.format !== "dairy-farm-data-v1" || backup.source !== "production" ||
       sha256(JSON.stringify(backup.tables)) !== backup.tables_sha256 ||
       Object.entries(backup.tables).some(([name, rows]) => backup.row_counts[name] !== rows.length)) throw new Error("Backup failed integrity checks");
-  if (Math.abs(Date.now() - Date.parse(backup.exported_at)) > 24 * 60 * 60 * 1000) throw new Error("Take a fresh production backup within 24 hours");
+  if (!backupIsFresh(backup.exported_at)) throw new Error("Take a fresh production backup within 24 hours");
   for (const [name, expected] of sourceHashes) {
     if (sha256(readFileSync(join(sourceDir, name))) !== expected) throw new Error(`Original workbook changed: ${name}`);
   }

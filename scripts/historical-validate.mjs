@@ -2,6 +2,10 @@ import { createHash } from "node:crypto";
 import { basename } from "node:path";
 
 export const sha256 = (value) => createHash("sha256").update(value).digest("hex");
+export const backupIsFresh = (exportedAt, now = Date.now()) => {
+  const timestamp = typeof exportedAt === "string" ? Date.parse(exportedAt) : NaN;
+  return Number.isFinite(timestamp) && Math.abs(now - timestamp) <= 24 * 60 * 60 * 1000;
+};
 const stable = (value) => Array.isArray(value) ? value.map(stable)
   : value && typeof value === "object" ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, stable(value[key])])) : value;
 const digest = (value) => sha256(JSON.stringify(stable(value)));

@@ -13,9 +13,10 @@ The regular farm backup includes its rows after the migration is applied.
 
 ## 25 October 2026 progress
 
-Staging has the archive migration and 1,200 wholly fictional rows (240 of
+Staging has both archive migrations and 1,200 wholly fictional rows (240 of
 each record kind). A repeated staging import left the count at 1,200. The
-anonymous staging role can read but cannot change archive rows. The real
+anonymous staging role can read only rows marked fictional and cannot change
+archive rows. The real
 7,676-row extraction passed local source-key, row-digest, and workbook-hash
 validation; it has **not** been written to staging or production. The supplied
 production backup was used only for an overlap review and will need replacing
@@ -27,9 +28,11 @@ with a fresh backup immediately before a production import.
   the ignored `client-data-review/` folder. Never commit or upload them to
   public staging. The staging import file must contain fictional identities,
   dates, and amounts.
-- Apply `20261025000001_historical_archive.sql` to staging before deploying the
+- Apply `20261025000001_historical_archive.sql` and
+  `20261025000002_historical_demo_scope.sql` to staging before deploying the
   UI there. Confirm its `private.demo_access.enabled` setting is true. The
-  migration gives anonymous visitors read-only archive access on staging.
+  policies give anonymous visitors read-only access to explicitly fictional
+  archive rows on staging.
 - Run the importer without `--apply` first. The importer verifies row digests,
   unique source keys, original workbook SHA-256 digests, and the target
   environment. A second application inserts zero rows. A changed row at an

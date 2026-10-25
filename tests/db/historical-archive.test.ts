@@ -28,7 +28,9 @@ test("historical rows are view-only and do not change live reports", async () =>
 test("staging anonymous visitors can read only, never change, the fictional archive", async () => {
   const db = await freshFarmDb({ farmDay: "2026-10-25", demoAccess: true });
   try {
-    await db.exec(insert);
+    await db.exec(insert.replace("7.5, 1125", "7.5, 1125, '{\"demo\":true}'::jsonb")
+      .replace("litres, charged_rs)", "litres, charged_rs, details)"));
+    await db.exec(insert.replaceAll(hash, "c".repeat(64)).replaceAll(rowHash, "d".repeat(64)));
     await db.exec("set role anon");
     expect((await db.query("select source_label, litres from historical_records")).rows)
       .toEqual([{ source_label: "Fictional buyer", litres: "7.50" }]);

@@ -78,6 +78,8 @@ periods, and automated alerts on deployment or database failures.
 Settings downloads a JSON file containing every exported public farm table,
 row counts, export time, and a SHA-256 checksum. The app fetches each table in
 ordered pages and stops without downloading a partial file if any table fails.
+The CSV, Excel and PDF selector applies to the individual report and table
+buttons; it does not change the full-farm JSON backup button.
 The checksum detects later changes to the downloaded JSON, but the tables are
 read one after another, so the file is not a transactionally consistent
 database snapshot if users edit data during the download. It excludes Auth

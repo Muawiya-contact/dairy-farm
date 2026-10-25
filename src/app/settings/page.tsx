@@ -16,6 +16,7 @@ import { ConnectionCheckSection } from "@/components/ConnectionCheckSection";
 import { UI_TEXT } from "@/lib/text";
 import { getSupabase } from "@/lib/supabase";
 import { SignOutIcon } from "@/components/icons";
+import Link from "next/link";
 
 const inputClass = "mt-1 min-h-12 w-full rounded-xl border border-line bg-paper px-3 outline-none focus:border-berseem";
 type SettingsSectionId = "farm" | "milk" | "breeding" | "accounts" | "month" | "data";
@@ -243,7 +244,7 @@ export default function SettingsPage() {
         <SettingsSection id="accounts" title="Accounts" open={visibleOpen === "accounts"} onToggle={toggle}><AccountsSection /></SettingsSection>
         <SettingsSection id="month" title="Maheena band" open={visibleOpen === "month"} onToggle={toggle}><MonthCloseSection /></SettingsSection>
         <SettingsSection id="data" title="Import / Backup / Export" open={visibleOpen === "data"} onToggle={toggle}>
-          <div className="grid gap-5"><ImportPreviewSection /><ConnectionCheckSection /><ExportPanel /></div>
+          <div className="grid gap-5"><Link href="/history/" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-berseem px-4 font-semibold text-berseem-deep">Purana record dekhein</Link><ImportPreviewSection /><ConnectionCheckSection /><ExportPanel /></div>
         </SettingsSection>
         {process.env.NEXT_PUBLIC_REQUIRE_AUTH === "true" && <div className="max-w-2xl">
           <button type="button" onClick={() => { setLogoutError(""); void getSupabase().auth.signOut().then(({ error }) => { if (error) setLogoutError(friendlyError(error)); }); }}

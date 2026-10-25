@@ -14,6 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
+      historical_records: {
+        Row: {
+          source_key: string
+          kind: string
+          record_date: string | null
+          source_label: string | null
+          canonical_label: string | null
+          source_workbook: string
+          source_sheet: string
+          source_cell: string
+          source_file_sha256: string
+          row_sha256: string
+          litres: number | null
+          charged_rs: number | null
+          paid_rs: number | null
+          remaining_rs: number | null
+          farm_debit_rs: number | null
+          home_debit_rs: number | null
+          daily_credit_rs: number | null
+          details: Json
+          flags: string[]
+          imported_at: string
+        }
+        Insert: {
+          source_key: string
+          kind: string
+          record_date?: string | null
+          source_label?: string | null
+          canonical_label?: string | null
+          source_workbook: string
+          source_sheet: string
+          source_cell: string
+          source_file_sha256: string
+          row_sha256: string
+          litres?: number | null
+          charged_rs?: number | null
+          paid_rs?: number | null
+          remaining_rs?: number | null
+          farm_debit_rs?: number | null
+          home_debit_rs?: number | null
+          daily_credit_rs?: number | null
+          details?: Json
+          flags?: string[]
+          imported_at?: string
+        }
+        Update: {
+          source_key?: string
+          kind?: string
+          record_date?: string | null
+          source_label?: string | null
+          canonical_label?: string | null
+          source_workbook?: string
+          source_sheet?: string
+          source_cell?: string
+          source_file_sha256?: string
+          row_sha256?: string
+          litres?: number | null
+          charged_rs?: number | null
+          paid_rs?: number | null
+          remaining_rs?: number | null
+          farm_debit_rs?: number | null
+          home_debit_rs?: number | null
+          daily_credit_rs?: number | null
+          details?: Json
+          flags?: string[]
+          imported_at?: string
+        }
+        Relationships: []
+      }
       accounts: {
         Row: {
           active: boolean

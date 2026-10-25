@@ -31,6 +31,7 @@ export const DATASETS: { table: Table; label: string; key: string; columns: stri
   { table: "month_locks", label: "Band maheenay", key: "month", columns: ["month", "locked_at", "note"] },
   { table: "month_lock_events", label: "Maheena band faislay", key: "id", columns: ["id", "month", "action", "reason", "actor_id", "created_at"] },
   { table: "settings", label: "Farm settings", key: "id", columns: ["id", "farm_name", "owner_name", "contact_phone", "go_live_date", "default_milk_rate", "ultrasound_days", "checkup_days", "dry_off_days", "calving_days", "fresh_days", "whatsapp_footer"] },
+  { table: "historical_records", label: "Purana record", key: "source_key", columns: ["source_key", "kind", "record_date", "source_label", "canonical_label", "source_workbook", "source_sheet", "source_cell", "source_file_sha256", "row_sha256", "litres", "charged_rs", "paid_rs", "remaining_rs", "farm_debit_rs", "home_debit_rs", "daily_credit_rs", "details", "flags", "imported_at"] },
 ];
 
 export const REPORTS = [
@@ -43,6 +44,12 @@ export const REPORTS = [
 export const BREEDING_COLUMNS = ["tag", "name", "service_date", "semen_type", "semen_name", "semen_batch", "technician", "ultrasound_date", "ultrasound_result", "checkup_date", "checkup_result", "dry_off_date", "dry_off_due", "calving_due", "calving_date", "offspring_summary", "ease_score", "status", "abortion_date", "notes"];
 
 const COLUMN_LABELS: Record<string, string> = {
+  source_key: "Source ID", source_label: "Purana naam / tafseel", canonical_label: "Ab ka naam", source_workbook: "Asal workbook",
+  source_sheet: "Asal sheet", source_cell: "Asal cell", record_date: "Tareekh",
+  source_file_sha256: "Workbook SHA-256", row_sha256: "Entry SHA-256",
+  charged_rs: "Doodh ki raqam (Rs)", paid_rs: "Wusooli (Rs)", remaining_rs: "Sheet ka baqaya (Rs)",
+  farm_debit_rs: "Farm kharcha (Rs)", home_debit_rs: "Ghar kharcha (Rs)", daily_credit_rs: "Roz ki aamdani (Rs)",
+  flags: "Jaanch ke nishan", imported_at: "Import ka waqt",
   id: "ID", tag: "Tag", name: "Naam", animal_id: "Janwar ID", customer_id: "Customer ID",
   service_date: "Tukhm rezi ki tareekh", semen_type: "Semen qism", semen_name: "Semen naam", semen_batch: "Semen batch / bull ID",
   offspring_summary: "Bachon ka record", birth_order: "Paidaish ka number", outcome: "Nateeja", tag_at_birth: "Paidaish ka tag", birth_weight_kg: "Paidaish ka wazan (kg)", ease_score: "Paidaish ki mushkil (1-5)",

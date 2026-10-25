@@ -1,0 +1,63 @@
+import { expect, test } from "vitest";
+import { freshFarmDb } from "./db-fixture";
+import { INSERT_HISTORICAL_ROWS_SQL } from "../../scripts/historical-sql.mjs";
+
+const hash = "a".repeat(64);
+const rowHash = "b".repeat(64);
+const insert = `insert into public.historical_records
+  (source_key, kind, record_date, source_label, source_workbook, source_sheet,
+   source_cell, source_file_sha256, row_sha256, litres, charged_rs)
+  values ('${hash}', 'milk_day', '2026-09-30', 'Fictional buyer', 'fictional.xlsx',
+          'Daily Milk', 'B31', '${hash}', '${rowHash}', 7.5, 1125)`;
+
+test("historical rows are view-only and do not change live reports", async () => {
+  const db = await freshFarmDb({ farmDay: "2026-10-25" });
+  try {
+    const before = (await db.query("select * from public.customer_month_report('2026-09-01')")).rows;
+    await db.exec(insert);
+    await db.exec(`${insert} on conflict (source_key) do nothing`);
+    expect((await db.query("select count(*)::int as n from historical_records")).rows).toEqual([{ n: 1 }]);
+    expect((await db.query("select * from public.customer_month_report('2026-09-01')")).rows).toEqual(before);
+    expect((await db.query("select count(*)::int as n from milk_deliveries")).rows).toEqual([{ n: 0 }]);
+    await db.exec("set role anon");
+    await expect(db.query("select * from historical_records")).rejects.toThrow();
+    await expect(db.exec(insert)).rejects.toThrow();
+  } finally { await db.close(); }
+}, 30_000);
+
+test("staging anonymous visitors can read only, never change, the fictional archive", async () => {
+  const db = await freshFarmDb({ farmDay: "2026-10-25", demoAccess: true });
+  try {
+    await db.exec(insert);
+    await db.exec("set role anon");
+    expect((await db.query("select source_label, litres from historical_records")).rows)
+      .toEqual([{ source_label: "Fictional buyer", litres: "7.50" }]);
+    await expect(db.exec(insert)).rejects.toThrow();
+    await expect(db.exec(`delete from historical_records`)).rejects.toThrow();
+  } finally { await db.close(); }
+}, 30_000);
+
+test("archive rejects negative litres and malformed source keys", async () => {
+  const db = await freshFarmDb({ farmDay: "2026-10-25" });
+  try {
+    await expect(db.exec(insert.replace("7.5, 1125", "-7.5, 1125"))).rejects.toThrow();
+    await expect(db.exec(insert.replace(`'${hash}', 'milk_day'`, "'bad', 'milk_day'"))).rejects.toThrow();
+  } finally { await db.close(); }
+}, 30_000);
+
+test("bulk loader keeps one row per source key on retry", async () => {
+  const db = await freshFarmDb({ farmDay: "2026-10-25" });
+  try {
+    const record = {
+      source_key: hash, kind: "milk_day", record_date: "2026-09-30", source_label: "Fictional buyer",
+      source_workbook: "fictional.xlsx", source_sheet: "Daily Milk", source_cell: "B31",
+      source_file_sha256: hash, row_sha256: rowHash, litres: "7.50", charged_rs: "1125.00",
+      paid_rs: "", remaining_rs: "", farm_debit_rs: "", home_debit_rs: "", daily_credit_rs: "",
+      details: { source_note: "Fictional" }, flags: ["sample_flag"],
+    };
+    await db.query(INSERT_HISTORICAL_ROWS_SQL, [JSON.stringify([record])]);
+    await db.query(INSERT_HISTORICAL_ROWS_SQL, [JSON.stringify([record])]);
+    expect((await db.query("select count(*)::int as n, min(litres) as litres, min(flags[1]) as flag from historical_records")).rows)
+      .toEqual([{ n: 1, litres: "7.50", flag: "sample_flag" }]);
+  } finally { await db.close(); }
+}, 30_000);

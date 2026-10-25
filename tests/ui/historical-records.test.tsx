@@ -1,11 +1,14 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { expect, it, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 import { renderWithQuery } from "./utils";
 import HistoricalRecordsPage from "@/app/history/page";
 
 const loadPage = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/historical-records", () => ({ historicalPage: loadPage, HISTORICAL_PAGE_SIZE: 50 }));
+vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(window.location.search) }));
+
+beforeEach(() => window.history.replaceState({}, "", "/history/"));
 
 it("shows source location and uncertainty without adding history to current balances", async () => {
   loadPage.mockResolvedValue({ count: 1, rows: [{
@@ -28,10 +31,20 @@ it("resets pagination when the owner changes archive filters", async () => {
   renderWithQuery(<HistoricalRecordsPage />);
   await screen.findByText("Safha 1 / 2");
   await userEvent.click(screen.getByRole("button", { name: "Agla" }));
-  await waitFor(() => expect(loadPage).toHaveBeenCalledWith("all", "", 1, ""));
+  await waitFor(() => expect(loadPage).toHaveBeenCalledWith("all", "", 1, "", ""));
   await userEvent.selectOptions(screen.getByLabelText("Qism"), "expense_day");
-  await waitFor(() => expect(loadPage).toHaveBeenCalledWith("expense_day", "", 0, ""));
+  await waitFor(() => expect(loadPage).toHaveBeenCalledWith("expense_day", "", 0, "", ""));
   await userEvent.type(screen.getByRole("searchbox"), "Munawar");
   await userEvent.click(screen.getByRole("button", { name: "Dhoondein" }));
-  await waitFor(() => expect(loadPage).toHaveBeenCalledWith("expense_day", "", 0, "Munawar"));
+  await waitFor(() => expect(loadPage).toHaveBeenCalledWith("expense_day", "", 0, "Munawar", ""));
+});
+
+it("shows only the selected customer's linked archive without changing Khata", async () => {
+  const customerId = "11111111-1111-4111-8111-111111111111";
+  window.history.replaceState({}, "", `/history/?customer=${customerId}`);
+  loadPage.mockResolvedValue({ count: 0, rows: [] });
+  renderWithQuery(<HistoricalRecordsPage />);
+  await waitFor(() => expect(loadPage).toHaveBeenCalledWith("all", "", 0, "", customerId));
+  expect(screen.getByText(/Is customer ki purani sheets/)).toBeInTheDocument();
+  expect(await screen.findByText(/Is filter ka purana record nahi mila/)).toBeInTheDocument();
 });

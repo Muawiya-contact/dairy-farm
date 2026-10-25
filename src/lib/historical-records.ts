@@ -13,8 +13,9 @@ export function nextMonth(month: string): string {
   return number === 12 ? `${year + 1}-01` : `${year}-${String(number + 1).padStart(2, "0")}`;
 }
 
-export async function historicalPage(kind: HistoricalKind, month: string, page: number, search = ""): Promise<{ rows: HistoricalRecord[]; count: number }> {
-  if (!kinds.has(kind) || (month && !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) || !Number.isInteger(page) || page < 0 || search.length > 80) {
+export async function historicalPage(kind: HistoricalKind, month: string, page: number, search = "", customerId = ""): Promise<{ rows: HistoricalRecord[]; count: number }> {
+  if (!kinds.has(kind) || (month && !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) || !Number.isInteger(page) || page < 0 || search.length > 80 ||
+      (customerId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(customerId))) {
     throw new RangeError("Purane record ka filter sahi nahi hai.");
   }
   let query = getSupabase().from("historical_records")
@@ -23,6 +24,7 @@ export async function historicalPage(kind: HistoricalKind, month: string, page: 
     .order("source_key")
     .range(page * HISTORICAL_PAGE_SIZE, (page + 1) * HISTORICAL_PAGE_SIZE - 1);
   if (kind !== "all") query = query.eq("kind", kind);
+  if (customerId) query = query.eq("customer_id", customerId);
   if (month) query = query.gte("record_date", `${month}-01`).lt("record_date", `${nextMonth(month)}-01`);
   const safeSearch = search.trim().replace(/[^\p{L}\p{N} -]/gu, "");
   if (safeSearch) query = query.or(`source_label.ilike.%${safeSearch}%,canonical_label.ilike.%${safeSearch}%`);

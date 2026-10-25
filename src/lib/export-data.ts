@@ -31,7 +31,7 @@ export const DATASETS: { table: Table; label: string; key: string; columns: stri
   { table: "month_locks", label: "Band maheenay", key: "month", columns: ["month", "locked_at", "note"] },
   { table: "month_lock_events", label: "Maheena band faislay", key: "id", columns: ["id", "month", "action", "reason", "actor_id", "created_at"] },
   { table: "settings", label: "Farm settings", key: "id", columns: ["id", "farm_name", "owner_name", "contact_phone", "go_live_date", "default_milk_rate", "ultrasound_days", "checkup_days", "dry_off_days", "calving_days", "fresh_days", "whatsapp_footer"] },
-  { table: "historical_records", label: "Purana record", key: "source_key", columns: ["source_key", "kind", "record_date", "source_label", "canonical_label", "source_workbook", "source_sheet", "source_cell", "source_file_sha256", "row_sha256", "litres", "charged_rs", "paid_rs", "remaining_rs", "farm_debit_rs", "home_debit_rs", "daily_credit_rs", "details", "flags", "imported_at"] },
+  { table: "historical_records", label: "Purana record", key: "source_key", columns: ["source_key", "kind", "record_date", "source_label", "canonical_label", "customer_id", "source_workbook", "source_sheet", "source_cell", "source_file_sha256", "row_sha256", "litres", "charged_rs", "paid_rs", "remaining_rs", "farm_debit_rs", "home_debit_rs", "daily_credit_rs", "details", "flags", "imported_at"] },
 ];
 
 export const REPORTS = [

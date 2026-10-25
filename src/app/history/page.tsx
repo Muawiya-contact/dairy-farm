@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { Suspense, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 import { Body, PageHeader, Panel } from "@/components/ui";
 import { formatDay } from "@/lib/dates";
 import { friendlyError } from "@/lib/errors";
@@ -62,16 +63,17 @@ function Details({ row }: { row: HistoricalRecord }) {
   </dl>;
 }
 
-export default function HistoricalRecordsPage() {
+function HistoricalRecordsContent() {
+  const customerId = useSearchParams().get("customer") ?? "";
   const [kind, setKind] = useState<HistoricalKind>("all");
   const [month, setMonth] = useState("");
   const [draftSearch, setDraftSearch] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
-  const query = useQuery({ queryKey: ["historical-records", kind, month, search, page], queryFn: () => historicalPage(kind, month, page, search) });
+  const query = useQuery({ queryKey: ["historical-records", kind, month, search, page, customerId], queryFn: () => historicalPage(kind, month, page, search, customerId) });
   const find = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setSearch(draftSearch.trim()); setPage(0); };
   return <>
-    <PageHeader title="Purana record" sub="Purani sheets ka record; aaj ke Khata aur Galla mein shamil nahi" back="/settings/" />
+    <PageHeader title="Purana record" sub={customerId ? "Is customer ki purani sheets; aaj ke Khata aur Galla mein shamil nahi" : "Purani sheets ka record; aaj ke Khata aur Galla mein shamil nahi"} back={customerId ? `/khata/?id=${customerId}` : "/settings/"} />
     <Body className="grid gap-4 pb-8">
       <Panel><div className="grid gap-3 sm:grid-cols-2">
         <label className="text-sm font-semibold">Qism<select value={kind} onChange={(event) => { setKind(event.target.value as HistoricalKind); setPage(0); }} className="mt-1 min-h-11 w-full rounded-xl border border-line bg-paper px-3">
@@ -98,4 +100,8 @@ export default function HistoricalRecordsPage() {
       </>}
     </Body>
   </>;
+}
+
+export default function HistoricalRecordsPage() {
+  return <Suspense><HistoricalRecordsContent /></Suspense>;
 }

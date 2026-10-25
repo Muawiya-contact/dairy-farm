@@ -34,6 +34,8 @@ real-data project stays owner restricted until a planned live-data release.
 
 [Step 8 launch work](steps/step-8-launch.md) documents month closing,
 CSV/Excel import preparation, checks, and the remaining real-data cutover.
+The separate [historical workbook archive](HISTORICAL-IMPORT.md) keeps older
+source records view-only without changing live balances.
 Settings offers a manual farm-data download. It does not add a backup service
 or restore workflow. See [Step 9](steps/step-9-final-hardening.md) for the
 latest release and annual-access procedure.

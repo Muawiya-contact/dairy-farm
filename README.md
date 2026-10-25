@@ -2,6 +2,10 @@
 
 A Roman Urdu dairy farm web app for phone and laptop. The dashboard, animals, milk shifts, customer accounts, expenses, and Settings read from Supabase. Entries save to Supabase and refresh the affected screens. The app contains no hardcoded farm dataset.
 
+## License
+
+This project is available under the [MIT License](LICENSE). You may use, modify, and redistribute it, including for your own local installation, as long as you keep the copyright and license notice. The included milk-churn logo may also be reused under MIT. Set your own farm name in **Settings → Farm ka naam** when deploying your installation. The bundled fonts have their own license in [public/fonts/LICENSE.txt](public/fonts/LICENSE.txt).
+
 ## Environments
 
 | Site | Supabase project | Access | Data |
@@ -44,7 +48,7 @@ Forty-one migrations are recorded on both projects as of Step 8. Apply future sc
 
 Set the optional farm contact number in Settings before sending customer documents. A statement PDF includes the selected month's saved deliveries, company bills and payments; a receipt PDF confirms one payment. On phones that support file sharing, **PDF share** passes the file to the system share sheet; the owner chooses WhatsApp and the recipient, checks the draft, and sends it. If the browser loses the click permission while building a PDF, the same button can retry with the prepared file. **WhatsApp chat + PDF** opens a new chat tab with prefilled text and downloads the PDF. On a computer, the owner attaches that download in WhatsApp Web and presses Send. The site cannot select an app or recipient in the system sheet or attach a local file inside another website's tab. No document is sent automatically.
 
-The animal page records semen details, checkups and calving against existing Supabase tables. Settings offers CSV, Excel and PDF exports for all 22 public tables, a joined breeding register, and monthly customer, expense, milk and profit reports. It also offers an all-table JSON snapshot. The `/reports/` page displays a printable monthly report; browser print can save it as PDF. Export files are generated in the browser from the currently connected project and are not backups of Supabase users, storage or Auth configuration.
+The animal page records semen details, checkups and calving against existing Supabase tables. Settings offers CSV, Excel and PDF downloads for each public farm table, a joined breeding register, and monthly customer, expense, milk and profit reports. Choose a format, then click a specific report or table. The separate full-farm backup always downloads JSON. The `/reports/` page displays a printable monthly report; browser print can save it as PDF. Export files are generated in the browser from the currently connected project and are not backups of Supabase users, storage or Auth configuration.
 
 `npm run db:types` refreshes TypeScript database types from staging. It requires Supabase CLI login. CI runs tests, lint, typecheck and the static export build on pushes and pull requests.
 

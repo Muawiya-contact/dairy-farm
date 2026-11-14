@@ -18,6 +18,7 @@ import { getSupabase } from "@/lib/supabase";
 import { SignOutIcon } from "@/components/icons";
 import Link from "next/link";
 import { DateFormatHint } from "@/components/DateFormatHint";
+import { CodingMovesCredit } from "@/components/CodingMovesCredit";
 
 const inputClass = "mt-1 min-h-12 w-full rounded-xl border border-line bg-paper px-3 outline-none focus:border-berseem";
 type SettingsSectionId = "farm" | "milk" | "breeding" | "accounts" | "month" | "data";
@@ -253,7 +254,7 @@ export default function SettingsPage() {
           {logoutError && <p role="alert" className="mt-2 text-udhaar">Bahar nahi niklay: {logoutError}</p>}
         </div>}
         <footer className="max-w-2xl border-t border-line pt-5 text-center text-sm text-muted">
-          Developed by <a href="https://codingmoves.netlify.app/services/" target="_blank" rel="noopener noreferrer" className="font-semibold text-berseem underline underline-offset-2">Coding Moves</a>
+          <CodingMovesCredit />
         </footer>
       </Body>
     </>

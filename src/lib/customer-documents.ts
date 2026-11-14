@@ -3,7 +3,7 @@ import type { FarmSettings } from "./settings";
 import { formatDay, formatMonth } from "./dates";
 import { downloadBlob } from "./export-data";
 import { installCustomerPdfFont } from "./customer-pdf-font";
-import { addPdfDeveloperCredit, CODING_MOVES_SERVICES_URL, loadPdfLogo, PDF_DEVELOPER_CREDIT } from "./pdf-brand";
+import { addPdfDeveloperCredit, addPdfDeveloperMark, loadPdfLogo } from "./pdf-brand";
 import { SHIFT_LABELS } from "./milk-shifts";
 
 export type StatementLine = {
@@ -78,7 +78,7 @@ export async function prepareCustomerPdf(): Promise<void> {
 
 function drawHeader(pdf: Pdf, farm: FarmSettings, documentTitle: string, logo: Uint8Array<ArrayBuffer>): number {
   pdf.setFont("OpenSans", "bold"); pdf.setFontSize(17);
-  const nameLines = pdf.splitTextToSize(farm.farm_name, 154) as string[];
+  const nameLines = pdf.splitTextToSize(farm.farm_name, 115) as string[];
   const headerHeight = Math.max(34, 19 + nameLines.length * 7);
   pdf.setFillColor(37, 94, 53);
   pdf.rect(0, 0, 210, headerHeight, "F");
@@ -87,9 +87,7 @@ function drawHeader(pdf: Pdf, farm: FarmSettings, documentTitle: string, logo: U
   pdf.text(nameLines, 42, 14);
   pdf.setFont("OpenSans", "normal"); pdf.setFontSize(9);
   pdf.text(documentTitle, 42, headerHeight - 7);
-  pdf.setFontSize(7); pdf.setTextColor(255, 255, 255);
-  const developerCreditWidth = pdf.getTextWidth(PDF_DEVELOPER_CREDIT);
-  pdf.textWithLink(PDF_DEVELOPER_CREDIT, 196 - developerCreditWidth, 14, { url: CODING_MOVES_SERVICES_URL });
+  addPdfDeveloperMark(pdf, 196, 7, true);
   pdf.setTextColor(32, 42, 36);
   let y = headerHeight + 8;
   if (farm.owner_name) { pdf.text(`Maalik: ${farm.owner_name}`, 14, y); y += 5; }

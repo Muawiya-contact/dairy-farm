@@ -16,9 +16,10 @@ The ZIP's outlined wordmarks contain the fixed text “SDF Dairy Farm”. They a
 
 PDF table exports, customer bills, payment receipts, and the printable monthly
 report include a small **Developed by Coding Moves** credit. The credit links to
-`https://codingmoves.netlify.app/services/`, so a recipient who receives a document can
-reach the developer. It never replaces the farm name, owner details, or record
-data, and PDF table exports reserve footer space so the credit cannot cover a
-row.
+`https://codingmoves.com/`, the official Coding Moves site. The Settings page
+also shows the public contact address `contact@codingmoves.com`. Shared PDFs
+use a compact vector **CM** mark and the official domain; this avoids a second
+logo asset while keeping the farm name, owner details, and record data primary.
+PDF table exports reserve footer space so the credit cannot cover a row.
 
 When updating the mark, replace the matching icon assets and the SVG paths in `LogoMark.tsx` together. Check a browser tab, an installed shortcut, a printed report, a customer bill, a receipt, and one PDF table export after the change.

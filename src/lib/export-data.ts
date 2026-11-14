@@ -1,6 +1,6 @@
 import { getSupabase } from "./supabase";
 import type { Database } from "./database.types";
-import { addPdfDeveloperCredit, CODING_MOVES_SERVICES_URL, loadPdfLogo, PDF_DEVELOPER_CREDIT } from "./pdf-brand";
+import { addPdfDeveloperCredit, addPdfDeveloperMark, loadPdfLogo } from "./pdf-brand";
 import { getSettings } from "./settings";
 
 type Table = keyof Database["public"]["Tables"];
@@ -196,15 +196,12 @@ export async function buildPdf(title: string, columns: string[], rows: Record<st
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a3" });
   pdf.addImage(logo, "PNG", 10, 8, 16, 16);
   pdf.setFontSize(15);
-  const nameLines = pdf.splitTextToSize(farmName, 360) as string[];
+  const nameLines = pdf.splitTextToSize(farmName, 320) as string[];
   const titleY = Math.max(20, 13 + nameLines.length * 7);
   pdf.text(nameLines, 31, 13);
   pdf.setFontSize(10);
   pdf.text(title, 31, titleY);
-  pdf.setFontSize(7);
-  pdf.setTextColor(90, 100, 93);
-  const developerCreditWidth = pdf.getTextWidth(PDF_DEVELOPER_CREDIT);
-  pdf.textWithLink(PDF_DEVELOPER_CREDIT, 410 - developerCreditWidth, 13, { url: CODING_MOVES_SERVICES_URL });
+  addPdfDeveloperMark(pdf, 410, 7);
   pdf.setFontSize(9);
   pdf.setTextColor(0, 0, 0);
   pdf.text(`${rows.length} entries`, 31, titleY + 6);

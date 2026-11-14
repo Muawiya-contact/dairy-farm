@@ -74,8 +74,8 @@ it("generates separate readable statement and payment PDFs", async () => {
   // The referral target remains plain text in each clickable link annotation.
   const statementText = new TextDecoder().decode(statement);
   const receiptText = new TextDecoder().decode(receipt);
-  expect(statementText.match(/https:\/\/codingmoves\.com\/services\//g)).toHaveLength(2);
-  expect(receiptText.match(/https:\/\/codingmoves\.com\/services\//g)).toHaveLength(2);
+  expect(statementText.match(/https:\/\/codingmoves\.netlify\.app\/services\//g)).toHaveLength(2);
+  expect(receiptText.match(/https:\/\/codingmoves\.netlify\.app\/services\//g)).toHaveLength(2);
 });
 
 it("hands the receipt PDF to the phone's app chooser", async () => {

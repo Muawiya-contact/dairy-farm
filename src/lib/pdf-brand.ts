@@ -1,7 +1,7 @@
 /** Load the same supplied PNG mark used by the installed app icon. */
 let logoData: Promise<Uint8Array<ArrayBuffer>> | null = null;
 
-export const CODING_MOVES_SERVICES_URL = "https://codingmoves.com/services/";
+export const CODING_MOVES_SERVICES_URL = "https://codingmoves.netlify.app/services/";
 export const PDF_DEVELOPER_CREDIT = "Developed by Coding Moves";
 
 type Pdf = InstanceType<typeof import("jspdf").jsPDF>;

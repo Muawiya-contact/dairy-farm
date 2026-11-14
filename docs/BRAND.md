@@ -16,7 +16,7 @@ The ZIP's outlined wordmarks contain the fixed text “SDF Dairy Farm”. They a
 
 PDF table exports, customer bills, payment receipts, and the printable monthly
 report include a small **Developed by Coding Moves** credit. The credit links to
-`https://codingmoves.com/services/`, so a recipient who receives a document can
+`https://codingmoves.netlify.app/services/`, so a recipient who receives a document can
 reach the developer. It never replaces the farm name, owner details, or record
 data, and PDF table exports reserve footer space so the credit cannot cover a
 row.

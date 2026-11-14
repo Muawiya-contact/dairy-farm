@@ -1,6 +1,6 @@
 import { getSupabase } from "./supabase";
 import type { Database } from "./database.types";
-import { loadPdfLogo } from "./pdf-brand";
+import { addPdfDeveloperCredit, CODING_MOVES_SERVICES_URL, loadPdfLogo, PDF_DEVELOPER_CREDIT } from "./pdf-brand";
 import { getSettings } from "./settings";
 
 type Table = keyof Database["public"]["Tables"];
@@ -201,7 +201,12 @@ export async function buildPdf(title: string, columns: string[], rows: Record<st
   pdf.text(nameLines, 31, 13);
   pdf.setFontSize(10);
   pdf.text(title, 31, titleY);
+  pdf.setFontSize(7);
+  pdf.setTextColor(90, 100, 93);
+  const developerCreditWidth = pdf.getTextWidth(PDF_DEVELOPER_CREDIT);
+  pdf.textWithLink(PDF_DEVELOPER_CREDIT, 410 - developerCreditWidth, 13, { url: CODING_MOVES_SERVICES_URL });
   pdf.setFontSize(9);
+  pdf.setTextColor(0, 0, 0);
   pdf.text(`${rows.length} entries`, 31, titleY + 6);
   if (!rows.length) {
     pdf.setFontSize(11);
@@ -214,8 +219,13 @@ export async function buildPdf(title: string, columns: string[], rows: Record<st
       styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak" },
       headStyles: { fillColor: [45, 106, 57] },
       horizontalPageBreak: true, horizontalPageBreakRepeat: 0,
-      margin: 10,
+      margin: { top: 10, right: 10, bottom: 16, left: 10 },
     });
+  }
+  const pages = pdf.getNumberOfPages();
+  for (let page = 1; page <= pages; page++) {
+    pdf.setPage(page);
+    addPdfDeveloperCredit(pdf, 290, 420);
   }
   return new Uint8Array(pdf.output("arraybuffer"));
 }

@@ -3,7 +3,7 @@ import type { FarmSettings } from "./settings";
 import { formatDay, formatMonth } from "./dates";
 import { downloadBlob } from "./export-data";
 import { installCustomerPdfFont } from "./customer-pdf-font";
-import { loadPdfLogo } from "./pdf-brand";
+import { addPdfDeveloperCredit, CODING_MOVES_SERVICES_URL, loadPdfLogo, PDF_DEVELOPER_CREDIT } from "./pdf-brand";
 import { SHIFT_LABELS } from "./milk-shifts";
 
 export type StatementLine = {
@@ -87,6 +87,9 @@ function drawHeader(pdf: Pdf, farm: FarmSettings, documentTitle: string, logo: U
   pdf.text(nameLines, 42, 14);
   pdf.setFont("OpenSans", "normal"); pdf.setFontSize(9);
   pdf.text(documentTitle, 42, headerHeight - 7);
+  pdf.setFontSize(7); pdf.setTextColor(255, 255, 255);
+  const developerCreditWidth = pdf.getTextWidth(PDF_DEVELOPER_CREDIT);
+  pdf.textWithLink(PDF_DEVELOPER_CREDIT, 196 - developerCreditWidth, 14, { url: CODING_MOVES_SERVICES_URL });
   pdf.setTextColor(32, 42, 36);
   let y = headerHeight + 8;
   if (farm.owner_name) { pdf.text(`Maalik: ${farm.owner_name}`, 14, y); y += 5; }
@@ -99,6 +102,7 @@ function addFooters(pdf: Pdf, farmName: string) {
   for (let page = 1; page <= pages; page++) {
     pdf.setPage(page); pdf.setFontSize(8); pdf.setTextColor(90, 100, 93);
     pdf.text(farmName, 14, 288);
+    addPdfDeveloperCredit(pdf, 288, 210);
     pdf.text(`Page ${page}/${pages}`, 196, 288, { align: "right" });
   }
 }

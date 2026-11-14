@@ -12,4 +12,13 @@ The milk-churn mark comes from `logo-update.zip`. The visible farm name in the a
 
 The ZIP's outlined wordmarks contain the fixed text “SDF Dairy Farm”. They are intentionally not used in generated documents or the app because the owner's selected farm name must stay accurate.
 
+## Shared-document developer credit
+
+PDF table exports, customer bills, payment receipts, and the printable monthly
+report include a small **Developed by Coding Moves** credit. The credit links to
+`https://codingmoves.com/services/`, so a recipient who receives a document can
+reach the developer. It never replaces the farm name, owner details, or record
+data, and PDF table exports reserve footer space so the credit cannot cover a
+row.
+
 When updating the mark, replace the matching icon assets and the SVG paths in `LogoMark.tsx` together. Check a browser tab, an installed shortcut, a printed report, a customer bill, a receipt, and one PDF table export after the change.

@@ -1,6 +1,6 @@
 import { getSupabase } from "./supabase";
 import type { Database } from "./database.types";
-import { addPdfDeveloperCredit, addPdfDeveloperMark, loadPdfDeveloperLogo, loadPdfLogo } from "./pdf-brand";
+import { addPdfDeveloperCredit, addPdfDeveloperEmail, addPdfDeveloperMark, loadPdfDeveloperLogo, loadPdfLogo } from "./pdf-brand";
 import { getSettings } from "./settings";
 
 type Table = keyof Database["public"]["Tables"];
@@ -222,7 +222,8 @@ export async function buildPdf(title: string, columns: string[], rows: Record<st
   const pages = pdf.getNumberOfPages();
   for (let page = 1; page <= pages; page++) {
     pdf.setPage(page);
-    addPdfDeveloperCredit(pdf, 290, 420);
+    addPdfDeveloperCredit(pdf, 286, 420);
+    addPdfDeveloperEmail(pdf, 291, 420);
   }
   return new Uint8Array(pdf.output("arraybuffer"));
 }

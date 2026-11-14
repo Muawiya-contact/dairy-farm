@@ -16,9 +16,11 @@ The ZIP's outlined wordmarks contain the fixed text “SDF Dairy Farm”. They a
 
 PDF table exports, customer bills, payment receipts, and the printable monthly
 report include a small **Developed by Coding Moves** credit. The credit links to
-`https://codingmoves.com/`, the official Coding Moves site. The Settings page
-also shows the public contact address `contact@codingmoves.com`. Shared PDFs
-use the official compact **Coding Moves Services** mark and the official domain.
+`https://codingmoves.com/`, the official Coding Moves site. Settings shows only
+the small logo and one clickable **Developed by Coding Moves** credit. Shared
+PDFs additionally show the official domain and `contact@codingmoves.com`, so a
+recipient of a shared document has a direct way to enquire. PDFs use the
+official compact **Coding Moves Services** mark and the official domain.
 The app uses one SVG mark and PDFs use its small PNG rendition because jsPDF
 needs raster image bytes; both come from the same approved brand art. Farm name,
 owner details, and record data remain primary.

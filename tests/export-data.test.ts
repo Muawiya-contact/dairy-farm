@@ -62,6 +62,7 @@ it("creates readable Excel and PDF exports, including an empty-table header", as
   expect(new TextDecoder().decode(pdf)).toContain("Is export mein koi record nahi mila.");
   expect(new TextDecoder().decode(pdf)).toContain("CodingMoves.com");
   expect(new TextDecoder().decode(pdf)).toContain("https://codingmoves.com/");
+  expect(new TextDecoder().decode(pdf)).toContain("mailto:contact@codingmoves.com");
   const auditPdf = await buildPdf("Payment audit", ["before_row"], [{ before_row: { amount: 10 } }], "Saim Dairy Farm");
   expect(new TextDecoder().decode(auditPdf)).not.toContain("[object Object]");
 });

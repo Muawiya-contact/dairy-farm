@@ -77,6 +77,8 @@ it("generates separate readable statement and payment PDFs", async () => {
   const receiptText = new TextDecoder().decode(receipt);
   expect(statementText.match(/https:\/\/codingmoves\.com\//g)).toHaveLength(2);
   expect(receiptText.match(/https:\/\/codingmoves\.com\//g)).toHaveLength(2);
+  expect(statementText.match(/mailto:contact@codingmoves\.com/g)).toHaveLength(1);
+  expect(receiptText.match(/mailto:contact@codingmoves\.com/g)).toHaveLength(1);
 });
 
 it("hands the receipt PDF to the phone's app chooser", async () => {

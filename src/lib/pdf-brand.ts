@@ -1,5 +1,7 @@
 /** Load the same supplied PNG mark used by the installed app icon. */
 import {
+  CODING_MOVES_CONTACT_EMAIL,
+  CODING_MOVES_CONTACT_URL,
   CODING_MOVES_DEVELOPER_CREDIT,
   CODING_MOVES_DISPLAY_URL,
   CODING_MOVES_URL,
@@ -22,6 +24,17 @@ export function addPdfDeveloperCredit(pdf: Pdf, y: number, pageWidth: number): v
   const credit = `${CODING_MOVES_DEVELOPER_CREDIT} · ${CODING_MOVES_DISPLAY_URL}`;
   const width = pdf.getTextWidth(credit);
   pdf.textWithLink(credit, (pageWidth - width) / 2, y, { url: CODING_MOVES_URL });
+}
+
+/** Keep the public email in a PDF, where a shared document can bring a new enquiry. */
+export function addPdfDeveloperEmail(pdf: Pdf, y: number, pageWidth: number): void {
+  const prefix = "Email: ";
+  pdf.setFontSize(6);
+  pdf.setTextColor(90, 100, 93);
+  const width = pdf.getTextWidth(`${prefix}${CODING_MOVES_CONTACT_EMAIL}`);
+  const x = (pageWidth - width) / 2;
+  pdf.text(prefix, x, y);
+  pdf.textWithLink(CODING_MOVES_CONTACT_EMAIL, x + pdf.getTextWidth(prefix), y, { url: CODING_MOVES_CONTACT_URL });
 }
 
 /** Draw the official Coding Moves Services mark beside the shared-document credit. */

@@ -3,7 +3,7 @@ import type { FarmSettings } from "./settings";
 import { formatDay, formatMonth } from "./dates";
 import { downloadBlob } from "./export-data";
 import { installCustomerPdfFont } from "./customer-pdf-font";
-import { addPdfDeveloperCredit, addPdfDeveloperMark, loadPdfDeveloperLogo, loadPdfLogo } from "./pdf-brand";
+import { addPdfDeveloperCredit, addPdfDeveloperEmail, addPdfDeveloperMark, loadPdfDeveloperLogo, loadPdfLogo } from "./pdf-brand";
 import { SHIFT_LABELS } from "./milk-shifts";
 
 export type StatementLine = {
@@ -100,7 +100,8 @@ function addFooters(pdf: Pdf, farmName: string) {
   for (let page = 1; page <= pages; page++) {
     pdf.setPage(page); pdf.setFontSize(8); pdf.setTextColor(90, 100, 93);
     pdf.text(farmName, 14, 288);
-    addPdfDeveloperCredit(pdf, 288, 210);
+    addPdfDeveloperCredit(pdf, 284, 210);
+    addPdfDeveloperEmail(pdf, 292, 210);
     pdf.text(`Page ${page}/${pages}`, 196, 288, { align: "right" });
   }
 }

@@ -203,14 +203,20 @@ export async function buildPdf(title: string, columns: string[], rows: Record<st
   pdf.text(title, 31, titleY);
   pdf.setFontSize(9);
   pdf.text(`${rows.length} entries`, 31, titleY + 6);
-  autoTable(pdf, {
-    startY: titleY + 10, head: [columns.map((column) => columnLabel(column, title))],
-    body: rows.map((row) => columns.map((column) => displayCell(row[column]))),
-    styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak" },
-    headStyles: { fillColor: [45, 106, 57] },
-    horizontalPageBreak: true, horizontalPageBreakRepeat: 0,
-    margin: 10,
-  });
+  if (!rows.length) {
+    pdf.setFontSize(11);
+    pdf.setTextColor(90, 100, 93);
+    pdf.text("Is export mein koi record nahi mila.", 10, titleY + 16);
+  } else {
+    autoTable(pdf, {
+      startY: titleY + 10, head: [columns.map((column) => columnLabel(column, title))],
+      body: rows.map((row) => columns.map((column) => displayCell(row[column]))),
+      styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak" },
+      headStyles: { fillColor: [45, 106, 57] },
+      horizontalPageBreak: true, horizontalPageBreakRepeat: 0,
+      margin: 10,
+    });
+  }
   return new Uint8Array(pdf.output("arraybuffer"));
 }
 

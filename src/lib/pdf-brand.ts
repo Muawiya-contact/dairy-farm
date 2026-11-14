@@ -9,6 +9,7 @@ import {
 
 let logoData: Promise<Uint8Array<ArrayBuffer>> | null = null;
 let developerLogoData: Promise<Uint8Array<ArrayBuffer>> | null = null;
+let developerQrData: Promise<string> | null = null;
 
 export { CODING_MOVES_URL, CODING_MOVES_DEVELOPER_CREDIT as PDF_DEVELOPER_CREDIT };
 
@@ -49,6 +50,11 @@ export function addPdfDeveloperMark(pdf: Pdf, logo: Uint8Array<ArrayBuffer>, rig
   pdf.textWithLink(CODING_MOVES_DISPLAY_URL, right - 15, top + 8, { align: "right", url: CODING_MOVES_URL });
 }
 
+/** A small, printable QR code lets a shared record lead back to the developer site. */
+export function addPdfDeveloperQr(pdf: Pdf, qrData: string, x: number, y: number, size = 10): void {
+  pdf.addImage(qrData, "PNG", x, y, size, size);
+}
+
 /** The browser uses the matching SVG. jsPDF needs this small raster rendition. */
 export function loadPdfDeveloperLogo(): Promise<Uint8Array<ArrayBuffer>> {
   if (!developerLogoData) {
@@ -61,6 +67,20 @@ export function loadPdfDeveloperLogo(): Promise<Uint8Array<ArrayBuffer>> {
     });
   }
   return developerLogoData;
+}
+
+/** Generate locally: no farm data or document content is sent to a QR service. */
+export function loadPdfDeveloperQr(): Promise<string> {
+  if (!developerQrData) {
+    developerQrData = import("qrcode").then(({ toDataURL }) => toDataURL(CODING_MOVES_URL, {
+      errorCorrectionLevel: "M", margin: 1, width: 160,
+      color: { dark: "#1d5633", light: "#ffffff" },
+    })).catch((error) => {
+      developerQrData = null;
+      throw error;
+    });
+  }
+  return developerQrData;
 }
 
 export function loadPdfLogo(): Promise<Uint8Array<ArrayBuffer>> {

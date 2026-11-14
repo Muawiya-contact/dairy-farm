@@ -28,6 +28,7 @@ import { parseDiscount, parsePaymentCorrection, parseVoidReason } from "@/lib/ga
 import { Body, PageHeader, Panel } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
 import { PlusIcon } from "./icons";
+import { DateFormatHint } from "./DateFormatHint";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 const freeReasons = {
@@ -200,7 +201,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
         </form>}
       </Panel>
       <Panel title="Maheene ka bill" className="lg:col-span-2">
-        <label className="mb-3 block text-sm font-semibold">Maheena<input type="month" max={data.today.slice(0, 7)} value={month} onChange={(event) => { setMonth(event.target.value); setPdfStatus(""); }} className={`${field} mt-1 max-w-xs`} /></label>
+        <label className="mb-3 block max-w-xs text-sm font-semibold">Maheena<input type="month" max={data.today.slice(0, 7)} value={month} onChange={(event) => { setMonth(event.target.value); setPdfStatus(""); }} className={`${field} mt-1 block`} /><DateFormatHint kind="month" /></label>
         {!validMonth && <p role="alert" className="text-udhaar">Aaj tak ka sahi maheena chunein.</p>}
         {validMonth && reportQuery.isPending && <p role="status" className="text-muted">Bill load ho raha hai…</p>}
         {reportQuery.isError && <p role="alert" className="text-udhaar">Bill nahi khula: {friendlyError(reportQuery.error)} <button type="button" onClick={() => void reportQuery.refetch()} className="underline">Dobara koshish</button></p>}

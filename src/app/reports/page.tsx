@@ -10,6 +10,7 @@ import { friendlyError } from "@/lib/errors";
 import LogoMark from "@/components/LogoMark";
 import { compareCustomers } from "@/lib/farm-data";
 import { rs } from "@/lib/format";
+import { DateFormatHint } from "@/components/DateFormatHint";
 
 const number = (value: unknown) => Number(value ?? 0).toLocaleString("en-PK", { maximumFractionDigits: 2 });
 const money = (value: unknown) => rs(Number(value ?? 0));
@@ -36,7 +37,7 @@ export default function ReportsPage() {
   return <div className="print-report mx-auto max-w-5xl bg-paper p-4 sm:p-8">
     <div className="no-print mb-5 grid gap-3 sm:flex sm:flex-wrap sm:items-end">
       <Link href="/settings/" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-line px-4 font-semibold sm:w-auto">Settings par wapas</Link>
-      <label className="grid gap-1 text-sm font-semibold">Report ka maheena<input type="month" value={month} onChange={(event) => setMonth(event.target.value)} className="min-h-11 w-full rounded-xl border border-line px-3 sm:w-auto" /></label>
+      <label className="grid gap-1 text-sm font-semibold">Report ka maheena<input type="month" value={month} onChange={(event) => setMonth(event.target.value)} className="min-h-11 w-full rounded-xl border border-line px-3 sm:w-auto" /><DateFormatHint kind="month" /></label>
       <button type="button" disabled={!data || report.isFetching} onClick={() => window.print()} className="min-h-11 rounded-xl bg-berseem px-4 font-semibold text-white disabled:opacity-50">Print / PDF save karein</button>
     </div>
     {report.isPending && <p role="status">Report load ho rahi hai…</p>}

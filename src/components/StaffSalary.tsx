@@ -12,6 +12,7 @@ import { Body, PageHeader, Panel } from "./ui";
 import { ConfirmActionDialog } from "./ConfirmActionDialog";
 import { UI_TEXT } from "@/lib/text";
 import { refreshFarmViews } from "@/lib/query-refresh";
+import { DateFormatHint } from "./DateFormatHint";
 
 const field = "mt-1 min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 type Pending = { id: string; signature: string };
@@ -146,7 +147,7 @@ export default function StaffSalary() {
       </form> : <p className="text-sm text-muted">Pehle mulazim shamil karein.</p>}</Panel>
 
       <Panel title="Mahine ki tankhwah" className="lg:col-span-2">
-        <label className="block max-w-xs text-sm">Tankhwah ka maheena<input type="month" max={today.slice(0, 7)} value={month} onChange={(event) => setMonth(event.target.value)} className={field} /></label>
+        <label className="block max-w-xs text-sm">Tankhwah ka maheena<input type="month" max={today.slice(0, 7)} value={month} onChange={(event) => setMonth(event.target.value)} className={`${field} block`} /><DateFormatHint kind="month" /></label>
         {staff.length > 0 && <ul className="mt-4 grid gap-2 sm:grid-cols-2">{staff.map((item) => {
           const row = data.periods.find((entry) => entry.staff_id === item.id && entry.salary_month === selectedMonth);
           const due = row ? remainingCents(row, data.payments) / 100 : null;

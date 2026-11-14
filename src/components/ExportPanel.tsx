@@ -6,6 +6,7 @@ import { BREEDING_COLUMNS, DATASETS, REPORTS, downloadFile, exportRows, fetchBre
 import { friendlyError } from "@/lib/errors";
 import { todayPK } from "@/lib/dates";
 import { buildFarmBackup } from "@/lib/backup";
+import { DateFormatHint } from "./DateFormatHint";
 
 const buttonClass = "min-h-11 rounded-xl border border-line px-3 text-left text-sm font-semibold hover:border-berseem disabled:opacity-50";
 
@@ -50,7 +51,7 @@ export function ExportPanel() {
       <h3 id="farm-export-title" className="font-semibold">Reports aur tables export karein</h3>
       <p className="mt-1 text-sm text-muted">CSV, Excel ya PDF chunein, phir neeche apni report ya table ka button dabayein. Har button usi file ki qism mein download karega.</p>
       <div className="mt-3 flex flex-wrap items-end gap-3">
-        <label className="text-sm font-semibold">Report ka maheena<input type="month" value={month} onChange={(event) => setMonth(event.target.value)} className="mt-1 block min-h-11 rounded-xl border border-line bg-paper px-3" /></label>
+        <label className="text-sm font-semibold">Report ka maheena<input type="month" value={month} onChange={(event) => setMonth(event.target.value)} className="mt-1 block min-h-11 rounded-xl border border-line bg-paper px-3" /><DateFormatHint kind="month" /></label>
         <label className="text-sm font-semibold">Report aur table ki file qism<select value={format} onChange={(event) => setFormat(event.target.value as ExportFormat)} className="mt-1 block min-h-11 rounded-xl border border-line bg-paper px-3"><option value="csv">CSV</option><option value="xlsx">Excel (.xlsx)</option><option value="pdf">PDF</option></select></label>
       </div>
       <h4 className="mt-5 font-semibold">Maheene ki reports</h4>

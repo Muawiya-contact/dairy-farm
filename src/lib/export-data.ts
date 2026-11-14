@@ -1,6 +1,6 @@
 import { getSupabase } from "./supabase";
 import type { Database } from "./database.types";
-import { addPdfDeveloperCredit, addPdfDeveloperMark, loadPdfLogo } from "./pdf-brand";
+import { addPdfDeveloperCredit, addPdfDeveloperMark, loadPdfDeveloperLogo, loadPdfLogo } from "./pdf-brand";
 import { getSettings } from "./settings";
 
 type Table = keyof Database["public"]["Tables"];
@@ -192,7 +192,7 @@ export async function buildXlsx(title: string, columns: string[], rows: Record<s
 }
 
 export async function buildPdf(title: string, columns: string[], rows: Record<string, unknown>[], farmName: string): Promise<Uint8Array<ArrayBuffer>> {
-  const [{ jsPDF }, { autoTable }, logo] = await Promise.all([import("jspdf"), import("jspdf-autotable"), loadPdfLogo()]);
+  const [{ jsPDF }, { autoTable }, logo, developerLogo] = await Promise.all([import("jspdf"), import("jspdf-autotable"), loadPdfLogo(), loadPdfDeveloperLogo()]);
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a3" });
   pdf.addImage(logo, "PNG", 10, 8, 16, 16);
   pdf.setFontSize(15);
@@ -201,7 +201,7 @@ export async function buildPdf(title: string, columns: string[], rows: Record<st
   pdf.text(nameLines, 31, 13);
   pdf.setFontSize(10);
   pdf.text(title, 31, titleY);
-  addPdfDeveloperMark(pdf, 410, 7);
+  addPdfDeveloperMark(pdf, developerLogo, 410, 7);
   pdf.setFontSize(9);
   pdf.setTextColor(0, 0, 0);
   pdf.text(`${rows.length} entries`, 31, titleY + 6);

@@ -3,7 +3,7 @@ import type { FarmSettings } from "./settings";
 import { formatDay, formatMonth } from "./dates";
 import { downloadBlob } from "./export-data";
 import { installCustomerPdfFont } from "./customer-pdf-font";
-import { addPdfDeveloperCredit, addPdfDeveloperMark, loadPdfLogo } from "./pdf-brand";
+import { addPdfDeveloperCredit, addPdfDeveloperMark, loadPdfDeveloperLogo, loadPdfLogo } from "./pdf-brand";
 import { SHIFT_LABELS } from "./milk-shifts";
 
 export type StatementLine = {
@@ -73,10 +73,10 @@ type Pdf = InstanceType<typeof import("jspdf").jsPDF>;
 /** Warm the PDF code and fonts so a later user click can reach the native share sheet promptly. */
 export async function prepareCustomerPdf(): Promise<void> {
   const [{ jsPDF }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
-  await Promise.all([installCustomerPdfFont(new jsPDF()), loadPdfLogo()]);
+  await Promise.all([installCustomerPdfFont(new jsPDF()), loadPdfLogo(), loadPdfDeveloperLogo()]);
 }
 
-function drawHeader(pdf: Pdf, farm: FarmSettings, documentTitle: string, logo: Uint8Array<ArrayBuffer>): number {
+function drawHeader(pdf: Pdf, farm: FarmSettings, documentTitle: string, logo: Uint8Array<ArrayBuffer>, developerLogo: Uint8Array<ArrayBuffer>): number {
   pdf.setFont("OpenSans", "bold"); pdf.setFontSize(17);
   const nameLines = pdf.splitTextToSize(farm.farm_name, 115) as string[];
   const headerHeight = Math.max(34, 19 + nameLines.length * 7);
@@ -87,7 +87,7 @@ function drawHeader(pdf: Pdf, farm: FarmSettings, documentTitle: string, logo: U
   pdf.text(nameLines, 42, 14);
   pdf.setFont("OpenSans", "normal"); pdf.setFontSize(9);
   pdf.text(documentTitle, 42, headerHeight - 7);
-  addPdfDeveloperMark(pdf, 196, 7, true);
+  addPdfDeveloperMark(pdf, developerLogo, 196, 7, true);
   pdf.setTextColor(32, 42, 36);
   let y = headerHeight + 8;
   if (farm.owner_name) { pdf.text(`Maalik: ${farm.owner_name}`, 14, y); y += 5; }
@@ -110,9 +110,9 @@ export async function buildCustomerStatementPdf(input: {
 }): Promise<Uint8Array<ArrayBuffer>> {
   const [{ jsPDF }, { autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
-  const [, logo] = await Promise.all([installCustomerPdfFont(pdf), loadPdfLogo()]);
+  const [, logo, developerLogo] = await Promise.all([installCustomerPdfFont(pdf), loadPdfLogo(), loadPdfDeveloperLogo()]);
   pdf.setProperties({ title: `${input.customer.name} - ${input.month} ka bill` });
-  let y = drawHeader(pdf, input.farm, "Customer ka maheena - tafseeli bill", logo);
+  let y = drawHeader(pdf, input.farm, "Customer ka maheena - tafseeli bill", logo, developerLogo);
   pdf.setFontSize(11); pdf.setFont("OpenSans", "bold");
   pdf.text(`Customer: ${input.customer.name}`, 14, y); y += 6;
   pdf.setFont("OpenSans", "normal"); pdf.setFontSize(9);
@@ -162,9 +162,9 @@ export async function buildPaymentReceiptPdf(input: {
 }): Promise<Uint8Array<ArrayBuffer>> {
   const { jsPDF } = await import("jspdf");
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
-  const [, logo] = await Promise.all([installCustomerPdfFont(pdf), loadPdfLogo()]);
+  const [, logo, developerLogo] = await Promise.all([installCustomerPdfFont(pdf), loadPdfLogo(), loadPdfDeveloperLogo()]);
   pdf.setProperties({ title: `${input.customer.name} - wusooli receipt` });
-  let y = drawHeader(pdf, input.farm, "Wusooli ki receipt", logo);
+  let y = drawHeader(pdf, input.farm, "Wusooli ki receipt", logo, developerLogo);
   pdf.setFont("OpenSans", "normal"); pdf.setFontSize(10);
   pdf.text(`Customer: ${input.customer.name}`, 14, y); y += 8;
   if (input.customer.phone) { pdf.text(`Customer phone: ${input.customer.phone}`, 14, y); y += 8; }

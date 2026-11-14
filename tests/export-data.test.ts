@@ -5,8 +5,8 @@ import ExcelJS from "exceljs";
 import { buildPdf, buildXlsx, columnLabel, DATASETS, displayCell, offspringSummary, toCsv } from "../src/lib/export-data";
 
 beforeAll(() => vi.stubGlobal("fetch", async (url: string) =>
-  url === "/brand/icon-192.png"
-    ? new Response(readFileSync(resolve("public/brand/icon-192.png")))
+  url === "/brand/icon-192.png" || url === "/brand/coding-moves-services.png"
+    ? new Response(readFileSync(resolve(`public/brand/${url.split("/").pop()}`)))
     : new Response(null, { status: 404 })
 ));
 afterAll(() => vi.unstubAllGlobals());

@@ -26,6 +26,7 @@ const data = {
 beforeAll(() => vi.stubGlobal("fetch", async (url: string) => {
   const filename = url.split("/").pop();
   if (filename === "icon-192.png") return new Response(readFileSync(resolve("public/brand", filename)));
+  if (filename === "coding-moves-services.png") return new Response(readFileSync(resolve("public/brand", filename)));
   if (filename !== "OpenSans-Regular.ttf" && filename !== "OpenSans-Bold.ttf") return new Response(null, { status: 404 });
   return new Response(readFileSync(resolve("public/fonts", filename)));
 }));

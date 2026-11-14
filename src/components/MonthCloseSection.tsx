@@ -6,6 +6,7 @@ import { closeFarmMonth, getMonthCloseSummary, getMonthLockEvents, getMonthLocks
 import { friendlyError } from "@/lib/errors";
 import { formatMonth, todayPK } from "@/lib/dates";
 import { litres, rs } from "@/lib/format";
+import { DateFormatHint } from "./DateFormatHint";
 
 const field = "mt-1 min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 
@@ -60,7 +61,7 @@ export function MonthCloseSection() {
     <h2 className="font-display text-xl font-bold">Maheena band karein</h2>
     <p className="mt-1 text-sm text-muted">Guzra hua maheena band karne se us ki doodh, payment, kharcha aur galla entries badal nahi sakti. Zaroorat par wajah likh kar dobara kholein. Har faisla record hota hai.</p>
     <form onSubmit={submit} className="mt-4 grid gap-3">
-      <label className="font-semibold">Maheena<input type="month" required max={previousMonth()} value={month} onChange={(event) => { setMonth(event.target.value); setReviewed(null); setMessage(""); mutation.reset(); }} className={field} /></label>
+      <label className="font-semibold">Maheena<input type="month" required max={previousMonth()} value={month} onChange={(event) => { setMonth(event.target.value); setReviewed(null); setMessage(""); mutation.reset(); }} className={`${field} block`} /><DateFormatHint kind="month" /></label>
       {locks.data && <div><p className="text-sm font-semibold">Pichhle 12 maheenay</p><div className="mt-2 flex flex-wrap gap-2">{recentClosedMonths().map((item) => <button type="button" key={item} onClick={() => { setMonth(item); setReviewed(null); setMessage(""); mutation.reset(); }} aria-pressed={item === month} className={`min-h-11 rounded-xl border px-3 text-sm ${item === month ? "border-berseem bg-berseem-soft" : "border-line"}`}>{formatMonth(`${item}-01`)} · {locks.data.some((row) => row.month === `${item}-01`) ? "Band" : "Khula"}</button>)}</div></div>}
       {locks.isPending && <p role="status" className="text-muted">Band maheenay load ho rahe hain…</p>}
       {locks.isError && <p role="alert" className="text-udhaar">Haalat nahi mili: {friendlyError(locks.error)} <button type="button" onClick={() => void locks.refetch()} className="underline">Dobara koshish</button></p>}

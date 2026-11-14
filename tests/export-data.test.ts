@@ -5,8 +5,8 @@ import ExcelJS from "exceljs";
 import { buildPdf, buildXlsx, columnLabel, DATASETS, displayCell, offspringSummary, toCsv } from "../src/lib/export-data";
 
 beforeAll(() => vi.stubGlobal("fetch", async (url: string) =>
-  url === "/brand/icon-192.png"
-    ? new Response(readFileSync(resolve("public/brand/icon-192.png")))
+  url === "/brand/icon-192.png" || url === "/brand/coding-moves-services.png"
+    ? new Response(readFileSync(resolve(`public/brand/${url.split("/").pop()}`)))
     : new Response(null, { status: 404 })
 ));
 afterAll(() => vi.unstubAllGlobals());
@@ -59,6 +59,10 @@ it("creates readable Excel and PDF exports, including an empty-table header", as
   expect(new TextDecoder().decode(pdf.slice(0, 8))).toBe("%PDF-1.3");
   expect(new TextDecoder().decode(pdf)).toContain("/Subtype /Image");
   expect(new TextDecoder().decode(pdf)).toContain("Saim Dairy Farm");
+  expect(new TextDecoder().decode(pdf)).toContain("Is export mein koi record nahi mila.");
+  expect(new TextDecoder().decode(pdf)).toContain("CodingMoves.com");
+  expect(new TextDecoder().decode(pdf)).toContain("https://codingmoves.com/");
+  expect(new TextDecoder().decode(pdf)).toContain("mailto:contact@codingmoves.com");
   const auditPdf = await buildPdf("Payment audit", ["before_row"], [{ before_row: { amount: 10 } }], "Saim Dairy Farm");
   expect(new TextDecoder().decode(auditPdf)).not.toContain("[object Object]");
 });

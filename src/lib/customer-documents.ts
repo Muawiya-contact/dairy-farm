@@ -3,7 +3,7 @@ import type { FarmSettings } from "./settings";
 import { formatDay, formatMonth } from "./dates";
 import { downloadBlob } from "./export-data";
 import { installCustomerPdfFont } from "./customer-pdf-font";
-import { loadPdfLogo } from "./pdf-brand";
+import { addPdfDeveloperCredit, addPdfDeveloperEmail, addPdfDeveloperMark, loadPdfDeveloperLogo, loadPdfLogo } from "./pdf-brand";
 import { SHIFT_LABELS } from "./milk-shifts";
 
 export type StatementLine = {
@@ -73,12 +73,12 @@ type Pdf = InstanceType<typeof import("jspdf").jsPDF>;
 /** Warm the PDF code and fonts so a later user click can reach the native share sheet promptly. */
 export async function prepareCustomerPdf(): Promise<void> {
   const [{ jsPDF }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
-  await Promise.all([installCustomerPdfFont(new jsPDF()), loadPdfLogo()]);
+  await Promise.all([installCustomerPdfFont(new jsPDF()), loadPdfLogo(), loadPdfDeveloperLogo()]);
 }
 
-function drawHeader(pdf: Pdf, farm: FarmSettings, documentTitle: string, logo: Uint8Array<ArrayBuffer>): number {
+function drawHeader(pdf: Pdf, farm: FarmSettings, documentTitle: string, logo: Uint8Array<ArrayBuffer>, developerLogo: Uint8Array<ArrayBuffer>): number {
   pdf.setFont("OpenSans", "bold"); pdf.setFontSize(17);
-  const nameLines = pdf.splitTextToSize(farm.farm_name, 154) as string[];
+  const nameLines = pdf.splitTextToSize(farm.farm_name, 115) as string[];
   const headerHeight = Math.max(34, 19 + nameLines.length * 7);
   pdf.setFillColor(37, 94, 53);
   pdf.rect(0, 0, 210, headerHeight, "F");
@@ -87,6 +87,7 @@ function drawHeader(pdf: Pdf, farm: FarmSettings, documentTitle: string, logo: U
   pdf.text(nameLines, 42, 14);
   pdf.setFont("OpenSans", "normal"); pdf.setFontSize(9);
   pdf.text(documentTitle, 42, headerHeight - 7);
+  addPdfDeveloperMark(pdf, developerLogo, 196, 7, true);
   pdf.setTextColor(32, 42, 36);
   let y = headerHeight + 8;
   if (farm.owner_name) { pdf.text(`Maalik: ${farm.owner_name}`, 14, y); y += 5; }
@@ -99,6 +100,8 @@ function addFooters(pdf: Pdf, farmName: string) {
   for (let page = 1; page <= pages; page++) {
     pdf.setPage(page); pdf.setFontSize(8); pdf.setTextColor(90, 100, 93);
     pdf.text(farmName, 14, 288);
+    addPdfDeveloperCredit(pdf, 284, 210);
+    addPdfDeveloperEmail(pdf, 292, 210);
     pdf.text(`Page ${page}/${pages}`, 196, 288, { align: "right" });
   }
 }
@@ -108,9 +111,9 @@ export async function buildCustomerStatementPdf(input: {
 }): Promise<Uint8Array<ArrayBuffer>> {
   const [{ jsPDF }, { autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
-  const [, logo] = await Promise.all([installCustomerPdfFont(pdf), loadPdfLogo()]);
+  const [, logo, developerLogo] = await Promise.all([installCustomerPdfFont(pdf), loadPdfLogo(), loadPdfDeveloperLogo()]);
   pdf.setProperties({ title: `${input.customer.name} - ${input.month} ka bill` });
-  let y = drawHeader(pdf, input.farm, "Customer ka maheena - tafseeli bill", logo);
+  let y = drawHeader(pdf, input.farm, "Customer ka maheena - tafseeli bill", logo, developerLogo);
   pdf.setFontSize(11); pdf.setFont("OpenSans", "bold");
   pdf.text(`Customer: ${input.customer.name}`, 14, y); y += 6;
   pdf.setFont("OpenSans", "normal"); pdf.setFontSize(9);
@@ -160,9 +163,9 @@ export async function buildPaymentReceiptPdf(input: {
 }): Promise<Uint8Array<ArrayBuffer>> {
   const { jsPDF } = await import("jspdf");
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
-  const [, logo] = await Promise.all([installCustomerPdfFont(pdf), loadPdfLogo()]);
+  const [, logo, developerLogo] = await Promise.all([installCustomerPdfFont(pdf), loadPdfLogo(), loadPdfDeveloperLogo()]);
   pdf.setProperties({ title: `${input.customer.name} - wusooli receipt` });
-  let y = drawHeader(pdf, input.farm, "Wusooli ki receipt", logo);
+  let y = drawHeader(pdf, input.farm, "Wusooli ki receipt", logo, developerLogo);
   pdf.setFont("OpenSans", "normal"); pdf.setFontSize(10);
   pdf.text(`Customer: ${input.customer.name}`, 14, y); y += 8;
   if (input.customer.phone) { pdf.text(`Customer phone: ${input.customer.phone}`, 14, y); y += 8; }

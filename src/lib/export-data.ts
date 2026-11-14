@@ -1,6 +1,6 @@
 import { getSupabase } from "./supabase";
 import type { Database } from "./database.types";
-import { loadPdfLogo } from "./pdf-brand";
+import { addPdfDeveloperCredit, addPdfDeveloperEmail, addPdfDeveloperMark, loadPdfDeveloperLogo, loadPdfLogo } from "./pdf-brand";
 import { getSettings } from "./settings";
 
 type Table = keyof Database["public"]["Tables"];
@@ -192,25 +192,39 @@ export async function buildXlsx(title: string, columns: string[], rows: Record<s
 }
 
 export async function buildPdf(title: string, columns: string[], rows: Record<string, unknown>[], farmName: string): Promise<Uint8Array<ArrayBuffer>> {
-  const [{ jsPDF }, { autoTable }, logo] = await Promise.all([import("jspdf"), import("jspdf-autotable"), loadPdfLogo()]);
+  const [{ jsPDF }, { autoTable }, logo, developerLogo] = await Promise.all([import("jspdf"), import("jspdf-autotable"), loadPdfLogo(), loadPdfDeveloperLogo()]);
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a3" });
   pdf.addImage(logo, "PNG", 10, 8, 16, 16);
   pdf.setFontSize(15);
-  const nameLines = pdf.splitTextToSize(farmName, 360) as string[];
+  const nameLines = pdf.splitTextToSize(farmName, 320) as string[];
   const titleY = Math.max(20, 13 + nameLines.length * 7);
   pdf.text(nameLines, 31, 13);
   pdf.setFontSize(10);
   pdf.text(title, 31, titleY);
+  addPdfDeveloperMark(pdf, developerLogo, 410, 7);
   pdf.setFontSize(9);
+  pdf.setTextColor(0, 0, 0);
   pdf.text(`${rows.length} entries`, 31, titleY + 6);
-  autoTable(pdf, {
-    startY: titleY + 10, head: [columns.map((column) => columnLabel(column, title))],
-    body: rows.map((row) => columns.map((column) => displayCell(row[column]))),
-    styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak" },
-    headStyles: { fillColor: [45, 106, 57] },
-    horizontalPageBreak: true, horizontalPageBreakRepeat: 0,
-    margin: 10,
-  });
+  if (!rows.length) {
+    pdf.setFontSize(11);
+    pdf.setTextColor(90, 100, 93);
+    pdf.text("Is export mein koi record nahi mila.", 10, titleY + 16);
+  } else {
+    autoTable(pdf, {
+      startY: titleY + 10, head: [columns.map((column) => columnLabel(column, title))],
+      body: rows.map((row) => columns.map((column) => displayCell(row[column]))),
+      styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak" },
+      headStyles: { fillColor: [45, 106, 57] },
+      horizontalPageBreak: true, horizontalPageBreakRepeat: 0,
+      margin: { top: 10, right: 10, bottom: 16, left: 10 },
+    });
+  }
+  const pages = pdf.getNumberOfPages();
+  for (let page = 1; page <= pages; page++) {
+    pdf.setPage(page);
+    addPdfDeveloperCredit(pdf, 286, 420);
+    addPdfDeveloperEmail(pdf, 291, 420);
+  }
   return new Uint8Array(pdf.output("arraybuffer"));
 }
 

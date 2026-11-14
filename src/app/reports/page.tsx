@@ -10,6 +10,8 @@ import { friendlyError } from "@/lib/errors";
 import LogoMark from "@/components/LogoMark";
 import { compareCustomers } from "@/lib/farm-data";
 import { rs } from "@/lib/format";
+import { DateFormatHint } from "@/components/DateFormatHint";
+import { CodingMovesCredit } from "@/components/CodingMovesCredit";
 
 const number = (value: unknown) => Number(value ?? 0).toLocaleString("en-PK", { maximumFractionDigits: 2 });
 const money = (value: unknown) => rs(Number(value ?? 0));
@@ -36,7 +38,7 @@ export default function ReportsPage() {
   return <div className="print-report mx-auto max-w-5xl bg-paper p-4 sm:p-8">
     <div className="no-print mb-5 grid gap-3 sm:flex sm:flex-wrap sm:items-end">
       <Link href="/settings/" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-line px-4 font-semibold sm:w-auto">Settings par wapas</Link>
-      <label className="grid gap-1 text-sm font-semibold">Report ka maheena<input type="month" value={month} onChange={(event) => setMonth(event.target.value)} className="min-h-11 w-full rounded-xl border border-line px-3 sm:w-auto" /></label>
+      <label className="grid gap-1 text-sm font-semibold">Report ka maheena<input type="month" value={month} onChange={(event) => setMonth(event.target.value)} className="min-h-11 w-full rounded-xl border border-line px-3 sm:w-auto" /><DateFormatHint kind="month" /></label>
       <button type="button" disabled={!data || report.isFetching} onClick={() => window.print()} className="min-h-11 rounded-xl bg-berseem px-4 font-semibold text-white disabled:opacity-50">Print / PDF save karein</button>
     </div>
     {report.isPending && <p role="status">Report load ho rahi hai…</p>}
@@ -46,6 +48,7 @@ export default function ReportsPage() {
         <div className="flex min-w-0 items-center gap-3"><LogoMark size={48} /><h1 className="min-w-0 break-words font-display text-xl font-bold leading-tight sm:text-2xl">{data.settings.farm_name}</h1></div>
         <p className="mt-2 font-semibold">{formatMonth(`${month}-01`)} ki report</p>
         <p className="text-sm text-muted">Farm ke records se banayi gayi</p>
+        <div className="mt-2 text-xs text-muted"><CodingMovesCredit /></div>
       </header>
       <section className="mb-6"><h2 className="mb-2 font-display text-lg font-bold">Customer ka hisaab</h2><div className="overflow-x-auto"><table className="w-full min-w-[700px] text-sm"><thead><tr><th className="border-b border-line px-2 py-1.5 text-left">Naam</th>{["Doodh (L)", "Kul raqam (Rs)", "Pichla baqaya (Rs)", "Total (Rs)", "Ada shuda (Rs)", "Riayat (Rs)", "Baqaya (Rs)"].map((title) => <th key={title} className={cell}>{title}</th>)}</tr></thead><tbody>{data.customers.map((row) => <tr key={String(row.customer_id)}><td className="border-b border-line px-2 py-1.5">{String(row.name)}</td>{["litres", "amount", "previous_balance", "total", "paid", "discount", "balance"].map((key) => <td key={key} className={cell}>{key === "litres" ? number(row[key]) : money(row[key])}</td>)}</tr>)}</tbody></table>{data.customers.length === 0 && <p className="mt-2 text-sm text-muted">Is maheene ka customer data nahi hai.</p>}</div></section>
       <section className="mb-6 grid gap-5 sm:grid-cols-2"><div><h2 className="mb-2 font-display text-lg font-bold">Kharchay ki tafseel</h2><table className="w-full text-sm"><thead><tr><th className="border-b border-line px-2 py-1.5 text-left">Tafseel</th><th className={cell}>Raqam (Rs)</th></tr></thead><tbody>{data.expenses.map((row, index) => <tr key={`${row.category_id}-${row.staff_id}-${index}`}><td className="border-b border-line px-2 py-1.5">{String(row.label)}</td><td className={cell}>{money(row.amount)}</td></tr>)}</tbody></table>{data.expenses.length === 0 && <p className="mt-2 text-sm text-muted">Is maheene ka kharcha nahi hai.</p>}</div>

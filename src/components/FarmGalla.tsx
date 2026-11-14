@@ -12,6 +12,7 @@ import { parseCashCount, parseTransfer } from "@/lib/galla-forms";
 import { buildAccountLedger, groupAutomaticCashReceipts, type DisplayLedgerRow } from "@/lib/galla-ledger";
 import { Body, PageHeader, Panel } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
+import { DateFormatHint } from "./DateFormatHint";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 type Pending = { id: string; signature: string };
@@ -97,7 +98,7 @@ export default function FarmGalla() {
     <Body className="grid gap-4 lg:grid-cols-2">
       <Panel title="Maheena aur account" className="lg:col-span-2">
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="text-sm font-semibold">Maheena<input type="month" max={today.slice(0, 7)} value={month} onChange={(event) => { setSelectedMonth(event.target.value); setSelectedCountDate(""); }} className={field} /></label>
+          <label className="text-sm font-semibold">Maheena<input type="month" max={today.slice(0, 7)} value={month} onChange={(event) => { setSelectedMonth(event.target.value); setSelectedCountDate(""); }} className={`${field} block`} /><DateFormatHint kind="month" /></label>
           <label className="text-sm font-semibold">Account<select value={accountId} onChange={(event) => setSelectedAccountId(event.target.value)} className={field}>{accounts.map((account) => <option key={account.id} value={account.id}>{account.name}{account.active ? "" : " (band)"}</option>)}</select></label>
         </div>
         {!validMonth && <p role="alert" className="mt-2 text-udhaar">Aaj tak ka sahi maheena chunein.</p>}

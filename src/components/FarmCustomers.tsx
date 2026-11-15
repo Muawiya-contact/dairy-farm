@@ -21,8 +21,9 @@ import {
   prepareCustomerPdf, shareCustomerPdf, statementLines, statementMessage,
 } from "@/lib/customer-documents";
 import { whatsappChatUrl, whatsappNumber } from "@/lib/phone";
-import { downloadBlob } from "@/lib/export-data";
+import { buildPdf, downloadBlob } from "@/lib/export-data";
 import { addDays, formatMonth } from "@/lib/dates";
+import { isReportDateRange, loadCustomerPeriodLedger } from "@/lib/reporting";
 import { correctPayment, getCustomerPaymentAudit, recordDiscount, voidPayment } from "@/lib/galla";
 import { parseDiscount, parsePaymentCorrection, parseVoidReason } from "@/lib/galla-forms";
 import { Body, PageHeader, Panel } from "./ui";
@@ -43,7 +44,10 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
 }) {
   const c = customer;
   const [month, setMonth] = useState(data.today.slice(0, 7));
+  const [periodFrom, setPeriodFrom] = useState(`${data.today.slice(0, 7)}-01`);
+  const [periodTo, setPeriodTo] = useState(data.today);
   const validMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(month) && month <= data.today.slice(0, 7);
+  const validPeriod = isReportDateRange(periodFrom, periodTo, data.today);
   const [editing, setEditing] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfStatus, setPdfStatus] = useState("");
@@ -60,6 +64,11 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
     queryKey: ["customer-report", c.id, month],
     queryFn: () => customerMonthReport(c.id, month),
     enabled: validMonth,
+  });
+  const periodLedgerQuery = useQuery({
+    queryKey: ["customer-period-ledger", c.id, periodFrom, periodTo],
+    queryFn: () => loadCustomerPeriodLedger(c.id, periodFrom, periodTo),
+    enabled: validPeriod,
   });
   const auditQuery = useQuery({ queryKey: ["payment-audit", c.id], queryFn: () => getCustomerPaymentAudit(c.id) });
   const balance = amount(data.balances.find((x) => x.customer_id === c.id)?.balance);
@@ -188,6 +197,26 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
     } catch (issue) { setPdfStatus(`PDF nahi bana: ${friendlyError(issue)}`); }
     finally { pdfBusyRef.current = false; setPdfBusy(false); }
   };
+  const exportPeriodLedger = async (action: "download" | "share") => {
+    if (pdfBusyRef.current || !periodLedgerQuery.data) return;
+    pdfBusyRef.current = true; setPdfTarget("period"); setPdfBusy(true); setPdfStatus("PDF tayyar ho raha hai…");
+    try {
+      const rows = periodLedgerQuery.data.map((line) => ({
+        entry_date: line.entry_date, detail: line.detail, litres: line.litres == null ? "" : line.litres,
+        charge: line.charge ? money(line.charge) : "", credit: line.credit ? money(line.credit) : "",
+      }));
+      const bytes = await buildPdf(`${c.name} ka khata — ${periodFrom} se ${periodTo}`, ["entry_date", "detail", "litres", "charge", "credit"], rows, data.settings.farm_name);
+      const filename = `khata-${c.name.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "customer"}-${periodFrom}-to-${periodTo}.pdf`;
+      if (action === "download") {
+        downloadBlob(filename, new Blob([bytes], { type: "application/pdf" }));
+        setPdfStatus("Khata ki PDF download ho gayi.");
+      } else {
+        const outcome = await shareCustomerPdf(filename, bytes, `${data.settings.farm_name} — ${c.name} ka khata`, `${periodFrom} se ${periodTo} ka khata.`);
+        setPdfStatus(outcome === "shared" ? "Share sheet khul gayi. File aur recipient check karke Send karein." : outcome === "cancelled" ? "Share cancel ho gaya." : "Is browser mein file share available nahi; PDF download ho gayi.");
+      }
+    } catch (issue) { setPdfStatus(`PDF nahi bana: ${friendlyError(issue)}`); }
+    finally { pdfBusyRef.current = false; setPdfBusy(false); }
+  };
 
   return <>
     <PageHeader title={c.name} sub={`${c.active ? UI_TEXT.active : "Band"} · ${c.kind === "free" ? `Muft: ${freeReasons[c.free_reason ?? "other"]} · ` : ""}${c.phone || "Phone darj nahi"} · Subah ${amount(c.default_morning)} L · Dopehr ${amount(c.default_noon)} L · Shaam ${amount(c.default_evening)} L${rate ? ` · ${money(rate)}/L` : ""}`} back="/khata/" />
@@ -233,6 +262,14 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
         {!phone && <p className="mt-2 text-sm text-muted">WhatsApp matn ke liye customer ka phone number likhein. PDF phir bhi download/share ho sakta hai.</p>}
         <p className="mt-2 text-xs text-muted">{phone ? "Phone par PDF Share dabayein, phir share sheet se WhatsApp aur recipient chunein. Computer par WhatsApp chat + PDF dabane se chat nayi tab mein khulegi aur PDF download hoga; file attach karke Send dabayein." : "Phone par PDF Share dabayein aur share sheet se app chunein. WhatsApp chat ke liye customer ka phone darj karein."}</p>
         {pdfTarget === `bill:${month}` && pdfStatus && <p role={pdfStatus.startsWith("PDF nahi") ? "alert" : "status"} className="mt-2 text-sm text-berseem-deep">{pdfStatus}</p>}
+      </Panel>
+      <Panel title="Khata ka apni tareekh wala record" className="lg:col-span-2"><p className="mb-3 text-sm text-muted">Is PDF mein sirf chuni hui muddat ki doodh, parchi, wusooli aur riayat entries aati hain. Upar maheene ka bill current baqaya ke saath alag hai.</p>
+        <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-semibold">Shuru ki tareekh<input aria-label="Khata shuru ki tareekh" type="date" value={periodFrom} max={periodTo || data.today} onChange={(event) => setPeriodFrom(event.target.value)} className={`${field} mt-1`} /></label><label className="text-sm font-semibold">Aakhir ki tareekh<input aria-label="Khata aakhir ki tareekh" type="date" value={periodTo} min={periodFrom} max={data.today} onChange={(event) => setPeriodTo(event.target.value)} className={`${field} mt-1`} /></label></div>
+        {!validPeriod && <p role="alert" className="mt-2 text-sm text-udhaar">Aaj tak ki sahi shuru aur aakhir ki tareekh chunein.</p>}
+        {periodLedgerQuery.isPending && <p role="status" className="mt-2 text-sm text-muted">Khata record load ho raha hai…</p>}
+        {periodLedgerQuery.isError && <p role="alert" className="mt-2 text-sm text-udhaar">Khata record nahi khula: {friendlyError(periodLedgerQuery.error)} <button type="button" onClick={() => void periodLedgerQuery.refetch()} className="underline">Dobara koshish</button></p>}
+        {periodLedgerQuery.data && <><p className="mt-2 text-sm text-muted">{periodLedgerQuery.data.length} entries mili hain.</p><div className="mt-3 flex flex-wrap gap-2"><button type="button" disabled={pdfBusy} onClick={() => void exportPeriodLedger("download")} className="min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem disabled:opacity-50">Khata PDF download</button><button type="button" disabled={pdfBusy} onClick={() => void exportPeriodLedger("share")} className="min-h-11 rounded-xl bg-berseem px-4 font-semibold text-white disabled:opacity-50">Khata PDF share karein</button></div></>}
+        {pdfTarget === "period" && pdfStatus && <p role={pdfStatus.startsWith("PDF nahi") ? "alert" : "status"} className="mt-2 text-sm text-berseem-deep">{pdfStatus}</p>}
       </Panel>
       {c.kind !== "cash" && c.kind !== "free" && <Panel title="Wusooli likhein">
         <form onSubmit={onPayment} className="grid gap-2">

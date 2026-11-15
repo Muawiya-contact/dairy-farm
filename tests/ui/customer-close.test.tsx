@@ -4,11 +4,16 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { farmMocks, fixtures, makeFarmData, renderWithQuery } from "./utils";
 import FarmCustomers from "@/components/FarmCustomers";
 
+const customerMocks = vi.hoisted(() => ({ loadCustomerPeriodLedger: vi.fn(), getCustomerPaymentAudit: vi.fn() }));
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams("id=customer-1") }));
+vi.mock("@/lib/reporting", async (original) => ({ ...(await original<typeof import("@/lib/reporting")>()), loadCustomerPeriodLedger: customerMocks.loadCustomerPeriodLedger }));
+vi.mock("@/lib/galla", async (original) => ({ ...(await original<typeof import("@/lib/galla")>()), getCustomerPaymentAudit: customerMocks.getCustomerPaymentAudit }));
 
 beforeEach(() => {
   farmMocks.updateCustomerProfile.mockResolvedValue(undefined);
   farmMocks.customerMonthReport.mockResolvedValue(null);
+  customerMocks.loadCustomerPeriodLedger.mockResolvedValue([]);
+  customerMocks.getCustomerPaymentAudit.mockResolvedValue([]);
   farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({
     customers: [{ ...fixtures.customer, id: "customer-1", kind: "regular", active: true, opening_date: "2026-01-01", phone: null, free_reason: null, sort_order: 0, is_local: false }],
     balances: [{ customer_id: "customer-1", balance: 500 }], payments: [], companyBills: [], reports: [],

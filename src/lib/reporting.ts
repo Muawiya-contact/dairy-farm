@@ -21,6 +21,11 @@ export type PeriodReport = {
   farmName: string;
 };
 
+export type CustomerPeriodLedgerLine = {
+  entry_date: string; entry_kind: string; detail: string; litres: number | null;
+  charge: number; credit: number; reference_id: string;
+};
+
 type ReportRpc = <T>(name: string, args: { p_from: string; p_to: string }) => Promise<{ data: T[] | null; error: Error | null }>;
 
 export function isReportDateRange(from: string, to: string, today: string): boolean {
@@ -54,4 +59,12 @@ export async function loadPeriodReport(from: string, to: string): Promise<Period
     customers: (customersResult.data ?? []).map((row) => ({ ...row, litres: Number(row.litres ?? 0), charged: Number(row.charged ?? 0), paid: Number(row.paid ?? 0), discount: Number(row.discount ?? 0), period_balance_change: Number(row.period_balance_change ?? 0) })) as PeriodCustomer[],
     expenses: (expensesResult.data ?? []).map((row) => ({ ...row, amount: Number(row.amount ?? 0) })) as PeriodExpense[],
   };
+}
+
+/** The customer detail page asks the database for only this customer's chosen range. */
+export async function loadCustomerPeriodLedger(customerId: string, from: string, to: string): Promise<CustomerPeriodLedgerLine[]> {
+  const rpc = getSupabase().rpc.bind(getSupabase()) as unknown as <T>(name: string, args: { p_customer: string; p_from: string; p_to: string }) => Promise<{ data: T[] | null; error: Error | null }>;
+  const { data, error } = await rpc<CustomerPeriodLedgerLine>("customer_period_ledger", { p_customer: customerId, p_from: from, p_to: to });
+  if (error) throw error;
+  return (data ?? []).map((row) => ({ ...row, litres: row.litres == null ? null : Number(row.litres), charge: Number(row.charge ?? 0), credit: Number(row.credit ?? 0) }));
 }

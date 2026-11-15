@@ -6,32 +6,32 @@ the client workbook's historical rows into staging.
 
 ## Delivery checklist
 
-- [ ] Add a dedicated **Reports aur PDF** page with day, month, year and custom
+- [x] Add a dedicated **Reports aur PDF** page with day, month, year and custom
   date-range controls.
-- [ ] Add a complete Khata ledger report: opening balance, milk charges,
+- [x] Add a complete Khata ledger report: opening balance, milk charges,
   payments, discounts, closing balance and chronological entries.
-- [ ] Keep direct customer bill/receipt actions in Khata and add a date-range
+- [x] Keep direct customer bill/receipt actions in Khata and add a date-range
   ledger PDF/download/share action.
-- [ ] Add a one-off local customer flow inside Doodh, not a separate navigation
+- [x] Add a one-off local customer flow inside Doodh, not a separate navigation
   page. It supports an occasional named cash sale or a free/gift distribution
   with a custom rate where money is charged.
-- [ ] Add a clear **Khairat / Muft doodh** shortcut. Its litres remain in milk
+- [x] Add a clear **Khairat / Muft doodh** shortcut. Its litres remain in milk
   distribution but its charge, customer balance, income and cash receipt stay
   zero.
-- [ ] Add an audited milk correction with a required reason. It must never let
+- [x] Add an audited milk correction with a required reason. It must never let
   deliveries exceed the corrected production or silently overwrite another
   session's change.
-- [ ] Add a close-customer confirmation which states any remaining balance and
+- [x] Add a close-customer confirmation which states any remaining balance and
   preserves all history.
-- [ ] Add daily expense PDF/download/share, including farm and home costs as
-  separate totals.
-- [ ] Add animal-wise insemination history/count report with PDF/download/share.
-- [ ] Add a monthly, yearly and custom-period management report inspired by the
+- [x] Add daily expense PDF/download/share, with each entry clearly identified
+  as farm, home or personal.
+- [x] Add animal-wise insemination history/count report with PDF/download/share.
+- [x] Add a monthly, yearly and custom-period management report inspired by the
   supplied workbook: milk, billed/paid amounts, receivables, income, farm and
   home costs, and profit/loss.
-- [ ] Keep all generated documents branded with the farm identity, Coding Moves
+- [x] Keep all generated documents branded with the farm identity, Coding Moves
   attribution, official contact details and a QR code for the Coding Moves site.
-- [ ] Add component/database tests for each write path and PDF data boundary.
+- [x] Add component/database tests for each write path and PDF data boundary.
 - [ ] Verify the staging Deploy Preview on desktop and phone-sized layouts,
   including download/share fallbacks.
 

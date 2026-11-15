@@ -16,6 +16,8 @@ const farmMocks = vi.hoisted(() => ({
   useFarmData: vi.fn(),
   saveMilkEntry: vi.fn(),
   correctMilkEntry: vi.fn(),
+  updateCustomerProfile: vi.fn(),
+  customerMonthReport: vi.fn(),
   closeAnimal: vi.fn(),
   updateAnimal: vi.fn(),
 }));

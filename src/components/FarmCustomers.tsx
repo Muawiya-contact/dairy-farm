@@ -14,7 +14,7 @@ import {
 } from "@/lib/farm-data";
 import {
   parseCompanyBill, parseCustomerPayment, parseCustomerProfile, parseCustomerRate, parseNewCustomer,
-  type CustomerKind,
+  type CustomerKind, type CustomerProfile,
 } from "@/lib/customer-forms";
 import {
   buildCustomerStatementPdf, buildPaymentReceiptPdf, documentFilename, receiptMessage,
@@ -29,6 +29,7 @@ import { Body, PageHeader, Panel } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
 import { PlusIcon } from "./icons";
 import { DateFormatHint } from "./DateFormatHint";
+import { ConfirmActionDialog } from "./ConfirmActionDialog";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 const freeReasons = {
@@ -51,6 +52,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
   const pendingShare = useRef<{ key: string; bytes: Uint8Array<ArrayBuffer> } | null>(null);
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [voidPaymentId, setVoidPaymentId] = useState<string | null>(null);
+  const [closePending, setClosePending] = useState(false);
   const paymentPending = useRef<{ id: string; signature: string } | null>(null);
   const discountPending = useRef<{ id: string; signature: string } | null>(null);
   useEffect(() => { void prepareCustomerPdf().catch(() => {}); }, []);
@@ -74,6 +76,15 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
     const values = new FormData(event.currentTarget);
     void save(() => updateCustomerProfile(c.id, parseCustomerProfile(values, c.kind)), "Customer ki maloomat save ho gayi.")
       .then((saved) => { if (saved) setEditing(false); });
+  };
+  const closeKhata = () => {
+    const profile: CustomerProfile = { name: c.name, phone: c.phone ?? "", morning: amount(c.default_morning), noon: amount(c.default_noon), evening: amount(c.default_evening), active: false, freeReason: c.free_reason };
+    void save(() => updateCustomerProfile(c.id, profile), "Khata band ho gaya. Purana record aur baqaya mehfooz hain.")
+      .then((saved) => { if (saved) setClosePending(false); });
+  };
+  const reopenKhata = () => {
+    const profile: CustomerProfile = { name: c.name, phone: c.phone ?? "", morning: amount(c.default_morning), noon: amount(c.default_noon), evening: amount(c.default_evening), active: true, freeReason: c.free_reason };
+    void save(() => updateCustomerProfile(c.id, profile), "Khata dobara Chalu ho gaya.");
   };
   const onPayment = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -189,14 +200,16 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setEditing(!editing)} className="min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem">{editing ? "Form band karein" : "Maloomat badlein"}</button>
           <Link href={`/history/?customer=${c.id}`} className="inline-flex min-h-11 items-center rounded-xl border border-line px-4 font-semibold">Purana record dekhein</Link>
+          {c.active ? <button type="button" onClick={() => setClosePending(true)} className="min-h-11 rounded-xl border border-udhaar px-4 font-semibold text-udhaar">Khata band karein</button>
+            : <button type="button" disabled={busy} onClick={reopenKhata} className="min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem disabled:opacity-50">Khata dobara Chalu karein</button>}
         </div>
         {editing && <form onSubmit={onProfile} className="mt-3 grid gap-2">
           <label className="text-sm font-semibold">Naam<input name="name" required defaultValue={c.name} className={field} /></label>
           <label className="text-sm font-semibold">Phone<input name="phone" type="tel" defaultValue={c.phone ?? ""} placeholder="03xxxxxxxxx (optional)" className={field} /></label>
           <div className="grid gap-2 sm:grid-cols-2"><label className="text-sm font-semibold">Subah (L)<input name="morning" type="number" min="0" max="5000" step="0.01" defaultValue={c.default_morning || ""} placeholder="Khali = 0" className={field} /></label>{noonEnabledOn(data.today, data.milkShiftConfig) ? <label className="text-sm font-semibold">Dopehr (L)<input name="noon" type="number" min="0" max="5000" step="0.01" defaultValue={c.default_noon || ""} placeholder="Khali = 0" className={field} /></label> : <input type="hidden" name="noon" value={c.default_noon} />}<label className="text-sm font-semibold">Shaam (L)<input name="evening" type="number" min="0" max="5000" step="0.01" defaultValue={c.default_evening || ""} placeholder="Khali = 0" className={field} /></label></div>
           {c.kind === "free" && <label className="text-sm font-semibold">Muft doodh ki wajah<select name="freeReason" defaultValue={c.free_reason ?? "other"} required className={field}>{Object.entries(freeReasons).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>}
-          <label className="flex items-center gap-2 text-sm font-semibold"><input name="active" type="checkbox" defaultChecked={c.active} /> Doodh entry mein active rakhein</label>
-          <p className="text-xs text-muted">Qism aur pichla baqaya badalne se purana hisaab badal sakta hai; yahan sirf rozmarra maloomat badlein.</p>
+          <input name="active" type="hidden" value={c.active ? "on" : ""} />
+          <p className="text-xs text-muted">Qism aur pichla baqaya badalne se purana hisaab badal sakta hai; yahan sirf rozmarra maloomat badlein. Khata band karne ka alag button upar hai.</p>
           <button disabled={busy} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50">Maloomat save karein</button>
         </form>}
       </Panel>
@@ -309,6 +322,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
       </Panel>
       {success && <p role="status" className="text-berseem-deep lg:col-span-2">{success}</p>}
       {error && <p role="alert" className="text-udhaar lg:col-span-2">Save nahi hua: {error}</p>}
+      {closePending && <ConfirmActionDialog title="Khata band karein?" message={balance > 0 ? `${money(balance)} abhi lena baqi hai. Khata band hone ke baad nayi doodh entry nahi hogi, lekin purana hisaab aur baqaya mehfooz rahenge.` : balance < 0 ? `Customer ka ${money(-balance)} advance hai. Khata band hone ke baad nayi doodh entry nahi hogi; purana hisaab mehfooz rahega.` : "Nayi doodh entry band ho jayegi. Purana hisaab mehfooz rahega."} confirmLabel="Khata band karein" busy={busy} onConfirm={closeKhata} onCancel={() => setClosePending(false)} />}
     </Body>
   </>;
 }

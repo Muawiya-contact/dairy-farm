@@ -17,6 +17,12 @@ test("a local cash buyer is retry-safe and a charity customer stays free", async
   expect(retry).toBe(first);
   expect((await db.query("select kind, is_local, opening_balance::text from customers where id = $1", [first])).rows)
     .toEqual([{ kind: "cash", is_local: true, opening_balance: "0.00" }]);
+  const reused = (await db.query<{ create_local_customer_once: string }>(
+    `select create_local_customer_once('00000000-0000-0000-0000-000000000444', 'Walk in', 'cash', '', 225, '2026-10-20', null)`,
+  )).rows[0].create_local_customer_once;
+  expect(reused).toBe(first);
+  expect((await db.query("select rate::text from customer_rates where customer_id = $1 and effective_from = '2026-10-20'", [first])).rows)
+    .toEqual([{ rate: "225.00" }]);
   await db.exec("select create_local_customer_once('00000000-0000-0000-0000-000000000442', 'Khairat', 'free', '', 0, '2026-10-20', 'charity')");
   expect((await db.query("select kind, free_reason, is_local from customers where name = 'Khairat'")).rows)
     .toEqual([{ kind: "free", free_reason: "charity", is_local: true }]);

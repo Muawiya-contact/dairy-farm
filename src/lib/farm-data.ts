@@ -27,7 +27,7 @@ export type Insemination = Database["public"]["Tables"]["inseminations"]["Row"];
 export type Calving = Database["public"]["Tables"]["calvings"]["Row"];
 export type CalvingOffspring = Database["public"]["Tables"]["calving_offspring"]["Row"];
 export type AnimalMilk = { id: string; shift_id: string; animal_id: string; litres: number };
-export type Customer = { id: string; name: string; phone: string | null; kind: CustomerKind; free_reason: FreeReason | null; default_morning: number; default_noon: number; default_evening: number; opening_balance: number; opening_date: string; active: boolean; sort_order: number };
+export type Customer = { id: string; name: string; phone: string | null; kind: CustomerKind; free_reason: FreeReason | null; default_morning: number; default_noon: number; default_evening: number; opening_balance: number; opening_date: string; active: boolean; is_local: boolean; sort_order: number };
 export type CustomerRate = { id: string; customer_id: string; rate: number; effective_from: string };
 export type MilkShift = { id: string; milk_date: string; shift: MilkShiftName; total_litres: number; mode: "total" | "per_animal"; notes: string | null; updated_at: string };
 export type MilkDelivery = { id: string; delivery_date: string; shift: MilkShiftName; customer_id: string; litres: number; rate: number | null; amount: number };
@@ -184,7 +184,14 @@ export function compareCustomers(a: Pick<Customer, "sort_order" | "name" | "id">
 export function milkShiftCustomers(data: Pick<FarmData, "customers" | "deliveries">, date: string, shift: MilkShiftName): Customer[] {
   const historical = new Set(data.deliveries.filter((row) => row.delivery_date === date && row.shift === shift).map((row) => row.customer_id));
   return data.customers.filter((customer) => historical.has(customer.id) ||
-    (customer.active && customer.opening_date <= date)).sort(compareCustomers);
+    (!customer.is_local && customer.active && customer.opening_date <= date)).sort(compareCustomers);
+}
+
+/** Walk-in buyers are kept out of standing defaults but stay visible after a saved delivery. */
+export function localMilkShiftCustomers(data: Pick<FarmData, "customers" | "deliveries">, date: string, shift: MilkShiftName): Customer[] {
+  const historical = new Set(data.deliveries.filter((row) => row.delivery_date === date && row.shift === shift).map((row) => row.customer_id));
+  return data.customers.filter((customer) => customer.is_local && (historical.has(customer.id) ||
+    (customer.active && customer.opening_date <= date))).sort(compareCustomers);
 }
 
 /** An old shift still needs animals that were milking then, even if they are now dry or sold. */
@@ -249,6 +256,16 @@ export async function createCustomer(input: NewCustomer, requestId: string) {
     p_free_reason: input.freeReason,
   });
   if (error) throw error;
+}
+
+export async function createLocalCustomer(input: { name: string; phone: string; kind: "cash" | "free"; rate: number; date: string; freeReason: FreeReason | null }, requestId: string): Promise<string> {
+  const { data, error } = await getSupabase().rpc("create_local_customer_once" as never, {
+    p_request_id: requestId, p_name: input.name, p_kind: input.kind, p_phone: input.phone,
+    p_rate: input.rate, p_opening_date: input.date, p_free_reason: input.freeReason,
+  } as never);
+  if (error) throw error;
+  if (!data) throw new Error("CUSTOMER_STALE");
+  return data as string;
 }
 
 export async function updateCustomerProfile(id: string, input: CustomerProfile): Promise<void> {

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import ExcelJS from "exceljs";
-import { buildPdf, buildXlsx, columnLabel, DATASETS, displayCell, offspringSummary, toCsv } from "../src/lib/export-data";
+import { buildPdf, buildPdfReport, buildXlsx, columnLabel, DATASETS, displayCell, offspringSummary, toCsv } from "../src/lib/export-data";
 
 beforeAll(() => vi.stubGlobal("fetch", async (url: string) =>
   url === "/brand/icon-192.png" || url === "/brand/coding-moves-services.png"
@@ -65,4 +65,17 @@ it("creates readable Excel and PDF exports, including an empty-table header", as
   expect(new TextDecoder().decode(pdf)).toContain("mailto:contact@codingmoves.com");
   const auditPdf = await buildPdf("Payment audit", ["before_row"], [{ before_row: { amount: 10 } }], "Saim Dairy Farm");
   expect(new TextDecoder().decode(auditPdf)).not.toContain("[object Object]");
+});
+
+it("keeps supporting customer and expense rows in a combined period PDF", async () => {
+  const pdf = await buildPdfReport("Farm report", [
+    { title: "Farm ka khulasa", columns: ["item", "value"], rows: [{ item: "Farm munafa", value: "Rs 500" }] },
+    { title: "Customer ka period hisaab", columns: ["name", "charged"], rows: [{ name: "Shoukat", charged: "Rs 1,200" }] },
+    { title: "Rozana kharchay", columns: ["expense_date", "amount"], rows: [{ expense_date: "2026-11-15", amount: "Rs 300" }] },
+  ], "Saim Dairy Farm");
+  const text = new TextDecoder().decode(pdf);
+  expect(text).toContain("Farm ka khulasa");
+  expect(text).toContain("Customer ka period hisaab");
+  expect(text).toContain("Rozana kharchay");
+  expect(text).toContain("Shoukat");
 });

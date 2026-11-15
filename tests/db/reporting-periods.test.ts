@@ -27,6 +27,11 @@ afterAll(async () => { await db?.close(); });
 test("period reports separate charity, billed sales, collections and farm costs", async () => {
   const row = (await db.query<Record<string, string>>("select * from report_period_summary('2026-10-10', '2026-10-10')")).rows[0];
   expect(row).toMatchObject({ produced: "10.00", delivered: "6.00", sold_litres: "4.00", free_litres: "2.00", milk_income: "600.00", cash_collected: "300.00", farm_expenses: "120.50", profit: "479.50" });
+  const customers = (await db.query<Record<string, string>>("select name, litres, charged, paid, discount, period_balance_change from report_period_customers('2026-10-10', '2026-10-10') order by name")).rows;
+  expect(customers).toEqual([
+    { name: "Buyer", litres: "4.00", charged: "600.00", paid: "300.00", discount: "0", period_balance_change: "300.00" },
+    { name: "Charity", litres: "2.00", charged: "0.00", paid: "0", discount: "0", period_balance_change: "0.00" },
+  ]);
 });
 
 test("period report and customer ledger reject invalid dates and preserve date order", async () => {

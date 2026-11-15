@@ -18,7 +18,6 @@ const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 function ShiftForm({ data, date, shift }: { data: FarmData; date: string; shift: MilkShiftName }) {
   const qc = useQueryClient();
   const existing = data.shifts.find((s) => s.milk_date === date && s.shift === shift);
-  const retainedNoon = shift === "noon" && !noonEnabledOn(date, data.milkShiftConfig) && !!existing;
   const active = milkShiftCustomers(data, date, shift);
   const localCustomers = localMilkShiftCustomers(data, date, shift);
   const visibleCustomers = [...active, ...localCustomers];

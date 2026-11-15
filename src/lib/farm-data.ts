@@ -27,7 +27,7 @@ export type Insemination = Database["public"]["Tables"]["inseminations"]["Row"];
 export type Calving = Database["public"]["Tables"]["calvings"]["Row"];
 export type CalvingOffspring = Database["public"]["Tables"]["calving_offspring"]["Row"];
 export type AnimalMilk = { id: string; shift_id: string; animal_id: string; litres: number };
-export type Customer = { id: string; name: string; phone: string | null; kind: CustomerKind; free_reason: FreeReason | null; default_morning: number; default_noon: number; default_evening: number; opening_balance: number; opening_date: string; active: boolean; sort_order: number };
+export type Customer = { id: string; name: string; phone: string | null; kind: CustomerKind; free_reason: FreeReason | null; default_morning: number; default_noon: number; default_evening: number; opening_balance: number; opening_date: string; active: boolean; is_local: boolean; sort_order: number };
 export type CustomerRate = { id: string; customer_id: string; rate: number; effective_from: string };
 export type MilkShift = { id: string; milk_date: string; shift: MilkShiftName; total_litres: number; mode: "total" | "per_animal"; notes: string | null; updated_at: string };
 export type MilkDelivery = { id: string; delivery_date: string; shift: MilkShiftName; customer_id: string; litres: number; rate: number | null; amount: number };
@@ -37,7 +37,8 @@ export type Expense = { id: string; expense_date: string; category_id: string; a
 export type Account = { id: string; name: string; kind: string; is_farm_cash: boolean; active: boolean; opening_date: string };
 export type CompanyBill = { id: string; customer_id: string; from_date: string; to_date: string; litres: number; amount: number };
 export type OtherIncome = { id: string; income_date: string; amount: number };
-export type CustomerReport = { customer_id: string; name: string; kind: string; litres: number; amount: number; previous_balance: number; paid: number; discount: number; balance: number };
+export type CustomerReport = { customer_id: string; name: string; kind: string; litres: number; amount: number; previous_balance: number; paid: number; discount: number; refund: number; balance: number };
+export type CustomerClosure = { id: string; closed_date: string; settlement_kind: "payment" | "discount" | "refund" | "zero"; amount: number; reason: string; payment_id: string | null; reopened_at: string | null };
 export type CustomerBalance = { customer_id: string; balance: number };
 export type HerdAlert = { alert_kind: string; severity: "overdue" | "today" | "soon" | "upcoming"; due_date: string; animal_id: string; tag: string; message: string; days_left: number };
 export type Pnl = { milk_income: number; other_income: number; total_income: number; farm_expenses: number; personal_expenses: number; profit: number };
@@ -184,7 +185,14 @@ export function compareCustomers(a: Pick<Customer, "sort_order" | "name" | "id">
 export function milkShiftCustomers(data: Pick<FarmData, "customers" | "deliveries">, date: string, shift: MilkShiftName): Customer[] {
   const historical = new Set(data.deliveries.filter((row) => row.delivery_date === date && row.shift === shift).map((row) => row.customer_id));
   return data.customers.filter((customer) => historical.has(customer.id) ||
-    (customer.active && customer.opening_date <= date)).sort(compareCustomers);
+    (!customer.is_local && customer.active && customer.opening_date <= date)).sort(compareCustomers);
+}
+
+/** Walk-in buyers are kept out of standing defaults but stay visible after a saved delivery. */
+export function localMilkShiftCustomers(data: Pick<FarmData, "customers" | "deliveries">, date: string, shift: MilkShiftName): Customer[] {
+  const historical = new Set(data.deliveries.filter((row) => row.delivery_date === date && row.shift === shift).map((row) => row.customer_id));
+  return data.customers.filter((customer) => customer.is_local && (historical.has(customer.id) ||
+    (customer.active && customer.opening_date <= date))).sort(compareCustomers);
 }
 
 /** An old shift still needs animals that were milking then, even if they are now dry or sold. */
@@ -210,6 +218,17 @@ export async function saveMilkEntry(input: { date: string; shift: MilkShiftName;
   if (error) throw error;
   if (!data) throw new Error("MILK_STALE");
   return data;
+}
+
+export async function correctMilkEntry(input: { date: string; shift: MilkShiftName; total: number; mode: "total" | "per_animal"; animals: { animal_id: string; litres: number }[]; deliveries: { customer_id: string; litres: number }[]; expectedUpdatedAt: string; notes: string; reason: string }) {
+  const { data, error } = await getSupabase().rpc("correct_milk_entry_checked" as never, {
+    p_date: input.date, p_shift: input.shift, p_total: input.total, p_mode: input.mode,
+    p_animals: input.animals, p_deliveries: input.deliveries,
+    p_expected_updated_at: input.expectedUpdatedAt, p_notes: input.notes, p_reason: input.reason,
+  } as never);
+  if (error) throw error;
+  if (!data) throw new Error("MILK_STALE");
+  return data as string;
 }
 
 type InsertValue<K extends Table> = K extends "inseminations"
@@ -251,6 +270,16 @@ export async function createCustomer(input: NewCustomer, requestId: string) {
   if (error) throw error;
 }
 
+export async function createLocalCustomer(input: { name: string; phone: string; kind: "cash" | "free"; rate: number; date: string; freeReason: FreeReason | null }, requestId: string): Promise<string> {
+  const { data, error } = await getSupabase().rpc("create_local_customer_once" as never, {
+    p_request_id: requestId, p_name: input.name, p_kind: input.kind, p_phone: input.phone,
+    p_rate: input.rate, p_opening_date: input.date, p_free_reason: input.freeReason,
+  } as never);
+  if (error) throw error;
+  if (!data) throw new Error("CUSTOMER_STALE");
+  return data as string;
+}
+
 export async function updateCustomerProfile(id: string, input: CustomerProfile): Promise<void> {
   const { data, error } = await getSupabase().from("customers").update({
     name: input.name, phone: input.phone || null,
@@ -259,6 +288,29 @@ export async function updateCustomerProfile(id: string, input: CustomerProfile):
   }).eq("id", id).select("id").maybeSingle();
   if (error) throw error;
   if (!data) throw new Error("CUSTOMER_STALE");
+}
+
+type SettlementAction = "payment" | "discount" | "refund" | "zero";
+export async function finalizeCustomerKhata(input: { customerId: string; action: SettlementAction; date: string; method: string | null; accountId: string | null; reason: string }) {
+  const { error } = await getSupabase().rpc("finalize_customer_khata" as never, {
+    p_customer: input.customerId, p_action: input.action, p_date: input.date,
+    p_method: input.method, p_account: input.accountId, p_reason: input.reason,
+  } as never);
+  if (error) throw error;
+}
+
+export async function reopenCustomerKhata(customerId: string) {
+  const { error } = await getSupabase().rpc("reopen_customer_khata" as never, { p_customer: customerId } as never);
+  if (error) throw error;
+}
+
+export async function getCustomerClosureHistory(customerId: string): Promise<CustomerClosure[]> {
+  const { data, error } = await getSupabase().rpc("customer_closure_history" as never, { p_customer: customerId } as never) as unknown as { data: unknown[] | null; error: Error | null };
+  if (error) throw error;
+  return (data ?? []).map((row: unknown) => {
+    const value = row as Record<string, unknown>;
+    return { ...value, amount: Number(value.amount ?? 0) } as CustomerClosure;
+  });
 }
 
 export async function recordCustomerPayment(customerId: string, input: CustomerPayment, id = crypto.randomUUID()): Promise<void> {
@@ -279,7 +331,7 @@ export async function customerMonthReport(customerId: string, month: string): Pr
   const { data, error } = await getSupabase().rpc("customer_month_report", { p_month: `${month}-01` })
     .eq("customer_id", customerId).maybeSingle();
   if (error) throw error;
-  return data;
+  return data as CustomerReport | null;
 }
 
 export async function saveCustomerRate(customerId: string, rate: number, effectiveFrom: string) {

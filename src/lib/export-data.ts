@@ -1,6 +1,6 @@
 import { getSupabase } from "./supabase";
 import type { Database } from "./database.types";
-import { addPdfDeveloperCredit, addPdfDeveloperEmail, addPdfDeveloperMark, loadPdfDeveloperLogo, loadPdfLogo } from "./pdf-brand";
+import { addPdfDeveloperCredit, addPdfDeveloperEmail, addPdfDeveloperMark, addPdfDeveloperQr, loadPdfDeveloperLogo, loadPdfDeveloperQr, loadPdfLogo } from "./pdf-brand";
 import { getSettings } from "./settings";
 
 type Table = keyof Database["public"]["Tables"];
@@ -14,7 +14,7 @@ export const DATASETS: { table: Table; label: string; key: string; columns: stri
   { table: "milk_shifts", label: "Doodh ki shifts", key: "id", columns: ["id", "milk_date", "shift", "total_litres", "mode", "notes", "created_at", "updated_at"] },
   { table: "animal_milk", label: "Har janwar ka doodh", key: "id", columns: ["id", "shift_id", "animal_id", "litres"] },
   { table: "milk_deliveries", label: "Doodh ki delivery", key: "id", columns: ["id", "delivery_date", "shift", "customer_id", "litres", "rate", "amount", "created_at"] },
-  { table: "customers", label: "Customers", key: "id", columns: ["id", "name", "phone", "kind", "free_reason", "default_morning", "default_noon", "default_evening", "opening_balance", "opening_date", "active", "sort_order", "notes", "created_at"] },
+  { table: "customers", label: "Customers", key: "id", columns: ["id", "name", "phone", "kind", "free_reason", "is_local", "default_morning", "default_noon", "default_evening", "opening_balance", "opening_date", "active", "sort_order", "notes", "created_at"] },
   { table: "customer_rates", label: "Doodh ke rate", key: "id", columns: ["id", "customer_id", "rate", "effective_from"] },
   { table: "company_bills", label: "Company bills", key: "id", columns: ["id", "customer_id", "from_date", "to_date", "litres", "amount", "notes", "created_at"] },
   { table: "payments", label: "Wusooli", key: "id", columns: ["id", "customer_id", "payment_date", "amount", "kind", "method", "account_id", "delivery_id", "note", "revision", "created_at"] },
@@ -35,7 +35,7 @@ export const DATASETS: { table: Table; label: string; key: string; columns: stri
 ];
 
 export const REPORTS = [
-  { name: "customer_month_report", label: "Customer ka maheena", columns: ["name", "kind", "litres", "amount", "previous_balance", "total", "paid", "discount", "balance"] },
+  { name: "customer_month_report", label: "Customer ka maheena", columns: ["name", "kind", "litres", "amount", "previous_balance", "total", "paid", "discount", "refund", "balance"] },
   { name: "expense_month_report", label: "Maheene ke kharchay", columns: ["label", "category", "staff_name", "is_farm_cost", "amount"] },
   { name: "milk_month_summary", label: "Doodh ka khulasa", columns: ["produced", "sold_litres", "free_litres", "delivered", "difference", "company_slip_litres"] },
   { name: "pnl_month", label: "Aamdani aur kharcha", columns: ["milk_income", "other_income", "total_income", "farm_expenses", "personal_expenses", "profit"] },
@@ -65,7 +65,7 @@ const COLUMN_LABELS: Record<string, string> = {
   exit_reason: "Ikhtitam ki wajah", birth_date: "Paidaish ki tareekh", breed: "Nasl",
   sex: "Jins", category: "Umar ka group", species: "Janwar ki qism",
   previous_balance: "Pichla baqaya (Rs)", total: "Kul raqam (Rs)", paid: "Ada shuda (Rs)",
-  discount: "Riayat (Rs)", balance: "Baqaya (Rs)", label: "Tafseel",
+  discount: "Riayat (Rs)", refund: "Advance wapas (Rs)", balance: "Baqaya (Rs)", label: "Tafseel",
   produced: "Paida hua doodh (L)", sold_litres: "Bikne wala doodh (L)",
   free_litres: "Muft doodh (L)", delivered: "Diya gaya doodh (L)",
   difference: "Farq", company_slip_litres: "Company parchi doodh (L)",
@@ -76,6 +76,9 @@ const COLUMN_LABELS: Record<string, string> = {
   salary_period_id: "Tankhwah maheena ID", salary_month: "Tankhwah ka maheena",
   agreed_amount: "Tay shuda tankhwah (Rs)",
   technician: "Technician", sort_order: "Tarteeb", kind: "Qism",
+  is_local: "Local customer", active: "Chalu",
+  item: "Mad", value: "Raqam", charged: "Charge (Rs)", period_balance_change: "Baqaya farq (Rs)",
+  expense_date: "Kharcha ki tareekh", account: "Account",
   contact_phone: "Farm contact number",
   counted_amount: "Gini hui cash (Rs)", expected_balance: "Hisaab ke mutabiq (Rs)",
   before_row: "Purani entry (JSON)", after_row: "Nayi entry (JSON)",
@@ -178,6 +181,12 @@ export function downloadBlob(filename: string, blob: Blob): void {
 
 export type ExportFormat = "csv" | "xlsx" | "pdf";
 
+export type PdfSection = {
+  title: string;
+  columns: string[];
+  rows: Record<string, unknown>[];
+};
+
 export async function buildXlsx(title: string, columns: string[], rows: Record<string, unknown>[]): Promise<Uint8Array<ArrayBuffer>> {
   const { default: ExcelJS } = await import("exceljs");
   const workbook = new ExcelJS.Workbook();
@@ -192,7 +201,16 @@ export async function buildXlsx(title: string, columns: string[], rows: Record<s
 }
 
 export async function buildPdf(title: string, columns: string[], rows: Record<string, unknown>[], farmName: string): Promise<Uint8Array<ArrayBuffer>> {
-  const [{ jsPDF }, { autoTable }, logo, developerLogo] = await Promise.all([import("jspdf"), import("jspdf-autotable"), loadPdfLogo(), loadPdfDeveloperLogo()]);
+  return buildPdfReport(title, [{ title, columns, rows }], farmName);
+}
+
+/**
+ * A single document can contain a financial summary followed by its supporting
+ * customer and expense rows. This keeps a shared period report auditable
+ * instead of presenting only headline totals.
+ */
+export async function buildPdfReport(title: string, sections: PdfSection[], farmName: string): Promise<Uint8Array<ArrayBuffer>> {
+  const [{ jsPDF }, { autoTable }, logo, developerLogo, developerQr] = await Promise.all([import("jspdf"), import("jspdf-autotable"), loadPdfLogo(), loadPdfDeveloperLogo(), loadPdfDeveloperQr()]);
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a3" });
   pdf.addImage(logo, "PNG", 10, 8, 16, 16);
   pdf.setFontSize(15);
@@ -204,26 +222,34 @@ export async function buildPdf(title: string, columns: string[], rows: Record<st
   addPdfDeveloperMark(pdf, developerLogo, 410, 7);
   pdf.setFontSize(9);
   pdf.setTextColor(0, 0, 0);
-  pdf.text(`${rows.length} entries`, 31, titleY + 6);
-  if (!rows.length) {
-    pdf.setFontSize(11);
-    pdf.setTextColor(90, 100, 93);
-    pdf.text("Is export mein koi record nahi mila.", 10, titleY + 16);
-  } else {
+  let cursorY = titleY + 9;
+  for (const section of sections) {
+    pdf.setFontSize(10);
+    pdf.setTextColor(0, 0, 0);
+    pdf.text(`${section.title} (${section.rows.length})`, 10, cursorY);
+    if (!section.rows.length) {
+      pdf.setFontSize(9);
+      pdf.setTextColor(90, 100, 93);
+      pdf.text("Is export mein koi record nahi mila.", 10, cursorY + 6);
+      cursorY += 14;
+      continue;
+    }
     autoTable(pdf, {
-      startY: titleY + 10, head: [columns.map((column) => columnLabel(column, title))],
-      body: rows.map((row) => columns.map((column) => displayCell(row[column]))),
+      startY: cursorY + 3, head: [section.columns.map((column) => columnLabel(column, section.title))],
+      body: section.rows.map((row) => section.columns.map((column) => displayCell(row[column]))),
       styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak" },
       headStyles: { fillColor: [45, 106, 57] },
       horizontalPageBreak: true, horizontalPageBreakRepeat: 0,
       margin: { top: 10, right: 10, bottom: 16, left: 10 },
     });
+    cursorY = ((pdf as typeof pdf & { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? cursorY) + 10;
   }
   const pages = pdf.getNumberOfPages();
   for (let page = 1; page <= pages; page++) {
     pdf.setPage(page);
     addPdfDeveloperCredit(pdf, 286, 420);
     addPdfDeveloperEmail(pdf, 291, 420);
+    addPdfDeveloperQr(pdf, developerQr, 401, 280, 10);
   }
   return new Uint8Array(pdf.output("arraybuffer"));
 }

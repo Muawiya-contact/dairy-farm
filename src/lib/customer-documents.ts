@@ -3,7 +3,7 @@ import type { FarmSettings } from "./settings";
 import { formatDay, formatMonth } from "./dates";
 import { downloadBlob } from "./export-data";
 import { installCustomerPdfFont } from "./customer-pdf-font";
-import { addPdfDeveloperCredit, addPdfDeveloperEmail, addPdfDeveloperMark, loadPdfDeveloperLogo, loadPdfLogo } from "./pdf-brand";
+import { addPdfDeveloperCredit, addPdfDeveloperEmail, addPdfDeveloperMark, addPdfDeveloperQr, loadPdfDeveloperLogo, loadPdfDeveloperQr, loadPdfLogo } from "./pdf-brand";
 import { SHIFT_LABELS } from "./milk-shifts";
 
 export type StatementLine = {
@@ -32,8 +32,8 @@ export function statementLines(data: Pick<FarmData, "deliveries" | "companyBills
       litres: numeric(row.litres), charge: numeric(row.amount), credit: 0,
     })),
     ...data.payments.filter((row) => row.customer_id === customerId && within(row.payment_date)).map((row) => ({
-      id: row.id, date: row.payment_date, detail: row.kind === "discount" ? "Riayat" : "Wusooli",
-      litres: null, charge: 0, credit: numeric(row.amount),
+      id: row.id, date: row.payment_date, detail: row.kind === "discount" ? "Riayat" : row.kind === "refund" ? "Customer advance wapas" : "Wusooli",
+      litres: null, charge: 0, credit: row.kind === "refund" ? -numeric(row.amount) : numeric(row.amount),
     })),
   ].sort((a, b) => a.date.localeCompare(b.date)
     || shiftRank(a.detail) - shiftRank(b.detail) || a.id.localeCompare(b.id));
@@ -53,6 +53,7 @@ export function statementMessage(farm: FarmSettings, customer: Customer, month: 
     `Doodh / parchi ki raqam: ${textMoney(numeric(report.amount))}`,
     `Wusooli: ${textMoney(numeric(report.paid))}`,
     `Riayat: ${textMoney(numeric(report.discount))}`,
+    numeric(report.refund) ? `Advance wapas: ${textMoney(numeric(report.refund))}` : "",
     balanceLabel(numeric(report.balance)), farm.whatsapp_footer,
   ].filter(Boolean).join("\n");
 }
@@ -73,7 +74,7 @@ type Pdf = InstanceType<typeof import("jspdf").jsPDF>;
 /** Warm the PDF code and fonts so a later user click can reach the native share sheet promptly. */
 export async function prepareCustomerPdf(): Promise<void> {
   const [{ jsPDF }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
-  await Promise.all([installCustomerPdfFont(new jsPDF()), loadPdfLogo(), loadPdfDeveloperLogo()]);
+  await Promise.all([installCustomerPdfFont(new jsPDF()), loadPdfLogo(), loadPdfDeveloperLogo(), loadPdfDeveloperQr()]);
 }
 
 function drawHeader(pdf: Pdf, farm: FarmSettings, documentTitle: string, logo: Uint8Array<ArrayBuffer>, developerLogo: Uint8Array<ArrayBuffer>): number {
@@ -95,11 +96,12 @@ function drawHeader(pdf: Pdf, farm: FarmSettings, documentTitle: string, logo: U
   return y + 3;
 }
 
-function addFooters(pdf: Pdf, farmName: string) {
+function addFooters(pdf: Pdf, farmName: string, developerQr: string) {
   const pages = pdf.getNumberOfPages();
   for (let page = 1; page <= pages; page++) {
     pdf.setPage(page); pdf.setFontSize(8); pdf.setTextColor(90, 100, 93);
     pdf.text(farmName, 14, 288);
+    addPdfDeveloperQr(pdf, developerQr, 14, 274, 10);
     addPdfDeveloperCredit(pdf, 284, 210);
     addPdfDeveloperEmail(pdf, 292, 210);
     pdf.text(`Page ${page}/${pages}`, 196, 288, { align: "right" });
@@ -111,7 +113,7 @@ export async function buildCustomerStatementPdf(input: {
 }): Promise<Uint8Array<ArrayBuffer>> {
   const [{ jsPDF }, { autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
-  const [, logo, developerLogo] = await Promise.all([installCustomerPdfFont(pdf), loadPdfLogo(), loadPdfDeveloperLogo()]);
+  const [, logo, developerLogo, developerQr] = await Promise.all([installCustomerPdfFont(pdf), loadPdfLogo(), loadPdfDeveloperLogo(), loadPdfDeveloperQr()]);
   pdf.setProperties({ title: `${input.customer.name} - ${input.month} ka bill` });
   let y = drawHeader(pdf, input.farm, "Customer ka maheena - tafseeli bill", logo, developerLogo);
   pdf.setFontSize(11); pdf.setFont("OpenSans", "bold");
@@ -138,6 +140,7 @@ export async function buildCustomerStatementPdf(input: {
     ["Is maheene ki raqam", numeric(input.report.amount)],
     ["Wusooli", numeric(input.report.paid)],
     ["Riayat", numeric(input.report.discount)],
+    ["Advance wapas", numeric(input.report.refund)],
   ];
   pdf.setFontSize(10); pdf.setFont("OpenSans", "normal");
   for (const [label, value] of summary) {
@@ -154,7 +157,7 @@ export async function buildCustomerStatementPdf(input: {
     pdf.setFont("OpenSans", "normal"); pdf.setFontSize(8);
     pdf.text(footerLines, 14, footerY);
   }
-  addFooters(pdf, input.farm.farm_name);
+  addFooters(pdf, input.farm.farm_name, developerQr);
   return new Uint8Array(pdf.output("arraybuffer"));
 }
 
@@ -163,7 +166,7 @@ export async function buildPaymentReceiptPdf(input: {
 }): Promise<Uint8Array<ArrayBuffer>> {
   const { jsPDF } = await import("jspdf");
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
-  const [, logo, developerLogo] = await Promise.all([installCustomerPdfFont(pdf), loadPdfLogo(), loadPdfDeveloperLogo()]);
+  const [, logo, developerLogo, developerQr] = await Promise.all([installCustomerPdfFont(pdf), loadPdfLogo(), loadPdfDeveloperLogo(), loadPdfDeveloperQr()]);
   pdf.setProperties({ title: `${input.customer.name} - wusooli receipt` });
   let y = drawHeader(pdf, input.farm, "Wusooli ki receipt", logo, developerLogo);
   pdf.setFont("OpenSans", "normal"); pdf.setFontSize(10);
@@ -179,7 +182,7 @@ export async function buildPaymentReceiptPdf(input: {
   pdf.text(`Receipt reference: ${input.payment.id}`, 14, y); y += 10;
   pdf.text("Yeh receipt sirf upar likhi hui wusooli ki tasdeeq hai.", 14, y);
   if (input.farm.whatsapp_footer) pdf.text(pdf.splitTextToSize(input.farm.whatsapp_footer, 180), 14, y + 12);
-  addFooters(pdf, input.farm.farm_name);
+  addFooters(pdf, input.farm.farm_name, developerQr);
   return new Uint8Array(pdf.output("arraybuffer"));
 }
 

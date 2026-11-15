@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { animalMilkRows, fillCompanyMilk, milkLitres, remainingMilk, sumMilkLitres } from "../src/lib/milk-entry";
 import { litres } from "../src/lib/format";
+import { localMilkShiftCustomers, milkShiftCustomers } from "../src/lib/farm-data";
 
 describe("daily milk entry quantities", () => {
   it("accepts exact hundredths for animals and customers", () => {
@@ -30,5 +31,14 @@ describe("daily milk entry quantities", () => {
   it("does not create animal rows for blank or zero values on a backdated shift", () => {
     expect(animalMilkRows([{ id: "old" }, { id: "new" }, { id: "dry" }],
       { old: "0.25", new: "", dry: "0" })).toEqual([{ animal_id: "old", litres: 0.25 }]);
+  });
+  it("keeps infrequent local customers out of standing defaults while retaining saved history", () => {
+    const customers = [
+      { id: "standing", name: "Standing", active: true, opening_date: "2026-01-01", sort_order: 0, is_local: false },
+      { id: "walk-in", name: "Walk in", active: true, opening_date: "2026-01-01", sort_order: 0, is_local: true },
+    ];
+    expect(milkShiftCustomers({ customers, deliveries: [] } as never, "2026-10-10", "morning").map((row) => row.id)).toEqual(["standing"]);
+    expect(localMilkShiftCustomers({ customers, deliveries: [] } as never, "2026-10-10", "morning").map((row) => row.id)).toEqual(["walk-in"]);
+    expect(milkShiftCustomers({ customers: customers.map((row) => ({ ...row, active: false })), deliveries: [{ customer_id: "walk-in", delivery_date: "2026-10-10", shift: "morning" }] } as never, "2026-10-10", "morning").map((row) => row.id)).toEqual(["walk-in"]);
   });
 });

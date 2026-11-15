@@ -11,6 +11,7 @@ export type NewCustomer = {
 export type CustomerProfile = { name: string; phone: string; morning: number; noon: number; evening: number; active: boolean; freeReason: FreeReason | null };
 export type CustomerPayment = { date: string; amount: number; method: string; accountId: string };
 export type CustomerCompanyBill = { from: string; to: string; litres: number; amount: number };
+export type CustomerSettlement = { action: "payment" | "discount" | "refund" | "zero"; date: string; method: string | null; accountId: string | null; reason: string };
 
 const MONEY_MAX = 9_999_999_999.99;
 const RATE_MAX = 99_999_999.99;
@@ -94,6 +95,23 @@ export function parseCustomerPayment(form: FormData, today: string, openingDate?
     amount: decimal(form, "amount", "Wusooli", { required: true, min: 0.01 }),
     method, accountId,
   };
+}
+
+export function parseCustomerSettlement(form: FormData, today: string, openingDate: string, balance: number): CustomerSettlement {
+  const action = balance > 0 ? text(form, "action") : balance < 0 ? "refund" : "zero";
+  if (!(["payment", "discount"].includes(action) && balance > 0) && !(action === "refund" && balance < 0) && !(action === "zero" && balance === 0)) {
+    throw new RangeError("Khata ka aakhri tareeqa aur baqaya mail nahi khata.");
+  }
+  const date = day(form, "date", "Khata band ki tareekh", today);
+  if (date < openingDate) throw new RangeError("Khata band ki tareekh customer ke pichle hisaab se pehle nahi ho sakti.");
+  const reason = text(form, "reason");
+  if (reason.length < 3 || reason.length > 500) throw new RangeError("Khata band karne ki wajah 3 se 500 harf tak likhein.");
+  if (action === "discount" || action === "zero") return { action, date, method: null, accountId: null, reason };
+  const method = text(form, "method"); const accountId = text(form, "account");
+  if (!(["cash", "bank", "easypaisa", "jazzcash", "cheque"].includes(method)) || !accountId) {
+    throw new RangeError(action === "refund" ? "Advance wapas karne ka tareeqa aur account chunein." : "Wusooli ka tareeqa aur account chunein.");
+  }
+  return { action: action as "payment" | "discount" | "refund", date, method, accountId, reason };
 }
 
 export function parseCustomerRate(form: FormData, today: string, openingDate: string) {

@@ -17,8 +17,9 @@ beforeAll(async () => {
 afterAll(async () => { await db?.close(); });
 
 test("milk correction snapshots the old and new entry without double-posting a delivery", async () => {
-  await db.query(`select public.correct_milk_entry_checked('2026-10-20', 'morning', 9, 'total', '[]',
+  const corrected = await db.query<{ correct_milk_entry_checked: string }>(`select public.correct_milk_entry_checked('2026-10-20', 'morning', 9, 'total', '[]',
     jsonb_build_array(jsonb_build_object('customer_id', (select id from customers), 'litres', 4)), $1, '', '10 L se 9 L durust')`, [version]);
+  version = corrected.rows[0].correct_milk_entry_checked;
   expect((await db.query("select total_litres::text from milk_shifts where milk_date = '2026-10-20'")).rows).toEqual([{ total_litres: "9.00" }]);
   expect((await db.query("select count(*)::int as count from milk_deliveries where delivery_date = '2026-10-20'")).rows).toEqual([{ count: 1 }]);
   const audit = (await db.query<{ reason: string; before_total: string; after_total: string }>(`
@@ -28,10 +29,9 @@ test("milk correction snapshots the old and new entry without double-posting a d
 });
 
 test("a correction cannot exceed corrected production or omit its reason", async () => {
-  const current = (await db.query<{ updated_at: string }>("select updated_at from milk_shifts where milk_date = '2026-10-20'" )).rows[0].updated_at;
   await expect(db.query(`select public.correct_milk_entry_checked('2026-10-20', 'morning', 3, 'total', '[]',
-    jsonb_build_array(jsonb_build_object('customer_id', (select id from customers), 'litres', 4)), $1, '', 'too low')`, [current]))
+    jsonb_build_array(jsonb_build_object('customer_id', (select id from customers), 'litres', 4)), $1, '', 'too low')`, [version]))
     .rejects.toThrow(/diya gaya doodh kul miktar se zyada/i);
   await expect(db.query(`select public.correct_milk_entry_checked('2026-10-20', 'morning', 9, 'total', '[]',
-    '[]', $1, '', '')`, [current])).rejects.toThrow("MILK_CORRECTION_REASON");
+    '[]', $1, '', '')`, [version])).rejects.toThrow("MILK_CORRECTION_REASON");
 });

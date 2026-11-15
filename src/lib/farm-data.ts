@@ -219,6 +219,17 @@ export async function saveMilkEntry(input: { date: string; shift: MilkShiftName;
   return data;
 }
 
+export async function correctMilkEntry(input: { date: string; shift: MilkShiftName; total: number; mode: "total" | "per_animal"; animals: { animal_id: string; litres: number }[]; deliveries: { customer_id: string; litres: number }[]; expectedUpdatedAt: string; notes: string; reason: string }) {
+  const { data, error } = await getSupabase().rpc("correct_milk_entry_checked" as never, {
+    p_date: input.date, p_shift: input.shift, p_total: input.total, p_mode: input.mode,
+    p_animals: input.animals, p_deliveries: input.deliveries,
+    p_expected_updated_at: input.expectedUpdatedAt, p_notes: input.notes, p_reason: input.reason,
+  } as never);
+  if (error) throw error;
+  if (!data) throw new Error("MILK_STALE");
+  return data as string;
+}
+
 type InsertValue<K extends Table> = K extends "inseminations"
   ? Omit<Database["public"]["Tables"]["inseminations"]["Insert"], "calving_due" | "checkup_due" | "dry_off_due" | "ultrasound_due">
   : Database["public"]["Tables"][K]["Insert"];

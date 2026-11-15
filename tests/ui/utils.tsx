@@ -15,6 +15,12 @@ const fixtures = vi.hoisted(() => ({
 const farmMocks = vi.hoisted(() => ({
   useFarmData: vi.fn(),
   saveMilkEntry: vi.fn(),
+  correctMilkEntry: vi.fn(),
+  updateCustomerProfile: vi.fn(),
+  finalizeCustomerKhata: vi.fn(),
+  reopenCustomerKhata: vi.fn(),
+  getCustomerClosureHistory: vi.fn(),
+  customerMonthReport: vi.fn(),
   closeAnimal: vi.fn(),
   updateAnimal: vi.fn(),
 }));

@@ -10,6 +10,7 @@ import { money, shortDate } from "@/lib/farm-data";
 import { listOtherIncome, parseOtherIncome, recordOtherIncome } from "@/lib/other-income";
 import { Body, PageHeader, Panel } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
+import { DateFormatHint } from "./DateFormatHint";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 
@@ -64,7 +65,7 @@ export default function FarmIncome() {
         {success && <p role="status" className="mt-3 text-sm text-berseem">{success}</p>}
         {error && <p role="alert" className="mt-3 text-sm text-udhaar">Save nahi hua: {error} Agar connection toot gaya ho to dobara save se pehle list dekhein.</p>}
       </Panel>
-      <Panel title="Aamdani ka register"><label className="text-sm">Maheena<input type="month" max={today.slice(0, 7)} value={month} onChange={(event) => setMonth(event.target.value)} className={field} /></label>
+      <Panel title="Aamdani ka register"><label className="text-sm">Maheena<input type="month" max={today.slice(0, 7)} value={month} onChange={(event) => setMonth(event.target.value)} className={`${field} block`} /><DateFormatHint kind="month" /></label>
         {entries.isLoading && <p className="mt-3 text-sm text-muted">Record khul raha hai…</p>}
         {entries.error && <p role="alert" className="mt-3 text-sm text-udhaar">Record nahi khula: {friendlyError(entries.error)} <button onClick={() => void entries.refetch()} className="underline">Dobara koshish</button></p>}
         <ul className="mt-3 divide-y divide-line">{entries.data && [...entries.data].sort((a, b) => b.income_date.localeCompare(a.income_date)).map((entry) => <li key={entry.id} className="flex flex-wrap justify-between gap-2 py-3 text-sm"><span><strong>{entry.kind === "animal_sale" ? "Janwar farokht" : entry.kind === "manure" ? "Gobar" : "Doosri aamdani"}</strong><span className="block text-muted">{shortDate(entry.income_date)} · {accounts.data.find((account) => account.id === entry.account_id)?.name ?? "Account"}{entry.note ? ` · ${entry.note}` : ""}</span></span><strong>{money(entry.amount)}</strong></li>)}{entries.data?.length === 0 && <li className="py-3 text-sm text-muted">Is maheene koi doosri aamdani nahi.</li>}</ul>

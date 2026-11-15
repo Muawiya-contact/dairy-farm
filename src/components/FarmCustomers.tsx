@@ -8,12 +8,12 @@ import { UI_TEXT } from "@/lib/text";
 import { noonEnabledOn } from "@/lib/milk-shifts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  amount, createCustomer, customerMonthReport, customerRate, insertRow, money, recordCustomerPayment,
-  saveCustomerRate, updateCustomerProfile,
+  amount, createCustomer, customerMonthReport, customerRate, finalizeCustomerKhata, getCustomerClosureHistory, insertRow, money, recordCustomerPayment,
+  reopenCustomerKhata, saveCustomerRate, updateCustomerProfile,
   shortDate, useFarmData, compareCustomers, type Customer, type FarmData,
 } from "@/lib/farm-data";
 import {
-  parseCompanyBill, parseCustomerPayment, parseCustomerProfile, parseCustomerRate, parseNewCustomer,
+  parseCompanyBill, parseCustomerPayment, parseCustomerProfile, parseCustomerRate, parseCustomerSettlement, parseNewCustomer,
   type CustomerKind,
 } from "@/lib/customer-forms";
 import {
@@ -21,13 +21,16 @@ import {
   prepareCustomerPdf, shareCustomerPdf, statementLines, statementMessage,
 } from "@/lib/customer-documents";
 import { whatsappChatUrl, whatsappNumber } from "@/lib/phone";
-import { downloadBlob } from "@/lib/export-data";
+import { buildPdf, downloadBlob } from "@/lib/export-data";
 import { addDays, formatMonth } from "@/lib/dates";
+import { isReportDateRange, loadCustomerPeriodLedger } from "@/lib/reporting";
 import { correctPayment, getCustomerPaymentAudit, recordDiscount, voidPayment } from "@/lib/galla";
 import { parseDiscount, parsePaymentCorrection, parseVoidReason } from "@/lib/galla-forms";
 import { Body, PageHeader, Panel } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
 import { PlusIcon } from "./icons";
+import { DateFormatHint } from "./DateFormatHint";
+import { ConfirmActionDialog } from "./ConfirmActionDialog";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 const freeReasons = {
@@ -41,7 +44,10 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
 }) {
   const c = customer;
   const [month, setMonth] = useState(data.today.slice(0, 7));
+  const [periodFrom, setPeriodFrom] = useState(`${data.today.slice(0, 7)}-01`);
+  const [periodTo, setPeriodTo] = useState(data.today);
   const validMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(month) && month <= data.today.slice(0, 7);
+  const validPeriod = isReportDateRange(periodFrom, periodTo, data.today);
   const [editing, setEditing] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfStatus, setPdfStatus] = useState("");
@@ -50,6 +56,9 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
   const pendingShare = useRef<{ key: string; bytes: Uint8Array<ArrayBuffer> } | null>(null);
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [voidPaymentId, setVoidPaymentId] = useState<string | null>(null);
+  const [closePending, setClosePending] = useState(false);
+  const [pendingSettlement, setPendingSettlement] = useState<ReturnType<typeof parseCustomerSettlement> | null>(null);
+  const [settlementAction, setSettlementAction] = useState<"payment" | "discount">("payment");
   const paymentPending = useRef<{ id: string; signature: string } | null>(null);
   const discountPending = useRef<{ id: string; signature: string } | null>(null);
   useEffect(() => { void prepareCustomerPdf().catch(() => {}); }, []);
@@ -58,7 +67,13 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
     queryFn: () => customerMonthReport(c.id, month),
     enabled: validMonth,
   });
+  const periodLedgerQuery = useQuery({
+    queryKey: ["customer-period-ledger", c.id, periodFrom, periodTo],
+    queryFn: () => loadCustomerPeriodLedger(c.id, periodFrom, periodTo),
+    enabled: validPeriod,
+  });
   const auditQuery = useQuery({ queryKey: ["payment-audit", c.id], queryFn: () => getCustomerPaymentAudit(c.id) });
+  const closureQuery = useQuery({ queryKey: ["customer-closures", c.id], queryFn: () => getCustomerClosureHistory(c.id) });
   const balance = amount(data.balances.find((x) => x.customer_id === c.id)?.balance);
   const report = reportQuery.data;
   useEffect(() => { pendingShare.current = null; }, [data, month, report]);
@@ -73,6 +88,21 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
     const values = new FormData(event.currentTarget);
     void save(() => updateCustomerProfile(c.id, parseCustomerProfile(values, c.kind)), "Customer ki maloomat save ho gayi.")
       .then((saved) => { if (saved) setEditing(false); });
+  };
+  const closeKhata = () => {
+    if (!pendingSettlement) return;
+    void save(() => finalizeCustomerKhata({ customerId: c.id, ...pendingSettlement }),
+      pendingSettlement.action === "refund" ? "Advance wapas kar ke Khata band ho gaya." : "Aakhri hisaab record ho gaya aur Khata band ho gaya.")
+      .then((saved) => { if (saved) { setClosePending(false); setPendingSettlement(null); void closureQuery.refetch(); } });
+  };
+  const reopenKhata = () => {
+    void save(() => reopenCustomerKhata(c.id), "Khata dobara Chalu ho gaya. Ab aakhri settlement bhi zarurat par durust ho sakta hai.")
+      .then((saved) => { if (saved) void closureQuery.refetch(); });
+  };
+  const onCloseKhata = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    try { setPendingSettlement(parseCustomerSettlement(new FormData(event.currentTarget), data.today, c.opening_date, balance)); setClosePending(true); }
+    catch (issue) { void save(async () => { throw issue; }, ""); }
   };
   const onPayment = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -176,6 +206,26 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
     } catch (issue) { setPdfStatus(`PDF nahi bana: ${friendlyError(issue)}`); }
     finally { pdfBusyRef.current = false; setPdfBusy(false); }
   };
+  const exportPeriodLedger = async (action: "download" | "share") => {
+    if (pdfBusyRef.current || !periodLedgerQuery.data) return;
+    pdfBusyRef.current = true; setPdfTarget("period"); setPdfBusy(true); setPdfStatus("PDF tayyar ho raha hai…");
+    try {
+      const rows = periodLedgerQuery.data.map((line) => ({
+        entry_date: line.entry_date, detail: line.detail, litres: line.litres == null ? "" : line.litres,
+        charge: line.charge ? money(line.charge) : "", credit: line.credit ? money(line.credit) : "",
+      }));
+      const bytes = await buildPdf(`${c.name} ka khata — ${periodFrom} se ${periodTo}`, ["entry_date", "detail", "litres", "charge", "credit"], rows, data.settings.farm_name);
+      const filename = `khata-${c.name.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "customer"}-${periodFrom}-to-${periodTo}.pdf`;
+      if (action === "download") {
+        downloadBlob(filename, new Blob([bytes], { type: "application/pdf" }));
+        setPdfStatus("Khata ki PDF download ho gayi.");
+      } else {
+        const outcome = await shareCustomerPdf(filename, bytes, `${data.settings.farm_name} — ${c.name} ka khata`, `${periodFrom} se ${periodTo} ka khata.`);
+        setPdfStatus(outcome === "shared" ? "Share sheet khul gayi. File aur recipient check karke Send karein." : outcome === "cancelled" ? "Share cancel ho gaya." : "Is browser mein file share available nahi; PDF download ho gayi.");
+      }
+    } catch (issue) { setPdfStatus(`PDF nahi bana: ${friendlyError(issue)}`); }
+    finally { pdfBusyRef.current = false; setPdfBusy(false); }
+  };
 
   return <>
     <PageHeader title={c.name} sub={`${c.active ? UI_TEXT.active : "Band"} · ${c.kind === "free" ? `Muft: ${freeReasons[c.free_reason ?? "other"]} · ` : ""}${c.phone || "Phone darj nahi"} · Subah ${amount(c.default_morning)} L · Dopehr ${amount(c.default_noon)} L · Shaam ${amount(c.default_evening)} L${rate ? ` · ${money(rate)}/L` : ""}`} back="/khata/" />
@@ -188,26 +238,42 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setEditing(!editing)} className="min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem">{editing ? "Form band karein" : "Maloomat badlein"}</button>
           <Link href={`/history/?customer=${c.id}`} className="inline-flex min-h-11 items-center rounded-xl border border-line px-4 font-semibold">Purana record dekhein</Link>
+          {c.active ? <a href="#aakhri-hisaab" className="inline-flex min-h-11 items-center rounded-xl border border-udhaar px-4 font-semibold text-udhaar">Khata band karein</a>
+            : <button type="button" disabled={busy} onClick={reopenKhata} className="min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem disabled:opacity-50">Khata dobara Chalu karein</button>}
         </div>
         {editing && <form onSubmit={onProfile} className="mt-3 grid gap-2">
           <label className="text-sm font-semibold">Naam<input name="name" required defaultValue={c.name} className={field} /></label>
           <label className="text-sm font-semibold">Phone<input name="phone" type="tel" defaultValue={c.phone ?? ""} placeholder="03xxxxxxxxx (optional)" className={field} /></label>
           <div className="grid gap-2 sm:grid-cols-2"><label className="text-sm font-semibold">Subah (L)<input name="morning" type="number" min="0" max="5000" step="0.01" defaultValue={c.default_morning || ""} placeholder="Khali = 0" className={field} /></label>{noonEnabledOn(data.today, data.milkShiftConfig) ? <label className="text-sm font-semibold">Dopehr (L)<input name="noon" type="number" min="0" max="5000" step="0.01" defaultValue={c.default_noon || ""} placeholder="Khali = 0" className={field} /></label> : <input type="hidden" name="noon" value={c.default_noon} />}<label className="text-sm font-semibold">Shaam (L)<input name="evening" type="number" min="0" max="5000" step="0.01" defaultValue={c.default_evening || ""} placeholder="Khali = 0" className={field} /></label></div>
           {c.kind === "free" && <label className="text-sm font-semibold">Muft doodh ki wajah<select name="freeReason" defaultValue={c.free_reason ?? "other"} required className={field}>{Object.entries(freeReasons).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>}
-          <label className="flex items-center gap-2 text-sm font-semibold"><input name="active" type="checkbox" defaultChecked={c.active} /> Doodh entry mein active rakhein</label>
-          <p className="text-xs text-muted">Qism aur pichla baqaya badalne se purana hisaab badal sakta hai; yahan sirf rozmarra maloomat badlein.</p>
+          <input name="active" type="hidden" value={c.active ? "on" : ""} />
+          <p className="text-xs text-muted">Qism aur pichla baqaya badalne se purana hisaab badal sakta hai; yahan sirf rozmarra maloomat badlein. Khata band karne ka alag button upar hai.</p>
           <button disabled={busy} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50">Maloomat save karein</button>
         </form>}
       </Panel>
+      {c.active && <div id="aakhri-hisaab" className="lg:col-span-2"><Panel title="Khata ka aakhri hisaab">
+        <p className="mb-3 text-sm text-muted">Khata band karne se pehle poora baqaya isi entry mein record hoga. Purani doodh aur wusooli entries mehfooz rehti hain.</p>
+        <form onSubmit={onCloseKhata} className="grid gap-3 sm:grid-cols-2">
+          {balance > 0 && <label className="text-sm font-semibold">Aakhri tareeqa<select name="action" value={settlementAction} onChange={(event) => setSettlementAction(event.target.value as "payment" | "discount")} className={`${field} mt-1`}><option value="payment">Wusooli le kar band karein</option><option value="discount">Riayat likh kar band karein</option></select></label>}
+          {balance < 0 && <p className="rounded-xl bg-ground p-3 text-sm sm:col-span-2">Customer ka {money(-balance)} advance hai. Khata band karne se pehle yeh raqam wapas record hogi.</p>}
+          {balance === 0 && <p className="rounded-xl bg-ground p-3 text-sm sm:col-span-2">Hisaab saaf hai; sirf band karne ki wajah likhein.</p>}
+          {(balance !== 0) && <p className="rounded-xl bg-ground p-3 text-sm font-semibold sm:col-span-2">Aakhri raqam: {money(Math.abs(balance))}</p>}
+          {(balance < 0 || (balance > 0 && settlementAction === "payment")) && <><label className="text-sm font-semibold">Tareeqa<select name="method" aria-label="Aakhri tareeqa account" defaultValue="cash" className={`${field} mt-1`}><option value="cash">Cash</option><option value="bank">Bank</option><option value="easypaisa">Easypaisa</option><option value="jazzcash">JazzCash</option><option value="cheque">Cheque</option></select></label><label className="text-sm font-semibold">Account<select name="account" aria-label="Aakhri account" required defaultValue="" className={`${field} mt-1`}><option value="" disabled>Account chunein</option>{activeAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label></>}
+          <label className="text-sm font-semibold">Band karne ki tareekh<input name="date" type="date" min={c.opening_date} max={data.today} defaultValue={data.today} required className={`${field} mt-1`} /></label>
+          <label className="text-sm font-semibold">Wajah<input name="reason" required minLength={3} maxLength={500} placeholder="Misal: customer ka Khata mukammal ho gaya" className={`${field} mt-1`} /></label>
+          <button disabled={busy || ((balance < 0 || (balance > 0 && settlementAction === "payment")) && !activeAccounts.length)} className="min-h-11 rounded-xl bg-udhaar px-4 font-bold text-white disabled:opacity-50 sm:col-span-2">Aakhri hisaab check karke Khata band karein</button>
+        </form>
+        {closureQuery.data?.length ? <ul className="mt-4 divide-y divide-line border-t border-line text-sm"><li className="py-2 font-semibold">Pichle band Khata records</li>{closureQuery.data.map((closure) => <li key={closure.id} className="py-2">{shortDate(closure.closed_date)} · {closure.settlement_kind === "payment" ? "Wusooli" : closure.settlement_kind === "discount" ? "Riayat" : closure.settlement_kind === "refund" ? "Advance wapas" : "Hisaab saaf"}{closure.amount ? ` · ${money(closure.amount)}` : ""} · {closure.reason}{closure.reopened_at ? " · dobara chalu" : ""}</li>)}</ul> : null}
+      </Panel></div>}
       <Panel title="Maheene ka bill" className="lg:col-span-2">
-        <label className="mb-3 block text-sm font-semibold">Maheena<input type="month" max={data.today.slice(0, 7)} value={month} onChange={(event) => { setMonth(event.target.value); setPdfStatus(""); }} className={`${field} mt-1 max-w-xs`} /></label>
+        <label className="mb-3 block max-w-xs text-sm font-semibold">Maheena<input type="month" max={data.today.slice(0, 7)} value={month} onChange={(event) => { setMonth(event.target.value); setPdfStatus(""); }} className={`${field} mt-1 block`} /><DateFormatHint kind="month" /></label>
         {!validMonth && <p role="alert" className="text-udhaar">Aaj tak ka sahi maheena chunein.</p>}
         {validMonth && reportQuery.isPending && <p role="status" className="text-muted">Bill load ho raha hai…</p>}
         {reportQuery.isError && <p role="alert" className="text-udhaar">Bill nahi khula: {friendlyError(reportQuery.error)} <button type="button" onClick={() => void reportQuery.refetch()} className="underline">Dobara koshish</button></p>}
         {reportQuery.isSuccess && !report && <p className="text-muted">Is maheene ka hisaab nahi mila.</p>}
         {report && <dl className="divide-y divide-line">
           {[["Pichla baqaya", report.previous_balance], ["Doodh / parchi ki raqam", report.amount],
-            ["Wusooli", report.paid], ["Riayat", report.discount], ["Maheene ke aakhir mein baqi", report.balance]]
+            ["Wusooli", report.paid], ["Riayat", report.discount], ["Advance wapas", report.refund], ["Maheene ke aakhir mein baqi", report.balance]]
             .map(([label, value]) => <div key={String(label)} className="flex justify-between gap-3 py-2"><dt>{label}</dt><dd className="font-bold">{money(amount(value as number))}</dd></div>)}
         </dl>}
         {report && <p className="mt-2 text-sm text-muted">Doodh delivery: {amount(report.litres)} L. Company parchi ki litres neeche register aur PDF mein hain.</p>}
@@ -219,6 +285,14 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
         {!phone && <p className="mt-2 text-sm text-muted">WhatsApp matn ke liye customer ka phone number likhein. PDF phir bhi download/share ho sakta hai.</p>}
         <p className="mt-2 text-xs text-muted">{phone ? "Phone par PDF Share dabayein, phir share sheet se WhatsApp aur recipient chunein. Computer par WhatsApp chat + PDF dabane se chat nayi tab mein khulegi aur PDF download hoga; file attach karke Send dabayein." : "Phone par PDF Share dabayein aur share sheet se app chunein. WhatsApp chat ke liye customer ka phone darj karein."}</p>
         {pdfTarget === `bill:${month}` && pdfStatus && <p role={pdfStatus.startsWith("PDF nahi") ? "alert" : "status"} className="mt-2 text-sm text-berseem-deep">{pdfStatus}</p>}
+      </Panel>
+      <Panel title="Khata ka apni tareekh wala record" className="lg:col-span-2"><p className="mb-3 text-sm text-muted">Is PDF mein sirf chuni hui muddat ki doodh, parchi, wusooli aur riayat entries aati hain. Upar maheene ka bill current baqaya ke saath alag hai.</p>
+        <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-semibold">Shuru ki tareekh<input aria-label="Khata shuru ki tareekh" type="date" value={periodFrom} max={periodTo || data.today} onChange={(event) => setPeriodFrom(event.target.value)} className={`${field} mt-1`} /></label><label className="text-sm font-semibold">Aakhir ki tareekh<input aria-label="Khata aakhir ki tareekh" type="date" value={periodTo} min={periodFrom} max={data.today} onChange={(event) => setPeriodTo(event.target.value)} className={`${field} mt-1`} /></label></div>
+        {!validPeriod && <p role="alert" className="mt-2 text-sm text-udhaar">Aaj tak ki sahi shuru aur aakhir ki tareekh chunein.</p>}
+        {periodLedgerQuery.isPending && <p role="status" className="mt-2 text-sm text-muted">Khata record load ho raha hai…</p>}
+        {periodLedgerQuery.isError && <p role="alert" className="mt-2 text-sm text-udhaar">Khata record nahi khula: {friendlyError(periodLedgerQuery.error)} <button type="button" onClick={() => void periodLedgerQuery.refetch()} className="underline">Dobara koshish</button></p>}
+        {periodLedgerQuery.data && <><p className="mt-2 text-sm text-muted">{periodLedgerQuery.data.length} entries mili hain.</p><div className="mt-3 flex flex-wrap gap-2"><button type="button" disabled={pdfBusy} onClick={() => void exportPeriodLedger("download")} className="min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem disabled:opacity-50">Khata PDF download</button><button type="button" disabled={pdfBusy} onClick={() => void exportPeriodLedger("share")} className="min-h-11 rounded-xl bg-berseem px-4 font-semibold text-white disabled:opacity-50">Khata PDF share karein</button></div></>}
+        {pdfTarget === "period" && pdfStatus && <p role={pdfStatus.startsWith("PDF nahi") ? "alert" : "status"} className="mt-2 text-sm text-berseem-deep">{pdfStatus}</p>}
       </Panel>
       {c.kind !== "cash" && c.kind !== "free" && <Panel title="Wusooli likhein">
         <form onSubmit={onPayment} className="grid gap-2">
@@ -270,7 +344,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
             {paymentEntry && editingPaymentId === paymentEntry.id && <form key={`${paymentEntry.id}-${paymentEntry.revision}`} onSubmit={(event) => onCorrection(event, paymentEntry.id)} className="grid w-full gap-2 rounded-xl bg-ground p-3 sm:grid-cols-2">
               <label className="text-sm">Tareekh<input name="date" type="date" min={c.opening_date} max={data.today} defaultValue={paymentEntry.payment_date} required className={field} /></label>
               <label className="text-sm">Raqam<input name="amount" type="number" min="0.01" step="0.01" defaultValue={paymentEntry.amount} required className={field} /></label>
-              {paymentEntry.kind === "payment" && <><label className="text-sm">Tareeqa<select name="method" defaultValue={paymentEntry.method ?? "cash"} className={field}><option value="cash">Cash</option><option value="bank">Bank</option><option value="easypaisa">Easypaisa</option><option value="jazzcash">JazzCash</option><option value="cheque">Cheque</option></select></label><label className="text-sm">Account<select name="account" defaultValue={paymentEntry.account_id ?? ""} required className={field}><option value="" disabled>Account chunein</option>{data.accounts.filter((item) => item.active || item.id === paymentEntry.account_id).map((item) => <option key={item.id} value={item.id}>{item.name}{item.active ? "" : " (band)"}</option>)}</select></label></>}
+              {paymentEntry.kind !== "discount" && <><label className="text-sm">Tareeqa<select name="method" defaultValue={paymentEntry.method ?? "cash"} className={field}><option value="cash">Cash</option><option value="bank">Bank</option><option value="easypaisa">Easypaisa</option><option value="jazzcash">JazzCash</option><option value="cheque">Cheque</option></select></label><label className="text-sm">Account<select name="account" defaultValue={paymentEntry.account_id ?? ""} required className={field}><option value="" disabled>Account chunein</option>{data.accounts.filter((item) => item.active || item.id === paymentEntry.account_id).map((item) => <option key={item.id} value={item.id}>{item.name}{item.active ? "" : " (band)"}</option>)}</select></label></>}
               <input name="reason" required placeholder="Correction ki wajah" aria-label="Correction ki wajah" className={`${field} sm:col-span-2`} />
               <button disabled={busy} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50 sm:col-span-2">Durust entry save karein</button>
             </form>}
@@ -308,6 +382,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
       </Panel>
       {success && <p role="status" className="text-berseem-deep lg:col-span-2">{success}</p>}
       {error && <p role="alert" className="text-udhaar lg:col-span-2">Save nahi hua: {error}</p>}
+      {closePending && pendingSettlement && <ConfirmActionDialog title="Aakhri hisaab ke saath Khata band karein?" message={pendingSettlement.action === "payment" ? `${money(balance)} ki wusooli record ho gi aur Khata band ho jayega.` : pendingSettlement.action === "discount" ? `${money(balance)} ki riayat record ho gi; galla mein paisa nahi aayega.` : pendingSettlement.action === "refund" ? `${money(-balance)} customer ko advance wapas record hoga aur galla se niklega.` : "Hisaab saaf hai; Khata band ho jayega."} confirmLabel={pendingSettlement.action === "refund" ? "Advance wapas karke band karein" : "Aakhri hisaab save karke band karein"} busy={busy} onConfirm={closeKhata} onCancel={() => { setClosePending(false); setPendingSettlement(null); }} />}
     </Body>
   </>;
 }

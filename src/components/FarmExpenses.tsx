@@ -7,6 +7,8 @@ import { amount, insertRow, longDate, money, shortDate, useFarmData, type Accoun
 import { friendlyError } from "@/lib/errors";
 import { expenseMode, isHomeCategory, parseExpenseCorrection, parseExpenseEntry, type ExpenseMode } from "@/lib/expense-forms";
 import { correctExpense, getExpenseAudit, recordExpense } from "@/lib/expenses";
+import { buildPdf, downloadBlob } from "@/lib/export-data";
+import { sharePdfFile } from "@/lib/pdf-share";
 import { Body, PageHeader, Panel } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
 
@@ -44,6 +46,7 @@ export default function FarmExpenses() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [editing, setEditing] = useState<Expense | null>(null);
+  const [exporting, setExporting] = useState<"download" | "share" | null>(null);
   const correctionPending = useRef<Pending | null>(null);
   const audit = useQuery({ queryKey: ["expense-audit", editing?.id], queryFn: () => getExpenseAudit(editing!.id), enabled: !!editing });
   useEffect(() => {
@@ -59,6 +62,7 @@ export default function FarmExpenses() {
   const farmExpenses = expenses.filter((entry) => expenseMode(categoryById.get(entry.category_id)) === "farm");
   const homeExpenses = expenses.filter((entry) => expenseMode(categoryById.get(entry.category_id)) === "home");
   const personalExpenses = expenses.filter((entry) => expenseMode(categoryById.get(entry.category_id)) === "personal");
+  const todayExpenses = expenses.filter((entry) => entry.expense_date === d.today);
   const homeTotal = homeExpenses.reduce((sum, entry) => sum + amount(entry.amount), 0);
   const personalTotal = personalExpenses.reduce((sum, entry) => sum + amount(entry.amount), 0);
   const byCat = d.categories.map((category) => ({ ...category,
@@ -121,6 +125,27 @@ export default function FarmExpenses() {
       setEditing(null);
     }, "Kharcha durust ho gaya. Purana record audit mein mehfooz hai.");
   };
+  const exportToday = async (kind: "download" | "share") => {
+    if (exporting) return;
+    setExporting(kind); setError(""); setSuccess("");
+    try {
+      const rows = todayExpenses.map((entry) => {
+        const category = categoryById.get(entry.category_id);
+        const account = d.accounts.find((item) => item.id === entry.account_id);
+        return { expense_date: entry.expense_date, category: category?.name ?? "Kharcha", kind: expenseMode(category) === "farm" ? "Farm" : expenseMode(category) === "home" ? "Ghar" : "Zaati", account: account?.name ?? "—", amount: money(entry.amount), note: entry.note ?? "" };
+      });
+      const bytes = await buildPdf(`Ajj ka kharcha — ${d.today}`, ["expense_date", "category", "kind", "account", "amount", "note"], rows, d.settings.farm_name);
+      const filename = `ajj-ka-kharcha-${d.today}.pdf`;
+      if (kind === "download") {
+        downloadBlob(filename, new Blob([bytes], { type: "application/pdf" }));
+        setSuccess("Ajj ka kharcha PDF download ho gaya.");
+      } else {
+        const outcome = await sharePdfFile(filename, bytes, `${d.settings.farm_name} — Ajj ka kharcha`, `${d.today} ke kharchay.`);
+        setSuccess(outcome === "shared" ? "Share sheet khul gayi. File aur recipient check karke Send karein." : outcome === "cancelled" ? "Share cancel ho gaya." : "Is browser mein file share available nahi; PDF download ho gayi.");
+      }
+    } catch (issue) { setError(`Ajj ka kharcha PDF nahi bani: ${friendlyError(issue)}`); }
+    finally { setExporting(null); }
+  };
   const canEdit = (entry: Expense) => !entry.salary_period_id && !d.health.some((item) => item.expense_id === entry.id);
 
   return <>
@@ -132,6 +157,7 @@ export default function FarmExpenses() {
         <div className="p-3 sm:p-4 lg:border-x lg:border-line"><p className="text-sm text-muted">Ghar ka kharcha</p><strong className="font-display text-xl">{money(homeTotal)}</strong></div>
         <div className="border-l border-line p-3 sm:p-4 lg:border-l-0"><p className="text-sm text-muted">Farm munafa</p><strong className={`font-display text-xl ${amount(pnl?.profit) < 0 ? "text-udhaar" : "text-berseem"}`}>{money(pnl?.profit)}</strong></div>
       </section>
+      <Panel title="Ajj ka kharcha PDF" className="lg:col-span-2"><p className="text-sm text-muted">{d.today} ki {todayExpenses.length} entry. Farm, ghar aur zaati kharchay alag pehchan ke saath PDF mein aayenge.</p><div className="mt-3 flex flex-wrap gap-2"><button type="button" disabled={exporting !== null} onClick={() => void exportToday("download")} className="min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem disabled:opacity-50">PDF download</button><button type="button" disabled={exporting !== null} onClick={() => void exportToday("share")} className="min-h-11 rounded-xl bg-berseem px-4 font-semibold text-white disabled:opacity-50">PDF share karein</button></div></Panel>
       {personalTotal > 0 && <p className="text-sm text-muted lg:col-span-2">Doosray zaati kharchay: {money(personalTotal)}. Ghar aur doosray zaati kharchay account se nikalte hain, farm munafay se nahi.</p>}
       <Link href="/salary/" className="rounded-xl border border-berseem bg-berseem-soft px-4 py-3 font-semibold text-berseem-deep lg:col-span-2">Mulazim aur tankhwah →</Link>
       <Link href="/aamdani/" className="rounded-xl border border-berseem bg-berseem-soft px-4 py-3 font-semibold text-berseem-deep lg:col-span-2">Gobar aur doosri aamdani →</Link>

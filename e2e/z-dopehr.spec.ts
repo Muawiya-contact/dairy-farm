@@ -37,6 +37,11 @@ test("Dopehr toggle, customer default, milk can and bill stay in sync", async ({
     await page.getByRole("tab", { name: shift }).click();
     await page.getByRole("spinbutton", { name: "Kul doodh" }).fill("200");
     if (shift === "Dopehr") await expect(page.getByRole("spinbutton", { name: `${customer} litres` })).toHaveValue("2");
+    // Earlier shared E2E flows can already have saved this shift. A correction
+    // is deliberately protected by a reason, so provide one when that happens.
+    if (await page.getByRole("button", { name: "Durust entry save karein" }).count()) {
+      await page.getByRole("textbox", { name: "Miktar durust karne ki wajah" }).fill("E2E dopehr tasdeeq");
+    }
     await page.getByRole("button", { name: "Entry save karein" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Entry farm ke data mein save ho gayi." })).toBeVisible();
   }

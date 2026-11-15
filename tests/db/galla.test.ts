@@ -144,6 +144,40 @@ describe("Step 6 database money rules", () => {
     await expect(db.query("insert into transfers (transfer_date,from_account_id,to_account_id,amount) values ($1,$2,$3,1)", [oldDate, farmCash, bank])).rejects.toThrow(/MONTH_LOCKED/);
   });
 
+  it("concludes a Khata with an exact payment, discount, or refunded advance and keeps the conclusion immutable", async () => {
+    const owner = "33333333-3333-4333-8333-333333333333";
+    await db.query("insert into auth.users(id) values ($1)", [owner]);
+    await db.query("insert into private.app_owner(user_id) values ($1)", [owner]);
+    await db.exec(`set request.jwt.claim.sub = '${owner}'`);
+    const due = (await db.query<{ id: string }>(
+      "insert into customers(name,kind,opening_balance,opening_date) values ('Final due QA','regular',125,farm_today()) returning id",
+    )).rows[0].id;
+    await db.query("select finalize_customer_khata($1,'payment',farm_today(),'cash',$2,'Final cash payment')", [due, farmCash]);
+    expect((await db.query<{ active: boolean }>("select active from customers where id=$1", [due])).rows[0].active).toBe(false);
+    expect(Number((await db.query<{ balance: string }>("select opening_balance - coalesce((select sum(amount) from payments where customer_id=$1),0) as balance from customers where id=$1", [due])).rows[0].balance)).toBe(0);
+    const settlement = (await db.query<{ id: string }>("select payment_id as id from customer_closures where customer_id=$1", [due])).rows[0].id;
+    expect((await db.query("select entry_kind from account_entries($1) where ref_id=$2", [farmCash, settlement])).rows).toEqual([{ entry_kind: "payment" }]);
+    await expect(db.query("delete from payments where id=$1", [settlement])).rejects.toThrow(/CLOSURE_SETTLEMENT_IMMUTABLE/);
+    await expect(db.query("update customers set active=true where id=$1", [due])).rejects.toThrow(/CUSTOMER_REOPEN_USE_RPC/);
+    await db.query("select reopen_customer_khata($1)", [due]);
+    expect((await db.query<{ active: boolean }>("select active from customers where id=$1", [due])).rows[0].active).toBe(true);
+
+    const advance = (await db.query<{ id: string }>(
+      "insert into customers(name,kind,opening_balance,opening_date) values ('Final advance QA','regular',-90,farm_today()) returning id",
+    )).rows[0].id;
+    await db.query("select finalize_customer_khata($1,'refund',farm_today(),'cash',$2,'Advance returned')", [advance, farmCash]);
+    expect(Number((await db.query<{ balance: string }>("select opening_balance - coalesce((select sum(case when kind='refund' then -amount else amount end) from payments where customer_id=$1),0) as balance from customers where id=$1", [advance])).rows[0].balance)).toBe(0);
+    expect((await db.query<{ kind: string }>("select kind from payments where customer_id=$1", [advance])).rows).toEqual([{ kind: "refund" }]);
+
+    const writtenOff = (await db.query<{ id: string }>(
+      "insert into customers(name,kind,opening_balance,opening_date) values ('Final discount QA','regular',50,farm_today()) returning id",
+    )).rows[0].id;
+    await db.query("select finalize_customer_khata($1,'discount',farm_today(),null,null,'Owner approved write-off')", [writtenOff]);
+    expect((await db.query("select ref_id from account_entries($1) where ref_id in (select payment_id from customer_closures where customer_id=$2)", [farmCash, writtenOff])).rows).toEqual([]);
+    await db.query("delete from private.app_owner where user_id=$1", [owner]);
+    await db.exec("reset request.jwt.claim.sub");
+  });
+
   it("keeps new financial records owner-only when demo access is off", async () => {
     const owner = "11111111-1111-4111-8111-111111111111";
     const stranger = "22222222-2222-4222-8222-222222222222";

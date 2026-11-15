@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { Body, PageHeader, Panel } from "@/components/ui";
 import { formatDay } from "@/lib/dates";
+import { DateFormatHint } from "@/components/DateFormatHint";
 import { friendlyError } from "@/lib/errors";
 import { rs, litres } from "@/lib/format";
 import { historicalPage, HISTORICAL_PAGE_SIZE, type HistoricalKind, type HistoricalRecord } from "@/lib/historical-records";
@@ -79,7 +80,7 @@ function HistoricalRecordsContent() {
         <label className="text-sm font-semibold">Qism<select value={kind} onChange={(event) => { setKind(event.target.value as HistoricalKind); setPage(0); }} className="mt-1 min-h-11 w-full rounded-xl border border-line bg-paper px-3">
           {types.map((type) => <option value={type.value} key={type.value}>{type.label}</option>)}
         </select></label>
-        <label className="text-sm font-semibold">Maheena (khali = sab)<input type="month" value={month} onChange={(event) => { setMonth(event.target.value); setPage(0); }} className="mt-1 min-h-11 w-full rounded-xl border border-line bg-paper px-3" /></label>
+        <label className="text-sm font-semibold">Maheena (khali = sab)<input type="month" value={month} onChange={(event) => { setMonth(event.target.value); setPage(0); }} className="mt-1 block min-h-11 w-full rounded-xl border border-line bg-paper px-3" /><DateFormatHint kind="month" optional /></label>
       </div><form onSubmit={find} className="mt-3 flex flex-wrap items-end gap-2"><label className="min-w-0 flex-1 text-sm font-semibold">Naam ya tag dhoondein<input type="search" maxLength={80} value={draftSearch} onChange={(event) => setDraftSearch(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-line bg-paper px-3" /></label><button type="submit" className="min-h-11 rounded-xl bg-berseem px-4 font-semibold text-white">Dhoondein</button></form></Panel>
       {query.isPending && <p role="status" className="text-muted">Purana record khul raha hai…</p>}
       {query.isError && <p role="alert" className="text-udhaar">Record nahi khula: {friendlyError(query.error)} <button type="button" onClick={() => void query.refetch()} className="font-semibold underline">Dobara koshish</button></p>}

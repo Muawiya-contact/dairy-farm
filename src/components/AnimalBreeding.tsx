@@ -9,6 +9,9 @@ import { Panel } from "./ui";
 import { ConfirmActionDialog } from "./ConfirmActionDialog";
 import { UI_TEXT } from "@/lib/text";
 import { friendlyError } from "@/lib/errors";
+import { buildPdf, downloadBlob } from "@/lib/export-data";
+import { sharePdfFile } from "@/lib/pdf-share";
+import { getSettings } from "@/lib/settings";
 
 const field = "mt-1 min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 const statusNames: Record<string, string> = { pending: "Nateeja baqi", pregnant: "Gaabhan", empty: "Khali", aborted: "Hamla zaya", calved: "Bacha paida" };
@@ -36,6 +39,8 @@ export function AnimalBreeding({ animal, animals, records, calvings, offspring, 
   const [validation, setValidation] = useState("");
   const [calvingValidation, setCalvingValidation] = useState("");
   const [calfCount, setCalfCount] = useState<1 | 2>(1);
+  const [documentBusy, setDocumentBusy] = useState<"download" | "share" | null>(null);
+  const [documentStatus, setDocumentStatus] = useState("");
   const requests = useRef(new Map<string, string>());
   const newAiForm = useRef<HTMLFormElement>(null);
   const confirming = useRef(false);
@@ -129,8 +134,36 @@ export function AnimalBreeding({ animal, animals, records, calvings, offspring, 
     }).catch((error: unknown) => setCalvingValidation(friendlyError(error)))
       .finally(() => { confirming.current = false; setConfirmBusy(false); setPendingCalving(null); });
   };
+  const exportHistory = async (kind: "download" | "share") => {
+    if (documentBusy) return;
+    setDocumentBusy(kind); setDocumentStatus("");
+    try {
+      const rows = records.map((record) => {
+        const calving = calvings.find((item) => item.insemination_id === record.id);
+        return {
+          service_date: record.service_date, semen_type: semenNames[record.semen_type] ?? record.semen_type,
+          semen_name: record.semen_name ?? "", technician: record.technician ?? "",
+          status: statusNames[record.status] ?? record.status, ultrasound_date: record.ultrasound_date ?? "",
+          checkup_date: record.checkup_date ?? "", calving_date: calving?.calving_date ?? "", notes: record.notes ?? "",
+        };
+      });
+      const settings = await getSettings();
+      const bytes = await buildPdf(`Nasl kashi record — ${animal.tag}`, ["service_date", "semen_type", "semen_name", "technician", "status", "ultrasound_date", "checkup_date", "calving_date", "notes"], rows, settings.farm_name);
+      const filename = `nasl-kashi-${animal.tag}.pdf`;
+      if (kind === "download") {
+        downloadBlob(filename, new Blob([bytes], { type: "application/pdf" }));
+        setDocumentStatus("Is janwar ki PDF download ho gayi.");
+      } else {
+        const outcome = await sharePdfFile(filename, bytes, `${settings.farm_name} — Nasl kashi`, `${animal.tag} ka nasl kashi record.`);
+        setDocumentStatus(outcome === "shared" ? "Share sheet khul gayi. File aur recipient check karke Send karein." : outcome === "cancelled" ? "Share cancel ho gaya." : "Is browser mein file share available nahi; PDF download ho gayi.");
+      }
+    } catch (error) { setDocumentStatus(`PDF nahi bani: ${friendlyError(error)}`); }
+    finally { setDocumentBusy(null); }
+  };
 
   return <Panel title="Nasl kashi aur bachay ki paidaish" className="lg:col-span-2">
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><p className="text-sm text-muted">Is janwar ki {records.length} nasl kashi entries.</p><div className="flex flex-wrap gap-2"><button type="button" disabled={documentBusy !== null} onClick={() => void exportHistory("download")} className="min-h-10 rounded-xl border border-berseem px-3 text-sm font-semibold text-berseem disabled:opacity-50">Is janwar ki PDF</button><button type="button" disabled={documentBusy !== null} onClick={() => void exportHistory("share")} className="min-h-10 rounded-xl border border-line px-3 text-sm font-semibold disabled:opacity-50">PDF share</button></div></div>
+    {documentStatus && <p role={documentStatus.startsWith("PDF nahi") ? "alert" : "status"} className="mb-3 text-sm text-berseem-deep">{documentStatus}</p>}
     {current && <section className="mb-4 rounded-xl border border-line bg-ground p-4" aria-label="Maujooda nasl cycle"><h3 className="font-semibold">Maujooda cycle</h3><dl className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
       <div><dt className="text-muted">Tag / Nasl</dt><dd>{animal.tag} / {animal.breed || "—"}</dd></div>
       <div><dt className="text-muted">Tukhm rezi</dt><dd>{shortDate(current.service_date)}</dd></div>

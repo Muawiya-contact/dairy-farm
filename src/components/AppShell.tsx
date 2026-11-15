@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import { BackIcon, BookIcon, CanIcon, CoinsIcon, CowIcon, HomeIcon, SettingsIcon, SignOutIcon, WalletIcon } from "./icons";
+import { BackIcon, BookIcon, CanIcon, CoinsIcon, CowIcon, HomeIcon, ReportIcon, SettingsIcon, SignOutIcon, WalletIcon } from "./icons";
 import { useQuery } from "@tanstack/react-query";
 import { getSettings } from "@/lib/settings";
 import { getSupabase } from "@/lib/supabase";
@@ -18,6 +18,7 @@ const NAV = [
   { href: "/khata/", label: "Khata", Icon: BookIcon },
   { href: "/galla/", label: "Galla", Icon: CoinsIcon },
   { href: "/kharcha/", label: "Kharcha", Icon: WalletIcon },
+  { href: "/reports/", label: "Reports", Icon: ReportIcon },
 ];
 
 const isActive = (path: string, href: string) => (href === "/" ? path === "/" : path.startsWith(href.replace(/\/$/, "")));
@@ -85,7 +86,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       {/* Phone: bottom menu */}
       <nav
         aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-6 border-t border-line bg-paper/95 px-1 pt-1 pb-[max(10px,env(safe-area-inset-bottom))] backdrop-blur lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-7 border-t border-line bg-paper/95 px-1 pt-1 pb-[max(10px,env(safe-area-inset-bottom))] backdrop-blur lg:hidden"
       >
         {NAV.map(({ href, label, Icon }) => {
           const on = isActive(path, href);

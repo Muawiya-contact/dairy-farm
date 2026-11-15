@@ -17,6 +17,7 @@ vi.mock("@/components/FarmObservances", () => ({ FarmObservances: () => null }))
 beforeEach(() => {
   farmMocks.useFarmData.mockReturnValue({ data: makeFarmData(), error: null });
   farmMocks.saveMilkEntry.mockResolvedValue("2026-10-16T12:00:00Z");
+  farmMocks.correctMilkEntry.mockResolvedValue("2026-10-16T12:00:01Z");
   farmMocks.closeAnimal.mockResolvedValue(undefined);
   salaryMocks.recordSalaryPayment.mockResolvedValue(undefined);
 });
@@ -50,6 +51,19 @@ it("refreshes galla and customer reports after saving milk", async () => {
   expect(invalidate).toHaveBeenCalledWith({ queryKey: ["galla"] }, { throwOnError: true });
 });
 
+it("requires a reason before correcting a saved milk shift and sends one audited correction", async () => {
+  const user = userEvent.setup();
+  farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({ shifts: [{ id: "shift-1", milk_date: fixtures.today,
+    shift: "morning", total_litres: 10, mode: "total", notes: null, updated_at: "2026-10-16T12:00:00Z" }] }), error: null });
+  renderWithQuery(<FarmMilk />);
+  expect(screen.getByRole("button", { name: "Durust entry save karein" })).toBeDisabled();
+  await user.type(screen.getByRole("textbox", { name: "Miktar durust karne ki wajah" }), "Transfer mein kami");
+  await user.click(screen.getByRole("button", { name: "Durust entry save karein" }));
+  await waitFor(() => expect(farmMocks.correctMilkEntry).toHaveBeenCalledOnce());
+  expect(farmMocks.correctMilkEntry).toHaveBeenCalledWith(expect.objectContaining({ reason: "Transfer mein kami", expectedUpdatedAt: "2026-10-16T12:00:00Z" }));
+  expect(farmMocks.saveMilkEntry).not.toHaveBeenCalled();
+});
+
 it("shows the noon tab and prefills the customer's noon default", async () => {
   const user = userEvent.setup();
   farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({ customers: [{ ...fixtures.customer,
@@ -75,7 +89,7 @@ it("hides noon when off but keeps an already recorded historical noon tab", () =
   expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Subah", "Dopehr*", "Shaam"]);
   expect(screen.getByText(/pehle se darj entry hai; nayi Dopehr entry nahi banegi/)).toBeVisible();
   fireEvent.click(screen.getByRole("tab", { name: "Dopehr*" }));
-  expect(screen.getByRole("button", { name: "Darj Dopehr entry durust karein" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "Durust entry save karein" })).toBeVisible();
 });
 
 it("confirms an animal sale before writing and refreshes all dependent views", async () => {

@@ -32,8 +32,8 @@ export function statementLines(data: Pick<FarmData, "deliveries" | "companyBills
       litres: numeric(row.litres), charge: numeric(row.amount), credit: 0,
     })),
     ...data.payments.filter((row) => row.customer_id === customerId && within(row.payment_date)).map((row) => ({
-      id: row.id, date: row.payment_date, detail: row.kind === "discount" ? "Riayat" : "Wusooli",
-      litres: null, charge: 0, credit: numeric(row.amount),
+      id: row.id, date: row.payment_date, detail: row.kind === "discount" ? "Riayat" : row.kind === "refund" ? "Customer advance wapas" : "Wusooli",
+      litres: null, charge: 0, credit: row.kind === "refund" ? -numeric(row.amount) : numeric(row.amount),
     })),
   ].sort((a, b) => a.date.localeCompare(b.date)
     || shiftRank(a.detail) - shiftRank(b.detail) || a.id.localeCompare(b.id));
@@ -53,6 +53,7 @@ export function statementMessage(farm: FarmSettings, customer: Customer, month: 
     `Doodh / parchi ki raqam: ${textMoney(numeric(report.amount))}`,
     `Wusooli: ${textMoney(numeric(report.paid))}`,
     `Riayat: ${textMoney(numeric(report.discount))}`,
+    numeric(report.refund) ? `Advance wapas: ${textMoney(numeric(report.refund))}` : "",
     balanceLabel(numeric(report.balance)), farm.whatsapp_footer,
   ].filter(Boolean).join("\n");
 }
@@ -139,6 +140,7 @@ export async function buildCustomerStatementPdf(input: {
     ["Is maheene ki raqam", numeric(input.report.amount)],
     ["Wusooli", numeric(input.report.paid)],
     ["Riayat", numeric(input.report.discount)],
+    ["Advance wapas", numeric(input.report.refund)],
   ];
   pdf.setFontSize(10); pdf.setFont("OpenSans", "normal");
   for (const [label, value] of summary) {

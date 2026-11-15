@@ -37,7 +37,8 @@ export type Expense = { id: string; expense_date: string; category_id: string; a
 export type Account = { id: string; name: string; kind: string; is_farm_cash: boolean; active: boolean; opening_date: string };
 export type CompanyBill = { id: string; customer_id: string; from_date: string; to_date: string; litres: number; amount: number };
 export type OtherIncome = { id: string; income_date: string; amount: number };
-export type CustomerReport = { customer_id: string; name: string; kind: string; litres: number; amount: number; previous_balance: number; paid: number; discount: number; balance: number };
+export type CustomerReport = { customer_id: string; name: string; kind: string; litres: number; amount: number; previous_balance: number; paid: number; discount: number; refund: number; balance: number };
+export type CustomerClosure = { id: string; closed_date: string; settlement_kind: "payment" | "discount" | "refund" | "zero"; amount: number; reason: string; payment_id: string | null; reopened_at: string | null };
 export type CustomerBalance = { customer_id: string; balance: number };
 export type HerdAlert = { alert_kind: string; severity: "overdue" | "today" | "soon" | "upcoming"; due_date: string; animal_id: string; tag: string; message: string; days_left: number };
 export type Pnl = { milk_income: number; other_income: number; total_income: number; farm_expenses: number; personal_expenses: number; profit: number };
@@ -289,6 +290,29 @@ export async function updateCustomerProfile(id: string, input: CustomerProfile):
   if (!data) throw new Error("CUSTOMER_STALE");
 }
 
+type SettlementAction = "payment" | "discount" | "refund" | "zero";
+export async function finalizeCustomerKhata(input: { customerId: string; action: SettlementAction; date: string; method: string | null; accountId: string | null; reason: string }) {
+  const { error } = await getSupabase().rpc("finalize_customer_khata" as never, {
+    p_customer: input.customerId, p_action: input.action, p_date: input.date,
+    p_method: input.method, p_account: input.accountId, p_reason: input.reason,
+  } as never);
+  if (error) throw error;
+}
+
+export async function reopenCustomerKhata(customerId: string) {
+  const { error } = await getSupabase().rpc("reopen_customer_khata" as never, { p_customer: customerId } as never);
+  if (error) throw error;
+}
+
+export async function getCustomerClosureHistory(customerId: string): Promise<CustomerClosure[]> {
+  const { data, error } = await getSupabase().rpc("customer_closure_history" as never, { p_customer: customerId } as never) as unknown as { data: unknown[] | null; error: Error | null };
+  if (error) throw error;
+  return (data ?? []).map((row: unknown) => {
+    const value = row as Record<string, unknown>;
+    return { ...value, amount: Number(value.amount ?? 0) } as CustomerClosure;
+  });
+}
+
 export async function recordCustomerPayment(customerId: string, input: CustomerPayment, id = crypto.randomUUID()): Promise<void> {
   const { error } = await getSupabase().from("payments").insert({
     id, customer_id: customerId, payment_date: input.date, amount: input.amount,
@@ -307,7 +331,7 @@ export async function customerMonthReport(customerId: string, month: string): Pr
   const { data, error } = await getSupabase().rpc("customer_month_report", { p_month: `${month}-01` })
     .eq("customer_id", customerId).maybeSingle();
   if (error) throw error;
-  return data;
+  return data as CustomerReport | null;
 }
 
 export async function saveCustomerRate(customerId: string, rate: number, effectiveFrom: string) {

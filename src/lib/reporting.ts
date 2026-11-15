@@ -9,7 +9,7 @@ export type PeriodSummary = {
 
 export type PeriodCustomer = {
   customer_id: string; name: string; kind: string; sort_order: number; litres: number;
-  charged: number; paid: number; discount: number; period_balance_change: number;
+  charged: number; paid: number; discount: number; refund: number; period_balance_change: number;
 };
 
 export type PeriodExpense = {
@@ -56,7 +56,7 @@ export async function loadPeriodReport(from: string, to: string): Promise<Period
       other_income: Number(summary.other_income ?? 0), farm_expenses: Number(summary.farm_expenses ?? 0),
       home_expenses: Number(summary.home_expenses ?? 0), profit: Number(summary.profit ?? 0),
     },
-    customers: (customersResult.data ?? []).map((row) => ({ ...row, litres: Number(row.litres ?? 0), charged: Number(row.charged ?? 0), paid: Number(row.paid ?? 0), discount: Number(row.discount ?? 0), period_balance_change: Number(row.period_balance_change ?? 0) })) as PeriodCustomer[],
+    customers: (customersResult.data ?? []).map((row) => ({ ...row, litres: Number(row.litres ?? 0), charged: Number(row.charged ?? 0), paid: Number(row.paid ?? 0), discount: Number(row.discount ?? 0), refund: Number(row.refund ?? 0), period_balance_change: Number(row.period_balance_change ?? 0) })) as PeriodCustomer[],
     expenses: (expensesResult.data ?? []).map((row) => ({ ...row, amount: Number(row.amount ?? 0) })) as PeriodExpense[],
   };
 }

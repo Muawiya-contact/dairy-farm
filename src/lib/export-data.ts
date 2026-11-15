@@ -35,7 +35,7 @@ export const DATASETS: { table: Table; label: string; key: string; columns: stri
 ];
 
 export const REPORTS = [
-  { name: "customer_month_report", label: "Customer ka maheena", columns: ["name", "kind", "litres", "amount", "previous_balance", "total", "paid", "discount", "balance"] },
+  { name: "customer_month_report", label: "Customer ka maheena", columns: ["name", "kind", "litres", "amount", "previous_balance", "total", "paid", "discount", "refund", "balance"] },
   { name: "expense_month_report", label: "Maheene ke kharchay", columns: ["label", "category", "staff_name", "is_farm_cost", "amount"] },
   { name: "milk_month_summary", label: "Doodh ka khulasa", columns: ["produced", "sold_litres", "free_litres", "delivered", "difference", "company_slip_litres"] },
   { name: "pnl_month", label: "Aamdani aur kharcha", columns: ["milk_income", "other_income", "total_income", "farm_expenses", "personal_expenses", "profit"] },
@@ -65,7 +65,7 @@ const COLUMN_LABELS: Record<string, string> = {
   exit_reason: "Ikhtitam ki wajah", birth_date: "Paidaish ki tareekh", breed: "Nasl",
   sex: "Jins", category: "Umar ka group", species: "Janwar ki qism",
   previous_balance: "Pichla baqaya (Rs)", total: "Kul raqam (Rs)", paid: "Ada shuda (Rs)",
-  discount: "Riayat (Rs)", balance: "Baqaya (Rs)", label: "Tafseel",
+  discount: "Riayat (Rs)", refund: "Advance wapas (Rs)", balance: "Baqaya (Rs)", label: "Tafseel",
   produced: "Paida hua doodh (L)", sold_litres: "Bikne wala doodh (L)",
   free_litres: "Muft doodh (L)", delivered: "Diya gaya doodh (L)",
   difference: "Farq", company_slip_litres: "Company parchi doodh (L)",

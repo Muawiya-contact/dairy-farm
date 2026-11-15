@@ -11,6 +11,8 @@ vi.mock("@/lib/galla", async (original) => ({ ...(await original<typeof import("
 
 beforeEach(() => {
   farmMocks.updateCustomerProfile.mockResolvedValue(undefined);
+  farmMocks.finalizeCustomerKhata.mockResolvedValue(undefined);
+  farmMocks.getCustomerClosureHistory.mockResolvedValue([]);
   farmMocks.customerMonthReport.mockResolvedValue(null);
   customerMocks.loadCustomerPeriodLedger.mockResolvedValue([]);
   customerMocks.getCustomerPaymentAudit.mockResolvedValue([]);
@@ -20,13 +22,15 @@ beforeEach(() => {
   }), error: null });
 });
 
-it("warns about a remaining balance before closing a customer khata", async () => {
+it("records the exact remaining balance through a confirmed final settlement before closing a customer khata", async () => {
   const user = userEvent.setup();
   renderWithQuery(<FarmCustomers />);
-  await user.click(screen.getByRole("button", { name: "Khata band karein" }));
-  const dialog = screen.getByRole("dialog", { name: "Khata band karein?" });
-  expect(within(dialog).getByText(/Rs 500 abhi lena baqi hai/)).toBeVisible();
+  await user.selectOptions(screen.getByRole("combobox", { name: "Aakhri account" }), "account-1");
+  await user.type(screen.getByPlaceholderText(/Misal: customer/), "Final payment received");
+  await user.click(screen.getByRole("button", { name: /Aakhri hisaab check/ }));
+  const dialog = screen.getByRole("dialog", { name: /Aakhri hisaab ke saath/ });
+  expect(within(dialog).getByText(/Rs 500 ki wusooli record/)).toBeVisible();
   expect(farmMocks.updateCustomerProfile).not.toHaveBeenCalled();
-  await user.click(within(dialog).getByRole("button", { name: "Khata band karein" }));
-  await waitFor(() => expect(farmMocks.updateCustomerProfile).toHaveBeenCalledWith("customer-1", expect.objectContaining({ active: false })));
+  await user.click(within(dialog).getByRole("button", { name: /Aakhri hisaab save/ }));
+  await waitFor(() => expect(farmMocks.finalizeCustomerKhata).toHaveBeenCalledWith(expect.objectContaining({ customerId: "customer-1", action: "payment", accountId: "account-1" })));
 });

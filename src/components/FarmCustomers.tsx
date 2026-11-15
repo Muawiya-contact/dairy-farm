@@ -8,13 +8,13 @@ import { UI_TEXT } from "@/lib/text";
 import { noonEnabledOn } from "@/lib/milk-shifts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  amount, createCustomer, customerMonthReport, customerRate, insertRow, money, recordCustomerPayment,
-  saveCustomerRate, updateCustomerProfile,
+  amount, createCustomer, customerMonthReport, customerRate, finalizeCustomerKhata, getCustomerClosureHistory, insertRow, money, recordCustomerPayment,
+  reopenCustomerKhata, saveCustomerRate, updateCustomerProfile,
   shortDate, useFarmData, compareCustomers, type Customer, type FarmData,
 } from "@/lib/farm-data";
 import {
-  parseCompanyBill, parseCustomerPayment, parseCustomerProfile, parseCustomerRate, parseNewCustomer,
-  type CustomerKind, type CustomerProfile,
+  parseCompanyBill, parseCustomerPayment, parseCustomerProfile, parseCustomerRate, parseCustomerSettlement, parseNewCustomer,
+  type CustomerKind,
 } from "@/lib/customer-forms";
 import {
   buildCustomerStatementPdf, buildPaymentReceiptPdf, documentFilename, receiptMessage,
@@ -57,6 +57,8 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [voidPaymentId, setVoidPaymentId] = useState<string | null>(null);
   const [closePending, setClosePending] = useState(false);
+  const [pendingSettlement, setPendingSettlement] = useState<ReturnType<typeof parseCustomerSettlement> | null>(null);
+  const [settlementAction, setSettlementAction] = useState<"payment" | "discount">("payment");
   const paymentPending = useRef<{ id: string; signature: string } | null>(null);
   const discountPending = useRef<{ id: string; signature: string } | null>(null);
   useEffect(() => { void prepareCustomerPdf().catch(() => {}); }, []);
@@ -71,6 +73,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
     enabled: validPeriod,
   });
   const auditQuery = useQuery({ queryKey: ["payment-audit", c.id], queryFn: () => getCustomerPaymentAudit(c.id) });
+  const closureQuery = useQuery({ queryKey: ["customer-closures", c.id], queryFn: () => getCustomerClosureHistory(c.id) });
   const balance = amount(data.balances.find((x) => x.customer_id === c.id)?.balance);
   const report = reportQuery.data;
   useEffect(() => { pendingShare.current = null; }, [data, month, report]);
@@ -87,13 +90,19 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
       .then((saved) => { if (saved) setEditing(false); });
   };
   const closeKhata = () => {
-    const profile: CustomerProfile = { name: c.name, phone: c.phone ?? "", morning: amount(c.default_morning), noon: amount(c.default_noon), evening: amount(c.default_evening), active: false, freeReason: c.free_reason };
-    void save(() => updateCustomerProfile(c.id, profile), "Khata band ho gaya. Purana record aur baqaya mehfooz hain.")
-      .then((saved) => { if (saved) setClosePending(false); });
+    if (!pendingSettlement) return;
+    void save(() => finalizeCustomerKhata({ customerId: c.id, ...pendingSettlement }),
+      pendingSettlement.action === "refund" ? "Advance wapas kar ke Khata band ho gaya." : "Aakhri hisaab record ho gaya aur Khata band ho gaya.")
+      .then((saved) => { if (saved) { setClosePending(false); setPendingSettlement(null); void closureQuery.refetch(); } });
   };
   const reopenKhata = () => {
-    const profile: CustomerProfile = { name: c.name, phone: c.phone ?? "", morning: amount(c.default_morning), noon: amount(c.default_noon), evening: amount(c.default_evening), active: true, freeReason: c.free_reason };
-    void save(() => updateCustomerProfile(c.id, profile), "Khata dobara Chalu ho gaya.");
+    void save(() => reopenCustomerKhata(c.id), "Khata dobara Chalu ho gaya. Ab aakhri settlement bhi zarurat par durust ho sakta hai.")
+      .then((saved) => { if (saved) void closureQuery.refetch(); });
+  };
+  const onCloseKhata = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    try { setPendingSettlement(parseCustomerSettlement(new FormData(event.currentTarget), data.today, c.opening_date, balance)); setClosePending(true); }
+    catch (issue) { void save(async () => { throw issue; }, ""); }
   };
   const onPayment = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -229,7 +238,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setEditing(!editing)} className="min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem">{editing ? "Form band karein" : "Maloomat badlein"}</button>
           <Link href={`/history/?customer=${c.id}`} className="inline-flex min-h-11 items-center rounded-xl border border-line px-4 font-semibold">Purana record dekhein</Link>
-          {c.active ? <button type="button" onClick={() => setClosePending(true)} className="min-h-11 rounded-xl border border-udhaar px-4 font-semibold text-udhaar">Khata band karein</button>
+          {c.active ? <a href="#aakhri-hisaab" className="inline-flex min-h-11 items-center rounded-xl border border-udhaar px-4 font-semibold text-udhaar">Khata band karein</a>
             : <button type="button" disabled={busy} onClick={reopenKhata} className="min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem disabled:opacity-50">Khata dobara Chalu karein</button>}
         </div>
         {editing && <form onSubmit={onProfile} className="mt-3 grid gap-2">
@@ -242,6 +251,20 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
           <button disabled={busy} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50">Maloomat save karein</button>
         </form>}
       </Panel>
+      {c.active && <div id="aakhri-hisaab" className="lg:col-span-2"><Panel title="Khata ka aakhri hisaab">
+        <p className="mb-3 text-sm text-muted">Khata band karne se pehle poora baqaya isi entry mein record hoga. Purani doodh aur wusooli entries mehfooz rehti hain.</p>
+        <form onSubmit={onCloseKhata} className="grid gap-3 sm:grid-cols-2">
+          {balance > 0 && <label className="text-sm font-semibold">Aakhri tareeqa<select name="action" value={settlementAction} onChange={(event) => setSettlementAction(event.target.value as "payment" | "discount")} className={`${field} mt-1`}><option value="payment">Wusooli le kar band karein</option><option value="discount">Riayat likh kar band karein</option></select></label>}
+          {balance < 0 && <p className="rounded-xl bg-ground p-3 text-sm sm:col-span-2">Customer ka {money(-balance)} advance hai. Khata band karne se pehle yeh raqam wapas record hogi.</p>}
+          {balance === 0 && <p className="rounded-xl bg-ground p-3 text-sm sm:col-span-2">Hisaab saaf hai; sirf band karne ki wajah likhein.</p>}
+          {(balance !== 0) && <p className="rounded-xl bg-ground p-3 text-sm font-semibold sm:col-span-2">Aakhri raqam: {money(Math.abs(balance))}</p>}
+          {(balance < 0 || (balance > 0 && settlementAction === "payment")) && <><label className="text-sm font-semibold">Tareeqa<select name="method" aria-label="Aakhri tareeqa account" defaultValue="cash" className={`${field} mt-1`}><option value="cash">Cash</option><option value="bank">Bank</option><option value="easypaisa">Easypaisa</option><option value="jazzcash">JazzCash</option><option value="cheque">Cheque</option></select></label><label className="text-sm font-semibold">Account<select name="account" aria-label="Aakhri account" required defaultValue="" className={`${field} mt-1`}><option value="" disabled>Account chunein</option>{activeAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label></>}
+          <label className="text-sm font-semibold">Band karne ki tareekh<input name="date" type="date" min={c.opening_date} max={data.today} defaultValue={data.today} required className={`${field} mt-1`} /></label>
+          <label className="text-sm font-semibold">Wajah<input name="reason" required minLength={3} maxLength={500} placeholder="Misal: customer ka Khata mukammal ho gaya" className={`${field} mt-1`} /></label>
+          <button disabled={busy || ((balance < 0 || (balance > 0 && settlementAction === "payment")) && !activeAccounts.length)} className="min-h-11 rounded-xl bg-udhaar px-4 font-bold text-white disabled:opacity-50 sm:col-span-2">Aakhri hisaab check karke Khata band karein</button>
+        </form>
+        {closureQuery.data?.length ? <ul className="mt-4 divide-y divide-line border-t border-line text-sm"><li className="py-2 font-semibold">Pichle band Khata records</li>{closureQuery.data.map((closure) => <li key={closure.id} className="py-2">{shortDate(closure.closed_date)} · {closure.settlement_kind === "payment" ? "Wusooli" : closure.settlement_kind === "discount" ? "Riayat" : closure.settlement_kind === "refund" ? "Advance wapas" : "Hisaab saaf"}{closure.amount ? ` · ${money(closure.amount)}` : ""} · {closure.reason}{closure.reopened_at ? " · dobara chalu" : ""}</li>)}</ul> : null}
+      </Panel></div>}
       <Panel title="Maheene ka bill" className="lg:col-span-2">
         <label className="mb-3 block max-w-xs text-sm font-semibold">Maheena<input type="month" max={data.today.slice(0, 7)} value={month} onChange={(event) => { setMonth(event.target.value); setPdfStatus(""); }} className={`${field} mt-1 block`} /><DateFormatHint kind="month" /></label>
         {!validMonth && <p role="alert" className="text-udhaar">Aaj tak ka sahi maheena chunein.</p>}
@@ -250,7 +273,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
         {reportQuery.isSuccess && !report && <p className="text-muted">Is maheene ka hisaab nahi mila.</p>}
         {report && <dl className="divide-y divide-line">
           {[["Pichla baqaya", report.previous_balance], ["Doodh / parchi ki raqam", report.amount],
-            ["Wusooli", report.paid], ["Riayat", report.discount], ["Maheene ke aakhir mein baqi", report.balance]]
+            ["Wusooli", report.paid], ["Riayat", report.discount], ["Advance wapas", report.refund], ["Maheene ke aakhir mein baqi", report.balance]]
             .map(([label, value]) => <div key={String(label)} className="flex justify-between gap-3 py-2"><dt>{label}</dt><dd className="font-bold">{money(amount(value as number))}</dd></div>)}
         </dl>}
         {report && <p className="mt-2 text-sm text-muted">Doodh delivery: {amount(report.litres)} L. Company parchi ki litres neeche register aur PDF mein hain.</p>}
@@ -321,7 +344,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
             {paymentEntry && editingPaymentId === paymentEntry.id && <form key={`${paymentEntry.id}-${paymentEntry.revision}`} onSubmit={(event) => onCorrection(event, paymentEntry.id)} className="grid w-full gap-2 rounded-xl bg-ground p-3 sm:grid-cols-2">
               <label className="text-sm">Tareekh<input name="date" type="date" min={c.opening_date} max={data.today} defaultValue={paymentEntry.payment_date} required className={field} /></label>
               <label className="text-sm">Raqam<input name="amount" type="number" min="0.01" step="0.01" defaultValue={paymentEntry.amount} required className={field} /></label>
-              {paymentEntry.kind === "payment" && <><label className="text-sm">Tareeqa<select name="method" defaultValue={paymentEntry.method ?? "cash"} className={field}><option value="cash">Cash</option><option value="bank">Bank</option><option value="easypaisa">Easypaisa</option><option value="jazzcash">JazzCash</option><option value="cheque">Cheque</option></select></label><label className="text-sm">Account<select name="account" defaultValue={paymentEntry.account_id ?? ""} required className={field}><option value="" disabled>Account chunein</option>{data.accounts.filter((item) => item.active || item.id === paymentEntry.account_id).map((item) => <option key={item.id} value={item.id}>{item.name}{item.active ? "" : " (band)"}</option>)}</select></label></>}
+              {paymentEntry.kind !== "discount" && <><label className="text-sm">Tareeqa<select name="method" defaultValue={paymentEntry.method ?? "cash"} className={field}><option value="cash">Cash</option><option value="bank">Bank</option><option value="easypaisa">Easypaisa</option><option value="jazzcash">JazzCash</option><option value="cheque">Cheque</option></select></label><label className="text-sm">Account<select name="account" defaultValue={paymentEntry.account_id ?? ""} required className={field}><option value="" disabled>Account chunein</option>{data.accounts.filter((item) => item.active || item.id === paymentEntry.account_id).map((item) => <option key={item.id} value={item.id}>{item.name}{item.active ? "" : " (band)"}</option>)}</select></label></>}
               <input name="reason" required placeholder="Correction ki wajah" aria-label="Correction ki wajah" className={`${field} sm:col-span-2`} />
               <button disabled={busy} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50 sm:col-span-2">Durust entry save karein</button>
             </form>}
@@ -359,7 +382,7 @@ function CustomerDetail({ data, customer, save, busy, error, success }: {
       </Panel>
       {success && <p role="status" className="text-berseem-deep lg:col-span-2">{success}</p>}
       {error && <p role="alert" className="text-udhaar lg:col-span-2">Save nahi hua: {error}</p>}
-      {closePending && <ConfirmActionDialog title="Khata band karein?" message={balance > 0 ? `${money(balance)} abhi lena baqi hai. Khata band hone ke baad nayi doodh entry nahi hogi, lekin purana hisaab aur baqaya mehfooz rahenge.` : balance < 0 ? `Customer ka ${money(-balance)} advance hai. Khata band hone ke baad nayi doodh entry nahi hogi; purana hisaab mehfooz rahega.` : "Nayi doodh entry band ho jayegi. Purana hisaab mehfooz rahega."} confirmLabel="Khata band karein" busy={busy} onConfirm={closeKhata} onCancel={() => setClosePending(false)} />}
+      {closePending && pendingSettlement && <ConfirmActionDialog title="Aakhri hisaab ke saath Khata band karein?" message={pendingSettlement.action === "payment" ? `${money(balance)} ki wusooli record ho gi aur Khata band ho jayega.` : pendingSettlement.action === "discount" ? `${money(balance)} ki riayat record ho gi; galla mein paisa nahi aayega.` : pendingSettlement.action === "refund" ? `${money(-balance)} customer ko advance wapas record hoga aur galla se niklega.` : "Hisaab saaf hai; Khata band ho jayega."} confirmLabel={pendingSettlement.action === "refund" ? "Advance wapas karke band karein" : "Aakhri hisaab save karke band karein"} busy={busy} onConfirm={closeKhata} onCancel={() => { setClosePending(false); setPendingSettlement(null); }} />}
     </Body>
   </>;
 }

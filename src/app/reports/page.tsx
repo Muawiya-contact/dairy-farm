@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { buildPdf, downloadBlob } from "@/lib/export-data";
+import { buildPdfReport, downloadBlob, type PdfSection } from "@/lib/export-data";
 import { friendlyError } from "@/lib/errors";
 import { rs, litres } from "@/lib/format";
 import { todayPK } from "@/lib/dates";
@@ -28,6 +28,18 @@ function pdfRows(data: PeriodReport): Record<string, unknown>[] {
   ].map(([item, value]) => ({ item, value }));
 }
 
+function pdfSections(data: PeriodReport): PdfSection[] {
+  return [
+    { title: "Farm ka khulasa", columns: ["item", "value"], rows: pdfRows(data) },
+    { title: "Customer ka period hisaab", columns: ["name", "litres", "charged", "paid", "discount", "period_balance_change"], rows: data.customers.map((row) => ({
+      name: row.name, litres: litres(row.litres), charged: money(row.charged), paid: money(row.paid), discount: money(row.discount), period_balance_change: money(row.period_balance_change),
+    })) },
+    { title: "Rozana kharchay", columns: ["expense_date", "category", "kind", "account", "amount"], rows: data.expenses.map((row) => ({
+      expense_date: row.expense_date, category: `${row.category}${row.note ? ` · ${row.note}` : ""}`, kind: row.is_farm_cost ? "Farm" : "Ghar", account: row.account, amount: money(row.amount),
+    })) },
+  ];
+}
+
 export default function ReportsPage() {
   const today = todayPK();
   const [preset, setPreset] = useState<Preset>("month");
@@ -46,7 +58,7 @@ export default function ReportsPage() {
   };
   const makePdf = async () => {
     if (!data) throw new Error("Report abhi load nahi hui.");
-    return buildPdf(`Farm report — ${periodLabel(from, to)}`, ["item", "value"], pdfRows(data), data.farmName);
+    return buildPdfReport(`Farm report — ${periodLabel(from, to)}`, pdfSections(data), data.farmName);
   };
   const action = async (kind: "download" | "share" | "print") => {
     if (busy || !data) return;

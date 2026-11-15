@@ -76,6 +76,8 @@ const COLUMN_LABELS: Record<string, string> = {
   salary_period_id: "Tankhwah maheena ID", salary_month: "Tankhwah ka maheena",
   agreed_amount: "Tay shuda tankhwah (Rs)",
   technician: "Technician", sort_order: "Tarteeb", kind: "Qism",
+  item: "Mad", value: "Raqam", charged: "Charge (Rs)", period_balance_change: "Baqaya farq (Rs)",
+  expense_date: "Kharcha ki tareekh", account: "Account",
   contact_phone: "Farm contact number",
   counted_amount: "Gini hui cash (Rs)", expected_balance: "Hisaab ke mutabiq (Rs)",
   before_row: "Purani entry (JSON)", after_row: "Nayi entry (JSON)",
@@ -178,6 +180,12 @@ export function downloadBlob(filename: string, blob: Blob): void {
 
 export type ExportFormat = "csv" | "xlsx" | "pdf";
 
+export type PdfSection = {
+  title: string;
+  columns: string[];
+  rows: Record<string, unknown>[];
+};
+
 export async function buildXlsx(title: string, columns: string[], rows: Record<string, unknown>[]): Promise<Uint8Array<ArrayBuffer>> {
   const { default: ExcelJS } = await import("exceljs");
   const workbook = new ExcelJS.Workbook();
@@ -192,6 +200,15 @@ export async function buildXlsx(title: string, columns: string[], rows: Record<s
 }
 
 export async function buildPdf(title: string, columns: string[], rows: Record<string, unknown>[], farmName: string): Promise<Uint8Array<ArrayBuffer>> {
+  return buildPdfReport(title, [{ title, columns, rows }], farmName);
+}
+
+/**
+ * A single document can contain a financial summary followed by its supporting
+ * customer and expense rows. This keeps a shared period report auditable
+ * instead of presenting only headline totals.
+ */
+export async function buildPdfReport(title: string, sections: PdfSection[], farmName: string): Promise<Uint8Array<ArrayBuffer>> {
   const [{ jsPDF }, { autoTable }, logo, developerLogo, developerQr] = await Promise.all([import("jspdf"), import("jspdf-autotable"), loadPdfLogo(), loadPdfDeveloperLogo(), loadPdfDeveloperQr()]);
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a3" });
   pdf.addImage(logo, "PNG", 10, 8, 16, 16);
@@ -204,20 +221,27 @@ export async function buildPdf(title: string, columns: string[], rows: Record<st
   addPdfDeveloperMark(pdf, developerLogo, 410, 7);
   pdf.setFontSize(9);
   pdf.setTextColor(0, 0, 0);
-  pdf.text(`${rows.length} entries`, 31, titleY + 6);
-  if (!rows.length) {
-    pdf.setFontSize(11);
-    pdf.setTextColor(90, 100, 93);
-    pdf.text("Is export mein koi record nahi mila.", 10, titleY + 16);
-  } else {
+  let cursorY = titleY + 9;
+  for (const section of sections) {
+    pdf.setFontSize(10);
+    pdf.setTextColor(0, 0, 0);
+    pdf.text(`${section.title} (${section.rows.length})`, 10, cursorY);
+    if (!section.rows.length) {
+      pdf.setFontSize(9);
+      pdf.setTextColor(90, 100, 93);
+      pdf.text("Is export mein koi record nahi mila.", 10, cursorY + 6);
+      cursorY += 14;
+      continue;
+    }
     autoTable(pdf, {
-      startY: titleY + 10, head: [columns.map((column) => columnLabel(column, title))],
-      body: rows.map((row) => columns.map((column) => displayCell(row[column]))),
+      startY: cursorY + 3, head: [section.columns.map((column) => columnLabel(column, section.title))],
+      body: section.rows.map((row) => section.columns.map((column) => displayCell(row[column]))),
       styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak" },
       headStyles: { fillColor: [45, 106, 57] },
       horizontalPageBreak: true, horizontalPageBreakRepeat: 0,
       margin: { top: 10, right: 10, bottom: 16, left: 10 },
     });
+    cursorY = ((pdf as typeof pdf & { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? cursorY) + 10;
   }
   const pages = pdf.getNumberOfPages();
   for (let page = 1; page <= pages; page++) {

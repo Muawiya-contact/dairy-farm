@@ -86,7 +86,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       {/* Phone: bottom menu */}
       <nav
         aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-7 border-t border-line bg-paper/95 px-1 pt-1 pb-[max(10px,env(safe-area-inset-bottom))] backdrop-blur"
+        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-7 border-t border-line bg-paper/95 px-1 pt-1 pb-[max(10px,env(safe-area-inset-bottom))] backdrop-blur lg:hidden"
       >
         {NAV.map(({ href, label, Icon }) => {
           const on = isActive(path, href);

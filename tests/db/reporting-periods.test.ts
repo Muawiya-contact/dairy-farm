@@ -37,10 +37,14 @@ test("period reports separate charity, billed sales, collections and farm costs"
 test("period report and customer ledger reject invalid dates and preserve date order", async () => {
   await expect(db.query("select * from report_period_summary('2026-10-11', '2026-10-10')")).rejects.toThrow("REPORT_PERIOD_INVALID");
   const buyer = (await db.query<{ id: string }>("select id from customers where name = 'Buyer'" )).rows[0];
-  const rows = (await db.query<{ entry_kind: string; charge: string; credit: string }>(
-    `select entry_kind, charge, credit from customer_period_ledger('${buyer.id}', '2026-10-10', '2026-10-10')`,
+  const rows = (await db.query<{ entry_kind: string; charge: string; payment: string; running_balance: string }>(
+    `select entry_kind, charge, payment, running_balance from customer_period_ledger('${buyer.id}', '2026-10-10', '2026-10-10')`,
   )).rows;
-  expect(rows).toEqual([{ entry_kind: "delivery", charge: "600.00", credit: "0" }, { entry_kind: "payment", charge: "0", credit: "300.00" }]);
+  expect(rows).toEqual([{ entry_kind: "delivery", charge: "600.00", payment: "0", running_balance: "600.00" }, { entry_kind: "payment", charge: "0", payment: "300.00", running_balance: "300.00" }]);
+  const summary = (await db.query<Record<string, string>>(
+    `select * from customer_period_ledger_summary('${buyer.id}', '2026-10-10', '2026-10-10')`,
+  )).rows[0];
+  expect(summary).toMatchObject({ opening_balance: "0.00", litres: "4.00", charges: "600.00", payments: "300.00", closing_balance: "300.00" });
 });
 
 test("period functions stay owner-only in production and are explicitly available to the staging demo", async () => {

@@ -1,2 +1,3 @@
-import ReportCategoryPlaceholder from "@/components/ReportCategoryPlaceholder";
-export default function CustomerReportPage() { return <ReportCategoryPlaceholder title="Customer Report" />; }
+import { Suspense } from "react";
+import FarmCustomers from "@/components/FarmCustomers";
+export default function CustomerReportPage() { return <Suspense><FarmCustomers /></Suspense>; }

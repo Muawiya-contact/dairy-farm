@@ -56,7 +56,7 @@ export function ExportPanel() {
       </div>
       <h4 className="mt-5 font-semibold">Maheene ki reports</h4>
       <div className="mt-2 grid gap-2 sm:grid-cols-2">{REPORTS.map((report) => <button key={report.name} type="button" disabled={!!busy || !month} onClick={() => exportReport(report)} className={buttonClass}>{report.label} · {format.toUpperCase()}</button>)}</div>
-      <div className="mt-2 flex flex-wrap gap-2"><button type="button" disabled={!!busy} onClick={exportBreeding} className={buttonClass}>Nasl kashi register · {format.toUpperCase()}</button><Link href="/reports/" className={`${buttonClass} inline-flex items-center`}>Maheene ki report dekhein / PDF save karein</Link></div>
+      <div className="mt-2 flex flex-wrap gap-2"><button type="button" disabled={!!busy} onClick={exportBreeding} className={buttonClass}>Nasl kashi register · {format.toUpperCase()}</button><Link href="/reports/final/" className={`${buttonClass} inline-flex items-center`}>Maheene ki report dekhein / PDF save karein</Link></div>
       <h4 className="mt-5 font-semibold">Har table ka export</h4>
       <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{DATASETS.map((dataset) => <button key={dataset.table} type="button" disabled={!!busy} onClick={() => exportTable(dataset)} className={buttonClass}>{dataset.label} · {format.toUpperCase()}</button>)}</div>
     </section>

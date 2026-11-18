@@ -33,3 +33,7 @@ export const MoonIcon = (p: P) => <svg {...base(p)}><path d="M20 14.5A8 8 0 1 1 
 export const ShareIcon = (p: P) => <svg {...base(p)}><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" /><path d="M12 3v12M7 8l5-5 5 5" /></svg>;
 export const CheckIcon = (p: P) => <svg {...base(p)}><path d="M5 12l5 5 9-10" /></svg>;
 export const CloseIcon = (p: P) => <svg {...base(p)}><path d="M6 6l12 12M18 6L6 18" /></svg>;
+export const PeopleIcon = (p: P) => <svg {...base(p)}><circle cx="9" cy="8" r="3" /><path d="M3.5 20v-1.5a5.5 5.5 0 0 1 11 0V20M17 11a3 3 0 1 0-1.8-5.4M19.5 20v-1.5a5.5 5.5 0 0 0-2.8-4.8" /></svg>;
+export const BoxesIcon = (p: P) => <svg {...base(p)}><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9zM4 7.5l8 4.5 8-4.5M12 12v9" /></svg>;
+export const ChartIcon = (p: P) => <svg {...base(p)}><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></svg>;
+export const BankIcon = (p: P) => <svg {...base(p)}><path d="m3 10 9-6 9 6M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18" /></svg>;

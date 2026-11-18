@@ -23,7 +23,13 @@ export type PeriodReport = {
 
 export type CustomerPeriodLedgerLine = {
   entry_date: string; entry_kind: string; detail: string; litres: number | null;
-  charge: number; credit: number; reference_id: string;
+  charge: number; credit: number; payment: number; discount: number; refund: number;
+  running_balance: number; reference_id: string;
+};
+
+export type CustomerPeriodLedgerSummary = {
+  opening_balance: number; litres: number; charges: number; payments: number;
+  discounts: number; refunds: number; closing_balance: number;
 };
 
 type ReportRpc = <T>(name: string, args: { p_from: string; p_to: string }) => Promise<{ data: T[] | null; error: Error | null }>;
@@ -66,5 +72,16 @@ export async function loadCustomerPeriodLedger(customerId: string, from: string,
   const rpc = getSupabase().rpc.bind(getSupabase()) as unknown as <T>(name: string, args: { p_customer: string; p_from: string; p_to: string }) => Promise<{ data: T[] | null; error: Error | null }>;
   const { data, error } = await rpc<CustomerPeriodLedgerLine>("customer_period_ledger", { p_customer: customerId, p_from: from, p_to: to });
   if (error) throw error;
-  return (data ?? []).map((row) => ({ ...row, litres: row.litres == null ? null : Number(row.litres), charge: Number(row.charge ?? 0), credit: Number(row.credit ?? 0) }));
+  return (data ?? []).map((row) => ({ ...row, litres: row.litres == null ? null : Number(row.litres), charge: Number(row.charge ?? 0), credit: Number(row.credit ?? 0), payment: Number(row.payment ?? 0), discount: Number(row.discount ?? 0), refund: Number(row.refund ?? 0), running_balance: Number(row.running_balance ?? 0) }));
+}
+
+export async function loadCustomerPeriodLedgerSummary(customerId: string, from: string, to: string): Promise<CustomerPeriodLedgerSummary> {
+  const rpc = getSupabase().rpc.bind(getSupabase()) as unknown as <T>(name: string, args: { p_customer: string; p_from: string; p_to: string }) => Promise<{ data: T[] | null; error: Error | null }>;
+  const { data, error } = await rpc<CustomerPeriodLedgerSummary>("customer_period_ledger_summary", { p_customer: customerId, p_from: from, p_to: to });
+  if (error) throw error;
+  const row = data?.[0] ?? {} as CustomerPeriodLedgerSummary;
+  return {
+    opening_balance: Number(row.opening_balance ?? 0), litres: Number(row.litres ?? 0), charges: Number(row.charges ?? 0),
+    payments: Number(row.payments ?? 0), discounts: Number(row.discounts ?? 0), refunds: Number(row.refunds ?? 0), closing_balance: Number(row.closing_balance ?? 0),
+  };
 }

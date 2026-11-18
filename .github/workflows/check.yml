@@ -2,6 +2,9 @@ name: Check app
 
 on:
   push:
+    branches:
+      - main
+      - production
   pull_request:
 
 jobs:
@@ -36,6 +39,8 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci
+      - name: Clear local Supabase containers from a prior run
+        run: npx supabase stop --no-backup || true
       - run: npx supabase start
       - run: npx playwright install --with-deps chromium
       - run: npm run e2e

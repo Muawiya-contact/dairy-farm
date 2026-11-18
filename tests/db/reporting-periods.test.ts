@@ -14,6 +14,9 @@ beforeAll(async () => {
     insert into milk_shifts(milk_date, shift, total_litres) values ('2026-10-10', 'morning', 10);
     insert into milk_deliveries(delivery_date, shift, customer_id, litres)
       select '2026-10-10', 'morning', id, case name when 'Buyer' then 4 else 2 end from customers;
+    insert into milk_shifts(milk_date, shift, total_litres) values ('2026-10-09', 'morning', 2);
+    insert into milk_deliveries(delivery_date, shift, customer_id, litres)
+      select '2026-10-09', 'morning', id, 2 from customers where name = 'Buyer';
     insert into payments(customer_id, payment_date, amount, kind, method, account_id)
       select c.id, '2026-10-10', 300, 'payment', 'cash', a.id from customers c cross join accounts a
       where c.name = 'Buyer' and a.is_farm_cash;
@@ -37,20 +40,26 @@ test("period reports separate charity, billed sales, collections and farm costs"
 test("period report and customer ledger reject invalid dates and preserve date order", async () => {
   await expect(db.query("select * from report_period_summary('2026-10-11', '2026-10-10')")).rejects.toThrow("REPORT_PERIOD_INVALID");
   const buyer = (await db.query<{ id: string }>("select id from customers where name = 'Buyer'" )).rows[0];
-  const rows = (await db.query<{ entry_kind: string; charge: string; credit: string }>(
-    `select entry_kind, charge, credit from customer_period_ledger('${buyer.id}', '2026-10-10', '2026-10-10')`,
+  const rows = (await db.query<{ entry_kind: string; charge: string; payment: string; running_balance: string }>(
+    `select entry_kind, charge, payment, running_balance from customer_period_ledger('${buyer.id}', '2026-10-10', '2026-10-10')`,
   )).rows;
-  expect(rows).toEqual([{ entry_kind: "delivery", charge: "600.00", credit: "0" }, { entry_kind: "payment", charge: "0", credit: "300.00" }]);
+  expect(rows).toEqual([{ entry_kind: "delivery", charge: "600.00", payment: "0", running_balance: "900.00" }, { entry_kind: "payment", charge: "0", payment: "300.00", running_balance: "600.00" }]);
+  const summary = (await db.query<Record<string, string>>(
+    `select * from customer_period_ledger_summary('${buyer.id}', '2026-10-10', '2026-10-10')`,
+  )).rows[0];
+  expect(summary).toMatchObject({ opening_balance: "300.00", litres: "4.00", charges: "600.00", payments: "300.00", closing_balance: "600.00" });
 });
 
 test("period functions stay owner-only in production and are explicitly available to the staging demo", async () => {
   await db.exec("set role anon");
   await expect(db.query("select * from report_period_summary('2026-10-10', '2026-10-10')")).rejects.toThrow(/permission|denied/i);
+  await expect(db.query("select * from customer_period_ledger_summary('00000000-0000-0000-0000-000000000001', '2026-10-10', '2026-10-10')")).rejects.toThrow(/permission|denied/i);
   await db.exec("reset role");
   const demo = await freshFarmDb({ farmDay: "2026-10-20", demoAccess: true });
   try {
     await demo.exec("set role anon");
     await expect(demo.query("select * from report_period_summary('2026-10-10', '2026-10-10')")).resolves.toBeDefined();
+    await expect(demo.query("select * from customer_period_ledger_summary('00000000-0000-0000-0000-000000000001', '2026-10-10', '2026-10-10')")).rejects.toThrow("CUSTOMER_NOT_FOUND");
   } finally {
     await demo.close();
   }

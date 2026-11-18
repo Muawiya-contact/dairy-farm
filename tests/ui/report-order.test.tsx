@@ -1,7 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 import { renderWithQuery } from "./utils";
-import ReportsPage from "@/app/reports/page";
+import ReportsWorkspace from "@/components/ReportsWorkspace";
 
 const loadPeriodReport = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/reporting", async (importOriginal) => {
@@ -21,7 +21,7 @@ it("orders printed customers using the report rows without another customer-tabl
     expenses: [],
   });
 
-  renderWithQuery(<ReportsPage />);
+  renderWithQuery(<ReportsWorkspace />);
   const heading = await screen.findByRole("heading", { name: "Customer ka period hisaab" });
   const rows = within(heading.closest("section")!).getAllByRole("row");
   expect(rows.slice(1).map((row) => within(row).getAllByRole("cell")[0].textContent))

@@ -129,7 +129,7 @@ export default function MilkReport() {
   return <>
     <PageHeader title="Milk Report" sub="Doodh ka rozana hisaab, customers aur baqaya" back="/reports/" />
     <Body className="print-report space-y-4 pb-8">
-      <ReportPeriodPicker label="Milk Report" today={today} allFrom={bounds.data?.first_date || today} from={from} to={to} preset={preset} onRange={setRange} onPreset={choosePreset} />
+      <ReportPeriodPicker label="Milk Report" today={today} allFrom={bounds.data?.first_date || today} from={from} to={to} preset={preset} allDisabled={!bounds.data} allDisabledHint={bounds.isPending ? "Sab records ki pehli tareekh load ho rahi hai…" : bounds.isError ? "Sab records dikhane ke liye pehli tareekh load karein." : undefined} onRange={setRange} onPreset={choosePreset} />
       <p className="no-print text-sm"><Link className="font-semibold text-berseem underline" href="/reports/animal/">Animal-wise Milk Report kholein</Link></p>
       {bounds.isError && <p role="alert" className="text-sm text-udhaar">Report ki pehli tareekh nahi mili: {friendlyError(bounds.error)} <button type="button" onClick={() => void bounds.refetch()} className="underline">Dobara koshish</button></p>}
       {!valid && <p role="alert" className="text-sm text-udhaar">Aaj tak ki sahi tareekh chunein. Report ek dafa mein das saal tak dikhata hai.</p>}

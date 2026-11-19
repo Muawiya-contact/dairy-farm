@@ -49,6 +49,13 @@ it("filters by animal tag and exports shift totals with date-wise records", asyn
   expect(reportMocks.downloadBlob).toHaveBeenCalledOnce();
 });
 
+it("waits for the database date bounds before enabling all-records period", async () => {
+  reportMocks.loadMilkReportBounds.mockImplementationOnce(() => new Promise(() => {}));
+  renderWithQuery(<AnimalMilkReport />);
+  expect(screen.getByRole("button", { name: "Sab record" })).toBeDisabled();
+  expect(screen.getByText("Sab records ki pehli tareekh load ho rahi hai…")).toBeInTheDocument();
+});
+
 it("explains and retries a farm-settings error before PDF export", async () => {
   const user = userEvent.setup();
   reportMocks.getSettings.mockRejectedValueOnce(new Error("failed to fetch"));

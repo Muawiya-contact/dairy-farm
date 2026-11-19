@@ -47,6 +47,13 @@ it("shows reconciled daily and customer results and exports the selected period"
   expect(reportMocks.downloadBlob).toHaveBeenCalledWith("milk-report-2026-10-16-to-2026-10-16.pdf", expect.any(Blob));
 });
 
+it("waits for the database date bounds before enabling all-records period", async () => {
+  reportMocks.loadMilkReportBounds.mockImplementationOnce(() => new Promise(() => {}));
+  renderWithQuery(<MilkReport />);
+  expect(screen.getByRole("button", { name: "Sab record" })).toBeDisabled();
+  expect(screen.getByText("Sab records ki pehli tareekh load ho rahi hai…")).toBeInTheDocument();
+});
+
 it("requires a waste reason and saves corrections through the guarded database action", async () => {
   const user = userEvent.setup();
   renderWithQuery(<MilkReport />);

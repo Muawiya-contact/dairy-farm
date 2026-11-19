@@ -10,9 +10,10 @@ const labels: Record<ReportPeriodPreset, string> = {
 };
 
 export default function ReportPeriodPicker({
-  label, today, allFrom, from, to, preset, onRange, onPreset,
+  label, today, allFrom, from, to, preset, allDisabled = false, allDisabledHint, onRange, onPreset,
 }: {
   label: string; today: string; allFrom: string; from: string; to: string; preset: ReportPeriodPreset;
+  allDisabled?: boolean; allDisabledHint?: string;
   onRange: (from: string, to: string) => void; onPreset: (preset: ReportPeriodPreset) => void;
 }) {
   const choose = (value: ReportPeriodPreset) => {
@@ -30,10 +31,11 @@ export default function ReportPeriodPicker({
     <h2 className="mb-3 font-display text-[17px] font-bold">Report ki tareekh</h2>
     <div className="flex flex-wrap gap-2">
       {(Object.keys(labels) as ReportPeriodPreset[]).map((key) => <button
-        type="button" key={key} aria-pressed={preset === key} onClick={() => choose(key)}
-        className={`min-h-11 rounded-xl border px-3 font-semibold ${preset === key ? "border-ink bg-ink text-white" : "border-line"}`}
+        type="button" key={key} aria-pressed={preset === key} disabled={key === "all" && allDisabled} onClick={() => choose(key)}
+        className={`min-h-11 rounded-xl border px-3 font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${preset === key ? "border-ink bg-ink text-white" : "border-line"}`}
       >{labels[key]}</button>)}
     </div>
+    {allDisabledHint && <p className="mt-2 text-sm text-muted">{allDisabledHint}</p>}
     <div className="mt-3 grid gap-3 sm:grid-cols-2">
       <label className="text-sm font-semibold">Shuru ki tareekh<input aria-label={`${label} shuru ki tareekh`} type="date" value={from} max={to || today} onChange={(event) => { onPreset("custom"); onRange(event.target.value, to); }} className={`${field} mt-1`} /></label>
       <label className="text-sm font-semibold">Aakhir ki tareekh<input aria-label={`${label} aakhir ki tareekh`} type="date" value={to} min={from || undefined} max={today} onChange={(event) => { onPreset("custom"); onRange(from, event.target.value); }} className={`${field} mt-1`} /></label>

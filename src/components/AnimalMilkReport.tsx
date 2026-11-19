@@ -97,7 +97,7 @@ export default function AnimalMilkReport() {
     <PageHeader title="Animal-wise Milk Report" sub="Tag ke mutabiq Subah, Dopehr aur Shaam ki production" back="/reports/" />
     <Body className="print-report space-y-4 pb-8">
       <p className="no-print text-sm"><Link className="font-semibold text-berseem underline" href="/reports/milk/">Customer / Overall Milk Report kholein</Link></p>
-      <ReportPeriodPicker label="Animal Milk Report" today={today} allFrom={bounds.data?.first_date || today} from={from} to={to} preset={preset} onRange={setRange} onPreset={choosePreset} />
+      <ReportPeriodPicker label="Animal Milk Report" today={today} allFrom={bounds.data?.first_date || today} from={from} to={to} preset={preset} allDisabled={!bounds.data} allDisabledHint={bounds.isPending ? "Sab records ki pehli tareekh load ho rahi hai…" : bounds.isError ? "Sab records dikhane ke liye pehli tareekh load karein." : undefined} onRange={setRange} onPreset={choosePreset} />
       {bounds.isError && <p role="alert" className="text-sm text-udhaar">Report ki pehli tareekh nahi mili: {friendlyError(bounds.error)} <button type="button" onClick={() => void bounds.refetch()} className="underline">Dobara koshish</button></p>}
       <Panel title="Janwar chunein" className="no-print">
         {options.isPending && <p role="status" className="text-sm text-muted">Janwar load ho rahe hain…</p>}

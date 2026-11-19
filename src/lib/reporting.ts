@@ -35,7 +35,7 @@ export type CustomerPeriodLedgerSummary = {
 export type KhataPeriodCustomer = {
   customer_id: string; name: string; kind: string; active: boolean; sort_order: number;
   litres: number; charges: number; payments: number; discounts: number; refunds: number;
-  opening_balance: number; closing_balance: number;
+  opening_balance: number; opening_added: number; closing_balance: number;
 };
 
 export type KhataYearMonth = {
@@ -101,7 +101,7 @@ export async function loadKhataPeriodSummary(from: string, to: string): Promise<
   const rpc = getSupabase().rpc.bind(getSupabase()) as unknown as ReportRpc;
   const { data, error } = await rpc<KhataPeriodCustomer>("khata_period_summary", { p_from: from, p_to: to });
   if (error) throw error;
-  return (data ?? []).map((row) => ({ ...row, active: Boolean(row.active), sort_order: Number(row.sort_order ?? 0), litres: Number(row.litres ?? 0), charges: Number(row.charges ?? 0), payments: Number(row.payments ?? 0), discounts: Number(row.discounts ?? 0), refunds: Number(row.refunds ?? 0), opening_balance: Number(row.opening_balance ?? 0), closing_balance: Number(row.closing_balance ?? 0) }));
+  return (data ?? []).map((row) => ({ ...row, active: Boolean(row.active), sort_order: Number(row.sort_order ?? 0), litres: Number(row.litres ?? 0), charges: Number(row.charges ?? 0), payments: Number(row.payments ?? 0), discounts: Number(row.discounts ?? 0), refunds: Number(row.refunds ?? 0), opening_balance: Number(row.opening_balance ?? 0), opening_added: Number(row.opening_added ?? 0), closing_balance: Number(row.closing_balance ?? 0) }));
 }
 
 export async function loadKhataYearMonthSummary(year: number): Promise<KhataYearMonth[]> {

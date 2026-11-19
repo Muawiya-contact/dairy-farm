@@ -9,11 +9,13 @@ beforeAll(async () => {
     update accounts set opening_date = '2026-10-01';
     insert into customers(name, kind, free_reason, opening_date) values
       ('Buyer', 'regular', null, '2026-10-01'), ('Charity', 'free', 'charity', '2026-10-01');
+    insert into customers(name, kind, free_reason, opening_date, opening_balance, active) values
+      ('Mid-period opening', 'regular', null, '2026-10-10', 500, false);
     insert into customer_rates(customer_id, rate, effective_from)
       select id, 150, '2026-10-01' from customers where name = 'Buyer';
     insert into milk_shifts(milk_date, shift, total_litres) values ('2026-10-10', 'morning', 10);
     insert into milk_deliveries(delivery_date, shift, customer_id, litres)
-      select '2026-10-10', 'morning', id, case name when 'Buyer' then 4 else 2 end from customers;
+      select '2026-10-10', 'morning', id, case name when 'Buyer' then 4 else 2 end from customers where name in ('Buyer', 'Charity');
     insert into milk_shifts(milk_date, shift, total_litres) values ('2026-10-09', 'morning', 2);
     insert into milk_deliveries(delivery_date, shift, customer_id, litres)
       select '2026-10-09', 'morning', id, 2 from customers where name = 'Buyer';
@@ -56,8 +58,15 @@ test("Khata summary carries an earlier balance into the selected period", async 
   )).rows;
   expect(rows).toContainEqual({ name: "Buyer", litres: "4.00", charges: "600.00", payments: "300.00", opening_balance: "300.00", closing_balance: "600.00" });
   const months = (await db.query<{ month_start: Date; closing_balance: string }>("select month_start, closing_balance from khata_year_month_summary(2026) order by month_start")).rows;
-  expect(months.at(-1)).toMatchObject({ closing_balance: "600.00" });
+  expect(months.at(-1)).toMatchObject({ closing_balance: "1100.00" });
   expect(months.at(-1)?.month_start.toISOString().slice(0, 10)).toBe("2026-10-01");
+});
+
+test("Khata summary applies a customer opening balance on its actual opening date", async () => {
+  const rows = (await db.query<Record<string, string>>(
+    "select name, opening_balance, opening_added, closing_balance from khata_period_summary('2026-10-01', '2026-10-31')",
+  )).rows;
+  expect(rows).toContainEqual({ name: "Mid-period opening", opening_balance: "0", opening_added: "500.00", closing_balance: "500.00" });
 });
 
 test("period functions stay owner-only in production and are explicitly available to the staging demo", async () => {

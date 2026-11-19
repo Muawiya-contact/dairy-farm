@@ -39,13 +39,15 @@ const freeReasons = {
 type Save = (action: () => Promise<void>, message: string) => Promise<boolean>;
 type PdfAction = "download" | "share" | "whatsapp";
 
-function CustomerDetail({ data, customer, save, busy, error, success }: {
+function CustomerDetail({ data, customer, save, busy, error, success, initialFrom, initialTo }: {
   data: FarmData; customer: Customer; save: Save; busy: boolean; error: string; success: string;
+  initialFrom?: string; initialTo?: string;
 }) {
   const c = customer;
   const [month, setMonth] = useState(data.today.slice(0, 7));
-  const [periodFrom, setPeriodFrom] = useState(`${data.today.slice(0, 7)}-01`);
-  const [periodTo, setPeriodTo] = useState(data.today);
+  const safeInitialRange = initialFrom && initialTo && isReportDateRange(initialFrom, initialTo, data.today);
+  const [periodFrom, setPeriodFrom] = useState(safeInitialRange ? initialFrom! : `${data.today.slice(0, 7)}-01`);
+  const [periodTo, setPeriodTo] = useState(safeInitialRange ? initialTo! : data.today);
   const validMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(month) && month <= data.today.slice(0, 7);
   const validPeriod = isReportDateRange(periodFrom, periodTo, data.today);
   const [editing, setEditing] = useState(false);
@@ -459,7 +461,8 @@ function CustomerList({ data, save, busy, error, success }: {
 }
 
 export default function FarmCustomers() {
-  const id = useSearchParams().get("id") ?? "";
+  const searchParams = useSearchParams();
+  const id = searchParams.get("id") ?? "";
   const query = useFarmData("customers", id);
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
@@ -490,6 +493,6 @@ export default function FarmCustomers() {
   };
   const customer = data.customers.find((c) => c.id === id);
   return customer
-    ? <CustomerDetail data={data} customer={customer} save={save} busy={busy} error={error} success={success} />
+    ? <CustomerDetail data={data} customer={customer} save={save} busy={busy} error={error} success={success} initialFrom={searchParams.get("from") ?? undefined} initialTo={searchParams.get("to") ?? undefined} />
     : <CustomerList data={data} save={save} busy={busy} error={error} success={success} />;
 }

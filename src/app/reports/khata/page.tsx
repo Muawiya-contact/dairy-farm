@@ -1,2 +1,2 @@
-import ReportCategoryPlaceholder from "@/components/ReportCategoryPlaceholder";
-export default function KhataReportPage() { return <ReportCategoryPlaceholder title="Khata Report" />; }
+import KhataSummaryReport from "@/components/KhataSummaryReport";
+export default function KhataReportPage() { return <KhataSummaryReport />; }

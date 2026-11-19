@@ -50,16 +50,28 @@ test("period report and customer ledger reject invalid dates and preserve date o
   expect(summary).toMatchObject({ opening_balance: "300.00", litres: "4.00", charges: "600.00", payments: "300.00", closing_balance: "600.00" });
 });
 
+test("Khata summary carries an earlier balance into the selected period", async () => {
+  const rows = (await db.query<Record<string, string>>(
+    "select name, litres, charges, payments, opening_balance, closing_balance from khata_period_summary('2026-10-10', '2026-10-10')",
+  )).rows;
+  expect(rows).toContainEqual({ name: "Buyer", litres: "4.00", charges: "600.00", payments: "300.00", opening_balance: "300.00", closing_balance: "600.00" });
+  const months = (await db.query<{ month_start: Date; closing_balance: string }>("select month_start, closing_balance from khata_year_month_summary(2026) order by month_start")).rows;
+  expect(months.at(-1)).toMatchObject({ closing_balance: "600.00" });
+  expect(months.at(-1)?.month_start.toISOString().slice(0, 10)).toBe("2026-10-01");
+});
+
 test("period functions stay owner-only in production and are explicitly available to the staging demo", async () => {
   await db.exec("set role anon");
   await expect(db.query("select * from report_period_summary('2026-10-10', '2026-10-10')")).rejects.toThrow(/permission|denied/i);
   await expect(db.query("select * from customer_period_ledger_summary('00000000-0000-0000-0000-000000000001', '2026-10-10', '2026-10-10')")).rejects.toThrow(/permission|denied/i);
+  await expect(db.query("select * from khata_period_summary('2026-10-10', '2026-10-10')")).rejects.toThrow(/permission|denied/i);
   await db.exec("reset role");
   const demo = await freshFarmDb({ farmDay: "2026-10-20", demoAccess: true });
   try {
     await demo.exec("set role anon");
     await expect(demo.query("select * from report_period_summary('2026-10-10', '2026-10-10')")).resolves.toBeDefined();
     await expect(demo.query("select * from customer_period_ledger_summary('00000000-0000-0000-0000-000000000001', '2026-10-10', '2026-10-10')")).rejects.toThrow("CUSTOMER_NOT_FOUND");
+    await expect(demo.query("select * from khata_period_summary('2026-10-10', '2026-10-10')")).resolves.toBeDefined();
   } finally {
     await demo.close();
   }

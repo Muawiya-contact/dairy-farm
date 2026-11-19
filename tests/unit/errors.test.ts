@@ -7,6 +7,8 @@ describe("friendly database errors", () => {
     expect(friendlyError({ code: "23505", details: "Key already exists", message: "duplicate key violates unique constraint animals_active_tag_uq" })).toContain("tag ka janwar");
     expect(friendlyError({ message: "customer_rates_customer_id_effective_from_key" })).toContain("rate pehle se");
     expect(friendlyError({ message: "COUNT_REASON_REQUIRED: farq ki wajah likhein" })).toContain("wajah likhein");
+    expect(friendlyError({ message: "REPORT_PERIOD_TOO_LONG" })).toContain("das saal");
+    expect(friendlyError({ message: "REPORT_PERIOD_INVALID" })).toContain("tareekh");
   });
 
   it("identifies offline, paused and expired sessions", () => {

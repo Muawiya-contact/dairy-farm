@@ -84,6 +84,9 @@ const COLUMN_LABELS: Record<string, string> = {
   is_local: "Local customer", active: "Chalu",
   item: "Mad", value: "Raqam", period_balance_change: "Baqaya farq (Rs)",
   expense_date: "Kharcha ki tareekh", account: "Paisa kis account se nikla", received_by: "Raqam lene wala",
+  description: "Tafseel", expense_type: "Kharcha ki qism", recipient: "Raqam lene wala",
+  entry_count: "Entries ki tadaad", total_expenses: "Kul kharcha (Rs)", home_expenses: "Ghar ka kharcha (Rs)",
+  total_amount: "Kul raqam (Rs)", report_period: "Report ki muddat", pdf_date: "PDF ki tareekh",
   contact_phone: "Farm contact number",
   counted_amount: "Gini hui cash (Rs)", expected_balance: "Hisaab ke mutabiq (Rs)",
   before_row: "Purani entry (JSON)", after_row: "Nayi entry (JSON)",
@@ -93,6 +96,7 @@ const COLUMN_LABELS: Record<string, string> = {
 export function columnLabel(column: string, title = ""): string {
   const auditLabels: Record<string, string> = { month: "Maheena", action: "Faisla", reason: "Wajah", created_at: "Waqt" };
   if (title === "Maheena band faislay" && auditLabels[column]) return auditLabels[column];
+  if (column === "category" && (title === "Category ke mutabiq" || title === "Tafseeli entries")) return "Category";
   if (column === "difference" && title === "Cash counts") return "Farq (Rs)";
   if (column === "difference" && title === "Doodh ka khulasa") return "Farq (L)";
   return COLUMN_LABELS[column] ?? column.replaceAll("_", " ");

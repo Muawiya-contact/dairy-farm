@@ -28,6 +28,7 @@ beforeAll(async () => {
     insert into expenses(expense_date,category_id,account_id,amount,note,received_by) values
       ('2026-10-10',$1,$2,125,'Wanda purchase','Ali'),
       ('2026-10-10',$1,$2,75,'Second wanda purchase','Ali'),
+      ('2026-10-10',$4,$2,20,'Tea','Bilal'),
       ('2026-10-12',$3,$2,50,'School fee','Sana'),
       ('2026-10-13',$4,$2,20,'Groceries',null)
   `, [wanda, account, home, personal]);
@@ -47,13 +48,17 @@ it("reports every expense once with reconciled farm, home, personal and category
   const summary = (await db.query<{ entry_count: number; total_expenses: string; farm_expenses: string; home_expenses: string; personal_expenses: string }>(
     "select * from kharcha_report_summary('2026-10-10','2026-10-20',null)",
   )).rows[0];
-  expect(summary).toEqual({ entry_count: 5, total_expenses: "1270.00", farm_expenses: "1200.00", home_expenses: "50.00", personal_expenses: "20.00" });
+  expect(summary).toEqual({ entry_count: 6, total_expenses: "1290.00", farm_expenses: "1200.00", home_expenses: "50.00", personal_expenses: "40.00" });
+  const allTimeSummary = (await db.query(
+    "select * from kharcha_report_summary($1,$2,null)", [bounds.first_date, bounds.last_date],
+  )).rows[0];
+  expect(allTimeSummary).toEqual(summary);
 
   const categories = (await db.query<{ category: string; expense_type: string; entry_count: number; total_amount: string }>(
     "select category, expense_type, entry_count, total_amount from kharcha_report_category_totals('2026-10-10','2026-10-20',null) order by category",
   )).rows;
   expect(categories).toEqual([
-    { category: "Dukan bill", expense_type: "personal", entry_count: 1, total_amount: "20.00" },
+    { category: "Dukan bill", expense_type: "personal", entry_count: 2, total_amount: "40.00" },
     { category: "Ghar ka kharcha", expense_type: "home", entry_count: 1, total_amount: "50.00" },
     { category: "Tankhwah", expense_type: "farm", entry_count: 1, total_amount: "1000.00" },
     { category: "Wanda", expense_type: "farm", entry_count: 2, total_amount: "200.00" },
@@ -61,7 +66,7 @@ it("reports every expense once with reconciled farm, home, personal and category
   expect(categories.reduce((total, row) => total + Number(row.total_amount), 0)).toBe(Number(summary.total_expenses));
 
   const people = (await db.query<{ recipient: string }>("select * from kharcha_report_people('2026-10-10','2026-10-20')")).rows;
-  expect(people).toEqual([{ recipient: "Ali" }, { recipient: "Sana" }]);
+  expect(people).toEqual([{ recipient: "Ali" }, { recipient: "Bilal" }, { recipient: "Sana" }]);
 
   const page1 = (await db.query<Record<string, string>>(
     "select * from kharcha_report_rows('2026-10-10','2026-10-20',null,2,0)",
@@ -69,15 +74,24 @@ it("reports every expense once with reconciled farm, home, personal and category
   const page2 = (await db.query<Record<string, string>>(
     "select * from kharcha_report_rows('2026-10-10','2026-10-20',null,2,2)",
   )).rows;
+  const page3 = (await db.query<Record<string, string>>(
+    "select * from kharcha_report_rows('2026-10-10','2026-10-20',null,2,4)",
+  )).rows;
   expect(page1).toHaveLength(2);
   expect(page2).toHaveLength(2);
+  expect(page3).toHaveLength(2);
   expect(page1[0]).toMatchObject({ expense_date: new Date("2026-10-10T00:00:00.000Z"), category: "Wanda", account: "Farm galla", expense_type: "farm", recipient: "Ali" });
   expect(page1.map((row) => ({ description: row.description, amount: row.amount }))).toEqual(expect.arrayContaining([
     { description: "Wanda purchase", amount: "125.00" },
     { description: "Second wanda purchase", amount: "75.00" },
   ]));
   expect(page1[0].recipient).not.toBe(page1[0].account);
-  expect([...page1, ...page2]).toHaveLength(4);
+  expect([...page1, ...page2, ...page3]).toHaveLength(summary.entry_count);
+
+  const oneDaySummary = (await db.query(
+    "select * from kharcha_report_summary('2026-10-10','2026-10-10',null)",
+  )).rows[0];
+  expect(oneDaySummary).toEqual({ entry_count: 3, total_expenses: "220.00", farm_expenses: "200.00", home_expenses: "0", personal_expenses: "20.00" });
 
   const aliSummary = (await db.query<{ entry_count: number; total_expenses: string; farm_expenses: string; home_expenses: string; personal_expenses: string }>(
     "select * from kharcha_report_summary('2026-10-10','2026-10-20','Ali')",

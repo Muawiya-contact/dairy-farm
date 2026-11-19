@@ -145,8 +145,8 @@ export default function KharchaReport() {
           printWindow.focus();
           printWindow.print();
         };
-        printWindow.addEventListener("load", printPdf, { once: true });
         printWindow.location.href = url;
+        printWindow.addEventListener("load", printPdf, { once: true });
         window.setTimeout(() => { if (!printed) printPdf(); }, 1200);
         window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
         setStatus("Mukammal report print ke liye khol di gayi.");

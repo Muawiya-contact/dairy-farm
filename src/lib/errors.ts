@@ -14,6 +14,8 @@ const messages: [RegExp, string][] = [
   [/CLOSURE_ACTION_INVALID/i, "Aakhri raqam aur chuna hua tareeqa mail nahi khata."],
   [/CLOSURE_ACCOUNT_REQUIRED/i, "Wusooli ya advance wapas karne ke liye active account aur tareeqa chunein."],
   [/Supabase URL aur publishable key set nahi hain/i, "App ka data rabta set nahi. Farm admin se rabta karein."],
+  [/REPORT_PERIOD_TOO_LONG/i, "Report aik dafa mein das saal tak dekh sakte hain. Chhoti tareekh chunein."],
+  [/REPORT_PERIOD_INVALID/i, "Shuru aur aakhir ki tareekh dobara check karein."],
   [/MONTH_LOCKED/i, "Yeh maheena band hai. Settings mein ja kar kholein."],
   [/COUNT_REASON_REQUIRED/i, "Cash ginti mein farq ho to us ki wajah likhein."],
   [/MONTH_FORBIDDEN/i, "Sirf farm ka maalik maheena band ya dobara khol sakta hai."],

@@ -69,6 +69,13 @@ test("Khata summary applies a customer opening balance on its actual opening dat
   expect(rows).toContainEqual({ name: "Mid-period opening", opening_balance: "0", opening_added: "500.00", closing_balance: "500.00" });
 });
 
+test("daily milk balance carries closing litres forward and separates charity", async () => {
+  await db.exec("insert into milk_day_adjustments(milk_date,wasted_litres,waste_reason) values ('2026-10-10', 1, 'Spill')");
+  const rows = (await db.query<Record<string, string>>("select * from milk_report_daily('2026-10-10', '2026-10-11')")).rows;
+  expect(rows[0]).toMatchObject({ produced_litres: "10.00", sold_litres: "4.00", charity_litres: "2.00", wasted_litres: "1.00", closing_litres: "3.00" });
+  expect(rows[1]).toMatchObject({ opening_litres: "3.00", produced_litres: "0", closing_litres: "3.00" });
+});
+
 test("period functions stay owner-only in production and are explicitly available to the staging demo", async () => {
   await db.exec("set role anon");
   await expect(db.query("select * from report_period_summary('2026-10-10', '2026-10-10')")).rejects.toThrow(/permission|denied/i);

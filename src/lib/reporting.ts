@@ -32,6 +32,17 @@ export type CustomerPeriodLedgerSummary = {
   discounts: number; refunds: number; closing_balance: number;
 };
 
+export type KhataPeriodCustomer = {
+  customer_id: string; name: string; kind: string; active: boolean; sort_order: number;
+  litres: number; charges: number; payments: number; discounts: number; refunds: number;
+  opening_balance: number; closing_balance: number;
+};
+
+export type KhataYearMonth = {
+  month_start: string; litres: number; charges: number; payments: number; discounts: number;
+  refunds: number; closing_balance: number;
+};
+
 type ReportRpc = <T>(name: string, args: { p_from: string; p_to: string }) => Promise<{ data: T[] | null; error: Error | null }>;
 
 export function isReportDateRange(from: string, to: string, today: string): boolean {
@@ -84,4 +95,18 @@ export async function loadCustomerPeriodLedgerSummary(customerId: string, from: 
     opening_balance: Number(row.opening_balance ?? 0), litres: Number(row.litres ?? 0), charges: Number(row.charges ?? 0),
     payments: Number(row.payments ?? 0), discounts: Number(row.discounts ?? 0), refunds: Number(row.refunds ?? 0), closing_balance: Number(row.closing_balance ?? 0),
   };
+}
+
+export async function loadKhataPeriodSummary(from: string, to: string): Promise<KhataPeriodCustomer[]> {
+  const rpc = getSupabase().rpc.bind(getSupabase()) as unknown as ReportRpc;
+  const { data, error } = await rpc<KhataPeriodCustomer>("khata_period_summary", { p_from: from, p_to: to });
+  if (error) throw error;
+  return (data ?? []).map((row) => ({ ...row, active: Boolean(row.active), sort_order: Number(row.sort_order ?? 0), litres: Number(row.litres ?? 0), charges: Number(row.charges ?? 0), payments: Number(row.payments ?? 0), discounts: Number(row.discounts ?? 0), refunds: Number(row.refunds ?? 0), opening_balance: Number(row.opening_balance ?? 0), closing_balance: Number(row.closing_balance ?? 0) }));
+}
+
+export async function loadKhataYearMonthSummary(year: number): Promise<KhataYearMonth[]> {
+  const rpc = getSupabase().rpc.bind(getSupabase()) as unknown as <T>(name: string, args: { p_year: number }) => Promise<{ data: T[] | null; error: Error | null }>;
+  const { data, error } = await rpc<KhataYearMonth>("khata_year_month_summary", { p_year: year });
+  if (error) throw error;
+  return (data ?? []).map((row) => ({ ...row, litres: Number(row.litres ?? 0), charges: Number(row.charges ?? 0), payments: Number(row.payments ?? 0), discounts: Number(row.discounts ?? 0), refunds: Number(row.refunds ?? 0), closing_balance: Number(row.closing_balance ?? 0) }));
 }

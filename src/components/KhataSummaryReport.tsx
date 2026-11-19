@@ -8,7 +8,7 @@ import { buildPdfReport, downloadBlob, type PdfSection } from "@/lib/export-data
 import { friendlyError } from "@/lib/errors";
 import { rs, litres } from "@/lib/format";
 import { getSettings } from "@/lib/settings";
-import { todayPK } from "@/lib/dates";
+import { addDays, todayPK } from "@/lib/dates";
 import { isReportDateRange, loadKhataPeriodSummary, loadKhataYearMonthSummary, type KhataPeriodCustomer } from "@/lib/reporting";
 import { sharePdfFile } from "@/lib/pdf-share";
 
@@ -16,7 +16,6 @@ type Preset = "day" | "week" | "month" | "year" | "all" | "custom";
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 const startMonth = (day: string) => `${day.slice(0, 7)}-01`;
 const startYear = (day: string) => `${day.slice(0, 4)}-01-01`;
-const addDays = (day: string, days: number) => { const d = new Date(`${day}T12:00:00`); d.setDate(d.getDate() + days); return d.toISOString().slice(0, 10); };
 
 function totals(rows: KhataPeriodCustomer[]) {
   return rows.reduce((sum, row) => ({ litres: sum.litres + row.litres, charges: sum.charges + row.charges, payments: sum.payments + row.payments, discounts: sum.discounts + row.discounts, refunds: sum.refunds + row.refunds, opening: sum.opening + row.opening_balance, closing: sum.closing + row.closing_balance }), { litres: 0, charges: 0, payments: 0, discounts: 0, refunds: 0, opening: 0, closing: 0 });
@@ -41,7 +40,7 @@ export default function KhataSummaryReport() {
     if (value === "week") { setFrom(addDays(today, -6)); setTo(today); }
     if (value === "month") { setFrom(startMonth(today)); setTo(today); }
     if (value === "year") { setFrom(startYear(today)); setTo(today); }
-    if (value === "all") { setFrom("2000-01-01"); setTo(today); }
+    if (value === "all") { setFrom(addDays(today, -3660)); setTo(today); }
   };
   const exportPdf = async (kind: "download" | "share" | "print") => {
     if (busy || !settings.data) return;

@@ -13,7 +13,7 @@ beforeEach(() => {
   farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({
     settings: { farm_name: "Saim Dairy Farm" },
     categories: [{ id: "farm", name: "Chara", is_farm_cost: true, is_salary: false, active: true, sort_order: 0 }],
-    expenses: [{ id: "expense-1", expense_date: fixtures.today, category_id: "farm", amount: 1250, account_id: fixtures.account.id, note: "Chara laya", salary_period_id: null, revision: 1 }],
+    expenses: [{ id: "expense-1", expense_date: fixtures.today, category_id: "farm", amount: 1250, account_id: fixtures.account.id, note: "Chara laya", received_by: "Sana", salary_period_id: null, revision: 1 }],
     monthlyPnl: [], health: [],
   }), error: null });
 });
@@ -24,9 +24,15 @@ it("downloads today's expense PDF with the saved expense rows", async () => {
   await user.click(screen.getByRole("button", { name: "PDF download" }));
   await waitFor(() => expect(documentMocks.buildPdf).toHaveBeenCalledWith(
     `Ajj ka kharcha — ${fixtures.today}`,
-    ["expense_date", "category", "kind", "account", "amount", "note"],
-    [expect.objectContaining({ category: "Chara", amount: "Rs 1,250", note: "Chara laya" })],
+    ["expense_date", "category", "kind", "account", "amount", "note", "received_by"],
+    [expect.objectContaining({ category: "Chara", amount: "Rs 1,250", note: "Chara laya", received_by: "Sana" })],
     "Saim Dairy Farm",
   ));
   expect(documentMocks.downloadBlob).toHaveBeenCalledOnce();
+});
+
+it("keeps recipient details separate from the paying account in expense history and entry", () => {
+  renderWithQuery(<FarmExpenses />);
+  expect(screen.getByText("Raqam lene wala: Sana")).toBeInTheDocument();
+  expect(screen.getByRole("textbox", { name: "Raqam kis ne li? (optional)" })).toHaveValue("");
 });

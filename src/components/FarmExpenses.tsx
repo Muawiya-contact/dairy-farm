@@ -27,7 +27,7 @@ function ExpenseList({ entries, categories, accounts, empty, onEdit, canEdit }: 
     const account = accounts.find((item) => item.id === entry.account_id);
     return <li key={entry.id} className="grid gap-1 py-2 sm:grid-cols-[5rem_minmax(0,1fr)_9rem_7rem] sm:items-center">
       <span className="text-muted">{shortDate(entry.expense_date)}</span>
-      <span className="min-w-0 break-words">{entry.note || category?.name || "Kharcha"}</span>
+      <span className="min-w-0 break-words">{entry.note || category?.name || "Kharcha"}{entry.received_by && <span className="block text-xs text-muted">Raqam lene wala: {entry.received_by}</span>}</span>
       <span className="text-muted">{account?.name || "Account"}</span>
       <span className="flex flex-wrap items-center gap-2 sm:justify-end"><strong>{money(entry.amount)}</strong>
         {onEdit && canEdit?.(entry) && <button type="button" onClick={() => onEdit(entry)} className="min-h-11 rounded-xl border border-berseem px-3 font-semibold text-berseem">Durust karein</button>}
@@ -132,9 +132,9 @@ export default function FarmExpenses() {
       const rows = todayExpenses.map((entry) => {
         const category = categoryById.get(entry.category_id);
         const account = d.accounts.find((item) => item.id === entry.account_id);
-        return { expense_date: entry.expense_date, category: category?.name ?? "Kharcha", kind: expenseMode(category) === "farm" ? "Farm" : expenseMode(category) === "home" ? "Ghar" : "Zaati", account: account?.name ?? "—", amount: money(entry.amount), note: entry.note ?? "" };
+        return { expense_date: entry.expense_date, category: category?.name ?? "Kharcha", kind: expenseMode(category) === "farm" ? "Farm" : expenseMode(category) === "home" ? "Ghar" : "Zaati", account: account?.name ?? "—", amount: money(entry.amount), note: entry.note ?? "", received_by: entry.received_by ?? "" };
       });
-      const bytes = await buildPdf(`Ajj ka kharcha — ${d.today}`, ["expense_date", "category", "kind", "account", "amount", "note"], rows, d.settings.farm_name);
+      const bytes = await buildPdf(`Ajj ka kharcha — ${d.today}`, ["expense_date", "category", "kind", "account", "amount", "note", "received_by"], rows, d.settings.farm_name);
       const filename = `ajj-ka-kharcha-${d.today}.pdf`;
       if (kind === "download") {
         downloadBlob(filename, new Blob([bytes], { type: "application/pdf" }));
@@ -179,6 +179,7 @@ export default function FarmExpenses() {
           </select></label>
           <label className="text-sm">Raqam (Rs)<input name="amount" required type="number" min="0.01" step="0.01" placeholder="Misal: 1250" className={field} /></label>
           <label className="text-sm sm:col-span-2">Tafseel (optional)<input name="note" placeholder="Misal: ghar ka rashan" className={field} /></label>
+          <label className="text-sm sm:col-span-2">Raqam kis ne li? (optional)<input name="received_by" maxLength={120} placeholder="Misal: Ali Raza" className={field} /></label>
           <button disabled={busy || !canSave} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50 sm:col-span-2">{modeNames[mode]} save karein</button>
         </form>
         {!canSave && <p className="mt-2 text-sm text-udhaar" role="alert">Pehle istemal ke qabil account aur is qism ka kharcha chunein.</p>}
@@ -192,6 +193,7 @@ export default function FarmExpenses() {
           <label className="text-sm">Paisa kis account se nikla?<select name="account" required defaultValue={activeAccounts.some((item) => item.id === editing.account_id) ? editing.account_id : ""} className={field}><option value="" disabled>Account chunein</option>{activeAccounts.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
           <label className="text-sm">Raqam (Rs)<input name="amount" type="number" min="0.01" step="0.01" required defaultValue={editing.amount} className={field} /></label>
           <label className="text-sm sm:col-span-2">Tafseel<input name="note" defaultValue={editing.note ?? ""} className={field} /></label>
+          <label className="text-sm sm:col-span-2">Raqam kis ne li? (optional)<input name="received_by" maxLength={120} defaultValue={editing.received_by ?? ""} className={field} /></label>
           <label className="text-sm sm:col-span-2">Durusti ki wajah (zaroori)<input name="reason" required minLength={5} maxLength={500} placeholder="Misal: ghalat raqam likh di thi" className={field} /></label>
           <button disabled={busy} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50">Durusti save karein</button>
           <button type="button" onClick={() => { setEditing(null); setError(""); }} className="min-h-11 rounded-xl border border-line font-semibold">Band karein</button>

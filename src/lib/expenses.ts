@@ -5,7 +5,7 @@ import type { ExpenseInput } from "./expense-forms";
 export async function recordExpense(id: string, input: ExpenseInput): Promise<void> {
   const row = {
     id, expense_date: input.date, category_id: input.categoryId,
-    account_id: input.accountId, amount: input.amount, note: input.note,
+    account_id: input.accountId, amount: input.amount, note: input.note, received_by: input.receivedBy,
   };
   const { error } = await getSupabase().from("expenses").insert(row);
   if (!error) return;
@@ -13,15 +13,16 @@ export async function recordExpense(id: string, input: ExpenseInput): Promise<vo
   const { data, error: lookupError } = await getSupabase().from("expenses").select("*").eq("id", id).maybeSingle();
   if (lookupError) throw lookupError;
   if (!data || data.expense_date !== input.date || data.category_id !== input.categoryId ||
-      data.account_id !== input.accountId || Number(data.amount) !== input.amount || data.note !== input.note) throw error;
+      data.account_id !== input.accountId || Number(data.amount) !== input.amount || data.note !== input.note ||
+      data.received_by !== input.receivedBy) throw error;
 }
 
 export async function correctExpense(id: string, revision: number, requestId: string,
   input: ExpenseInput, reason: string): Promise<void> {
-  const { error } = await getSupabase().rpc("correct_expense", {
+  const { error } = await getSupabase().rpc("correct_expense_with_recipient", {
     p_request_id: requestId, p_id: id, p_revision: revision,
     p_date: input.date, p_category: input.categoryId, p_account: input.accountId,
-    p_amount: input.amount, p_note: input.note, p_reason: reason,
+    p_amount: input.amount, p_note: input.note, p_received_by: input.receivedBy, p_reason: reason,
   });
   if (error) throw error;
 }

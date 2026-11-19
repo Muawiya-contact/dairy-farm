@@ -4,7 +4,7 @@ import { parsePositiveAmount } from "./format";
 export type ExpenseMode = "farm" | "home" | "personal";
 export type ExpenseFormCategory = { id: string; name: string; is_farm_cost: boolean; is_salary: boolean; active: boolean };
 export type ExpenseFormAccount = { id: string; active: boolean; opening_date: string };
-export type ExpenseInput = { date: string; categoryId: string; accountId: string; amount: number; note: string | null };
+export type ExpenseInput = { date: string; categoryId: string; accountId: string; amount: number; note: string | null; receivedBy: string | null };
 
 export const isHomeCategory = (category: Pick<ExpenseFormCategory, "name" | "is_farm_cost">): boolean =>
   !category.is_farm_cost && category.name.trim().toLocaleLowerCase("en") === "ghar ka kharcha";
@@ -44,7 +44,9 @@ export function parseExpenseEntry(
   try { amount = parsePositiveAmount(value(form, "amount")); }
   catch { throw new RangeError("Raqam 0 se zyada aur 2 decimal tak likhein."); }
   if (amount > 9_999_999_999.99) throw new RangeError("Raqam bohat bari hai.");
-  return { date, categoryId: category.id, accountId, amount, note: value(form, "note") || null };
+  const receivedBy = value(form, "received_by");
+  if (receivedBy.length > 120) throw new RangeError("Raqam lene wale ka naam 120 harf tak likhein.");
+  return { date, categoryId: category.id, accountId, amount, note: value(form, "note") || null, receivedBy: receivedBy || null };
 }
 
 export function parseExpenseCorrection(form: FormData, today: string,

@@ -17,7 +17,7 @@ const categories = [
 
 function form(fields: Record<string, string>): FormData {
   const data = new FormData();
-  for (const [key, value] of Object.entries({ date: today, account: "cash", amount: "125.50", note: "", ...fields })) {
+  for (const [key, value] of Object.entries({ date: today, account: "cash", amount: "125.50", note: "", received_by: "", ...fields })) {
     data.set(key, value);
   }
   return data;
@@ -26,7 +26,7 @@ function form(fields: Record<string, string>): FormData {
 describe("expense entry form", () => {
   it("requires a reason and validates every corrected value", () => {
     const corrected = parseExpenseCorrection(form({ category: "farm", amount: "89.25", reason: "Raqam ghalat thi" }), today, accounts, categories);
-    expect(corrected).toEqual({ input: { date: today, accountId: "cash", categoryId: "farm", amount: 89.25, note: null }, reason: "Raqam ghalat thi" });
+    expect(corrected).toEqual({ input: { date: today, accountId: "cash", categoryId: "farm", amount: 89.25, note: null, receivedBy: null }, reason: "Raqam ghalat thi" });
     expect(() => parseExpenseCorrection(form({ category: "farm", reason: "no" }), today, accounts, categories)).toThrow(/5 se 500/);
     expect(() => parseExpenseCorrection(form({ category: "salary", reason: "Raqam ghalat thi" }), today, accounts, categories)).toThrow(/Tankhwah/);
     expect(() => parseExpenseCorrection(form({ category: "farm", amount: "-5", reason: "Raqam ghalat thi" }), today, accounts, categories)).toThrow(/Raqam/);
@@ -35,12 +35,20 @@ describe("expense entry form", () => {
   });
   it("selects the dedicated home category and keeps other personal costs distinct", () => {
     expect(parseExpenseEntry(form({ note: "  ghar ke liye  " }), "home", today, accounts, categories))
-      .toEqual({ date: today, accountId: "cash", categoryId: "home", amount: 125.5, note: "ghar ke liye" });
+      .toEqual({ date: today, accountId: "cash", categoryId: "home", amount: 125.5, note: "ghar ke liye", receivedBy: null });
     expect(expenseMode(categories[1])).toBe("home");
     expect(expenseMode(categories[2])).toBe("personal");
     expect(parseExpenseEntry(form({ category: "personal" }), "personal", today, accounts, categories).categoryId).toBe("personal");
     expect(() => parseExpenseEntry(form({ category: "farm" }), "personal", today, accounts, categories)).toThrow(/category/);
     expect(() => parseExpenseEntry(form({ category: "home" }), "farm", today, accounts, categories)).toThrow(/category/);
+  });
+
+  it("keeps the optional recipient separate from the paying account", () => {
+    const entry = parseExpenseEntry(form({ category: "farm", received_by: "  Ali Raza  " }), "farm", today, accounts, categories);
+    expect(entry).toMatchObject({ accountId: "cash", receivedBy: "Ali Raza" });
+    const corrected = parseExpenseCorrection(form({ category: "farm", received_by: "Sana", reason: "Recipient add karna" }), today, accounts, categories);
+    expect(corrected.input.receivedBy).toBe("Sana");
+    expect(() => parseExpenseEntry(form({ category: "farm", received_by: "A".repeat(121) }), "farm", today, accounts, categories)).toThrow(/120 harf/);
   });
 
   it("rejects invalid dates, amounts, categories, and accounts", () => {

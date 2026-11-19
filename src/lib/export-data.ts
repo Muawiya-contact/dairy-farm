@@ -20,7 +20,7 @@ export const DATASETS: { table: Table; label: string; key: string; columns: stri
   { table: "payments", label: "Wusooli", key: "id", columns: ["id", "customer_id", "payment_date", "amount", "kind", "method", "account_id", "delivery_id", "note", "revision", "created_at"] },
   { table: "payment_audit", label: "Wusooli corrections", key: "id", columns: ["id", "payment_id", "customer_id", "action", "before_row", "after_row", "reason", "actor_id", "changed_at"] },
   { table: "cash_counts", label: "Cash counts", key: "id", columns: ["id", "account_id", "count_date", "counted_amount", "expected_balance", "difference", "reason", "created_at"] },
-  { table: "expenses", label: "Kharchay", key: "id", columns: ["id", "expense_date", "category_id", "amount", "account_id", "staff_id", "salary_period_id", "quantity", "unit", "note", "revision", "created_at"] },
+  { table: "expenses", label: "Kharchay", key: "id", columns: ["id", "expense_date", "category_id", "amount", "account_id", "received_by", "staff_id", "salary_period_id", "quantity", "unit", "note", "revision", "created_at"] },
   { table: "expense_audit", label: "Kharcha corrections", key: "id", columns: ["id", "request_id", "expense_id", "before_row", "after_row", "reason", "actor_id", "changed_at"] },
   { table: "expense_categories", label: "Kharchay ki qisamain", key: "id", columns: ["id", "name", "is_farm_cost", "is_salary", "active", "sort_order"] },
   { table: "other_income", label: "Doosri aamdani", key: "id", columns: ["id", "income_date", "kind", "amount", "account_id", "animal_id", "note", "created_at"] },
@@ -83,7 +83,10 @@ const COLUMN_LABELS: Record<string, string> = {
   technician: "Technician", sort_order: "Tarteeb", kind: "Qism",
   is_local: "Local customer", active: "Chalu",
   item: "Mad", value: "Raqam", period_balance_change: "Baqaya farq (Rs)",
-  expense_date: "Kharcha ki tareekh", account: "Account",
+  expense_date: "Kharcha ki tareekh", account: "Paisa kis account se nikla", received_by: "Raqam lene wala",
+  description: "Tafseel", expense_type: "Kharcha ki qism", recipient: "Raqam lene wala",
+  entry_count: "Entries ki tadaad", total_expenses: "Kul kharcha (Rs)", home_expenses: "Ghar ka kharcha (Rs)",
+  total_amount: "Kul raqam (Rs)", report_period: "Report ki muddat", pdf_date: "PDF ki tareekh",
   contact_phone: "Farm contact number",
   counted_amount: "Gini hui cash (Rs)", expected_balance: "Hisaab ke mutabiq (Rs)",
   before_row: "Purani entry (JSON)", after_row: "Nayi entry (JSON)",
@@ -93,6 +96,7 @@ const COLUMN_LABELS: Record<string, string> = {
 export function columnLabel(column: string, title = ""): string {
   const auditLabels: Record<string, string> = { month: "Maheena", action: "Faisla", reason: "Wajah", created_at: "Waqt" };
   if (title === "Maheena band faislay" && auditLabels[column]) return auditLabels[column];
+  if (column === "category" && (title === "Category ke mutabiq" || title === "Tafseeli entries")) return "Category";
   if (column === "difference" && title === "Cash counts") return "Farq (Rs)";
   if (column === "difference" && title === "Doodh ka khulasa") return "Farq (L)";
   return COLUMN_LABELS[column] ?? column.replaceAll("_", " ");

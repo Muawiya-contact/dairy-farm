@@ -20,7 +20,7 @@ test("Reports menu routes each category to its matching entry page", async ({ pa
   for (const [label, heading] of destinations) {
     await menu.getByRole("link", { name: label, exact: true }).click();
     await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
-    await page.getByRole("link", { name: "Wapas" }).click();
+    await page.getByRole("link", { name: "Wapas", exact: true }).click();
     await expect(menu.getByRole("link", { name: label, exact: true })).toBeVisible();
   }
 

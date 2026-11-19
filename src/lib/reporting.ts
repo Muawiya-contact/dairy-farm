@@ -1,5 +1,6 @@
 import { getSupabase } from "./supabase";
 import { getSettings } from "./settings";
+import { daysBetween, formatDay } from "./dates";
 
 export type PeriodSummary = {
   produced: number; delivered: number; sold_litres: number; free_litres: number;
@@ -44,10 +45,109 @@ export type KhataYearMonth = {
 };
 
 type ReportRpc = <T>(name: string, args: { p_from: string; p_to: string }) => Promise<{ data: T[] | null; error: Error | null }>;
+type MilkReportRpc<T> = (name: string, args: Record<string, unknown>) => Promise<{ data: T[] | null; error: Error | null }>;
+
+export type MilkReportBounds = { first_date: string; last_date: string };
+export type MilkReportDailyRow = {
+  report_date: string; opening_litres: number; produced_litres: number; available_litres: number;
+  sold_litres: number; charity_litres: number; wasted_litres: number; waste_reason: string | null; closing_litres: number;
+};
+export type MilkReportTotals = Omit<MilkReportDailyRow, "report_date" | "waste_reason"> & {
+  sales_amount: number; received_amount: number; outstanding_amount: number;
+};
+export type MilkReportCustomer = {
+  customer_id: string; name: string; kind: string; sort_order: number;
+  litres: number; charged: number; paid: number; outstanding: number;
+};
+export type MilkReportAnimal = {
+  report_date: string; animal_id: string; tag: string; name: string;
+  morning_litres: number; noon_litres: number; evening_litres: number; total_litres: number;
+};
+export type MilkReportAnimalSummary = {
+  animal_id: string | null; tag: string; name: string;
+  morning_litres: number; noon_litres: number; evening_litres: number;
+  total_litres: number; recorded_days: number; is_grand_total: boolean;
+};
+export type MilkReportAnimalOption = { id: string; tag: string; name: string | null };
+
+const milkRpc = <T>(name: string, args: Record<string, unknown>) => {
+  const supabase = getSupabase();
+  return (supabase.rpc.bind(supabase) as unknown as MilkReportRpc<T>)(name, args);
+};
+
+async function loadPagedMilkRows<T>(name: string, args: Record<string, unknown>): Promise<T[]> {
+  const supabase = getSupabase();
+  const rpc = supabase.rpc.bind(supabase) as unknown as <Row>(rpcName: string, values: Record<string, unknown>) => {
+    range: (from: number, to: number) => Promise<{ data: Row[] | null; error: Error | null }>;
+  };
+  const rows: T[] = [];
+  const pageSize = 1000;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await rpc<T>(name, args).range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    const page = data ?? [];
+    rows.push(...page);
+    if (page.length < pageSize) return rows;
+  }
+}
 
 export function isReportDateRange(from: string, to: string, today: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(from) && /^\d{4}-\d{2}-\d{2}$/.test(to)
-    && from <= to && to <= today;
+  try {
+    formatDay(from); formatDay(to); formatDay(today);
+    return from <= to && to <= today && daysBetween(from, to) <= 3660;
+  } catch { return false; }
+}
+
+export async function loadMilkReportBounds(): Promise<MilkReportBounds> {
+  const { data, error } = await milkRpc<MilkReportBounds>("milk_report_date_bounds", {});
+  if (error) throw error;
+  return data?.[0] ? { first_date: String(data[0].first_date), last_date: String(data[0].last_date) } : { first_date: "", last_date: "" };
+}
+
+export async function loadMilkReportDaily(from: string, to: string): Promise<MilkReportDailyRow[]> {
+  const rows = await loadPagedMilkRows<MilkReportDailyRow>("milk_report_daily", { p_from: from, p_to: to });
+  return rows.map((row) => ({ ...row, report_date: String(row.report_date), opening_litres: Number(row.opening_litres ?? 0), produced_litres: Number(row.produced_litres ?? 0), available_litres: Number(row.available_litres ?? 0), sold_litres: Number(row.sold_litres ?? 0), charity_litres: Number(row.charity_litres ?? 0), wasted_litres: Number(row.wasted_litres ?? 0), waste_reason: row.waste_reason ?? null, closing_litres: Number(row.closing_litres ?? 0) }));
+}
+
+export async function loadMilkReportTotals(from: string, to: string): Promise<MilkReportTotals> {
+  const { data, error } = await milkRpc<MilkReportTotals>("milk_report_summary", { p_from: from, p_to: to });
+  if (error) throw error;
+  const row = data?.[0] ?? {} as MilkReportTotals;
+  return {
+    opening_litres: Number(row.opening_litres ?? 0), produced_litres: Number(row.produced_litres ?? 0),
+    available_litres: Number(row.available_litres ?? 0), sold_litres: Number(row.sold_litres ?? 0),
+    charity_litres: Number(row.charity_litres ?? 0), wasted_litres: Number(row.wasted_litres ?? 0),
+    closing_litres: Number(row.closing_litres ?? 0), sales_amount: Number(row.sales_amount ?? 0),
+    received_amount: Number(row.received_amount ?? 0), outstanding_amount: Number(row.outstanding_amount ?? 0),
+  };
+}
+
+export async function loadMilkReportCustomers(from: string, to: string): Promise<MilkReportCustomer[]> {
+  const { data, error } = await milkRpc<MilkReportCustomer>("milk_report_customers", { p_from: from, p_to: to });
+  if (error) throw error;
+  return (data ?? []).map((row) => ({ ...row, sort_order: Number(row.sort_order ?? 0), litres: Number(row.litres ?? 0), charged: Number(row.charged ?? 0), paid: Number(row.paid ?? 0), outstanding: Number(row.outstanding ?? 0) }));
+}
+
+export async function loadMilkReportAnimals(from: string, to: string, animalId: string | null): Promise<MilkReportAnimal[]> {
+  const rows = await loadPagedMilkRows<MilkReportAnimal>("milk_report_animals", { p_from: from, p_to: to, p_animal: animalId });
+  return rows.map((row) => ({ ...row, report_date: String(row.report_date), morning_litres: Number(row.morning_litres ?? 0), noon_litres: Number(row.noon_litres ?? 0), evening_litres: Number(row.evening_litres ?? 0), total_litres: Number(row.total_litres ?? 0) }));
+}
+
+export async function loadMilkReportAnimalSummary(from: string, to: string, animalId: string | null): Promise<MilkReportAnimalSummary[]> {
+  const { data, error } = await milkRpc<MilkReportAnimalSummary>("milk_report_animals_summary", { p_from: from, p_to: to, p_animal: animalId });
+  if (error) throw error;
+  return (data ?? []).map((row) => ({ ...row, morning_litres: Number(row.morning_litres ?? 0), noon_litres: Number(row.noon_litres ?? 0), evening_litres: Number(row.evening_litres ?? 0), total_litres: Number(row.total_litres ?? 0), recorded_days: Number(row.recorded_days ?? 0), is_grand_total: Boolean(row.is_grand_total) }));
+}
+
+export async function loadMilkReportAnimalOptions(): Promise<MilkReportAnimalOption[]> {
+  const { data, error } = await getSupabase().from("animals").select("id, tag, name").order("tag", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((row) => ({ id: row.id, tag: row.tag, name: row.name }));
+}
+
+export async function saveMilkDayWaste(date: string, wastedLitres: number, reason: string): Promise<void> {
+  const { error } = await milkRpc<never>("save_milk_day_waste", { p_date: date, p_wasted_litres: wastedLitres, p_reason: reason });
+  if (error) throw error;
 }
 
 /** A bounded server-side report avoids downloading every ledger row to the browser. */
@@ -80,10 +180,8 @@ export async function loadPeriodReport(from: string, to: string): Promise<Period
 
 /** The customer detail page asks the database for only this customer's chosen range. */
 export async function loadCustomerPeriodLedger(customerId: string, from: string, to: string): Promise<CustomerPeriodLedgerLine[]> {
-  const rpc = getSupabase().rpc.bind(getSupabase()) as unknown as <T>(name: string, args: { p_customer: string; p_from: string; p_to: string }) => Promise<{ data: T[] | null; error: Error | null }>;
-  const { data, error } = await rpc<CustomerPeriodLedgerLine>("customer_period_ledger", { p_customer: customerId, p_from: from, p_to: to });
-  if (error) throw error;
-  return (data ?? []).map((row) => ({ ...row, litres: row.litres == null ? null : Number(row.litres), charge: Number(row.charge ?? 0), credit: Number(row.credit ?? 0), payment: Number(row.payment ?? 0), discount: Number(row.discount ?? 0), refund: Number(row.refund ?? 0), running_balance: Number(row.running_balance ?? 0) }));
+  const data = await loadPagedMilkRows<CustomerPeriodLedgerLine>("customer_period_ledger", { p_customer: customerId, p_from: from, p_to: to });
+  return data.map((row) => ({ ...row, litres: row.litres == null ? null : Number(row.litres), charge: Number(row.charge ?? 0), credit: Number(row.credit ?? 0), payment: Number(row.payment ?? 0), discount: Number(row.discount ?? 0), refund: Number(row.refund ?? 0), running_balance: Number(row.running_balance ?? 0) }));
 }
 
 export async function loadCustomerPeriodLedgerSummary(customerId: string, from: string, to: string): Promise<CustomerPeriodLedgerSummary> {

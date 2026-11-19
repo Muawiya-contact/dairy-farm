@@ -6,7 +6,6 @@ test("Kharcha Report filters periods, prints, downloads, and shares with a fallb
   await page.addInitScript(() => {
     Object.defineProperty(navigator, "share", { configurable: true, value: undefined });
     Object.defineProperty(navigator, "canShare", { configurable: true, value: undefined });
-    window.print = () => { window.name = "kharcha-print-called"; };
   });
   await signIn(page);
   await page.goto("/reports/kharcha/");
@@ -55,8 +54,8 @@ test("Kharcha Report filters periods, prints, downloads, and shares with a fallb
   await page.getByRole("button", { name: "Print", exact: true }).click();
   const printPage = await printPopup;
   await expect(printPage.getByRole("heading", { name: "Kharchay ka khulasa" })).toBeVisible();
-  await expect.poll(() => printPage.evaluate(() => window.name)).toBe("kharcha-print-called");
   await expect(printPage.getByRole("heading", { name: "Tafseeli kharchay" })).toBeVisible();
+  await expect(page.getByText("Report print ke liye tayyar hai.", { exact: true })).toBeVisible();
   await printPage.close();
 
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewportWidth);

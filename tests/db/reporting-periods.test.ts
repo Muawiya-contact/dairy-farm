@@ -64,12 +64,14 @@ test("period functions stay owner-only in production and are explicitly availabl
   await db.exec("set role anon");
   await expect(db.query("select * from report_period_summary('2026-10-10', '2026-10-10')")).rejects.toThrow(/permission|denied/i);
   await expect(db.query("select * from customer_period_ledger_summary('00000000-0000-0000-0000-000000000001', '2026-10-10', '2026-10-10')")).rejects.toThrow(/permission|denied/i);
+  await expect(db.query("select * from khata_period_summary('2026-10-10', '2026-10-10')")).rejects.toThrow(/permission|denied/i);
   await db.exec("reset role");
   const demo = await freshFarmDb({ farmDay: "2026-10-20", demoAccess: true });
   try {
     await demo.exec("set role anon");
     await expect(demo.query("select * from report_period_summary('2026-10-10', '2026-10-10')")).resolves.toBeDefined();
     await expect(demo.query("select * from customer_period_ledger_summary('00000000-0000-0000-0000-000000000001', '2026-10-10', '2026-10-10')")).rejects.toThrow("CUSTOMER_NOT_FOUND");
+    await expect(demo.query("select * from khata_period_summary('2026-10-10', '2026-10-10')")).resolves.toBeDefined();
   } finally {
     await demo.close();
   }

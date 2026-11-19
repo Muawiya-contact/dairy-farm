@@ -49,6 +49,41 @@ function makePdfSections(
   ];
 }
 
+const escapeHtml = (value: string | number) => String(value).replace(/[&<>"']/g, (character) => ({
+  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+})[character]!);
+
+function printTable(headers: string[], rows: (string | number)[][]) {
+  return `<table><thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) =>
+    `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+}
+
+function makePrintHtml(
+  farmName: string, from: string, to: string, recipient: string, today: string,
+  summary: { entry_count: number; total_expenses: number; farm_expenses: number; home_expenses: number; personal_expenses: number },
+  categories: KharchaReportCategory[], rows: KharchaReportRow[],
+) {
+  const title = `${farmName} — Kharcha Report`;
+  const summaryRows = [
+    ["Report ki muddat", periodLabel(from, to)], ["Report ki tareekh", today],
+    ["Raqam lene wala", recipient || "Sab afrad"], ["Kharchon ki tadaad", summary.entry_count],
+    ["Kul kharcha", rs(summary.total_expenses)], ["Farm kharcha", rs(summary.farm_expenses)],
+    ["Ghar ka kharcha", rs(summary.home_expenses)], ["Zaati kharcha", rs(summary.personal_expenses)],
+  ];
+  const categoryRows = categories.map((row) => [row.category, typeLabel(row.expense_type), row.entry_count, rs(row.total_amount)]);
+  const expenseRows = rows.map((row) => [row.expense_date, row.description, row.category, row.account,
+    typeLabel(row.expense_type), row.recipient ?? "—", rs(row.amount)]);
+  return `<!doctype html><html lang="ur-Latn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title>
+    <style>
+      *{box-sizing:border-box}body{margin:0;padding:28px;color:#17251b;font:14px/1.45 Arial,sans-serif}main{max-width:1180px;margin:auto}header{border-bottom:2px solid #314d38;padding-bottom:14px}h1{margin:0;font-size:25px}header p{margin:5px 0 0;color:#526257}section{margin-top:20px}h2{margin:0 0 8px;font-size:17px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #cbd5cc;padding:6px 8px;text-align:left;vertical-align:top}th{background:#eef3ee;font-weight:700}tbody tr{break-inside:avoid}section:first-of-type td:first-child{width:30%;font-weight:600}section:nth-of-type(2) th:nth-child(n+2),section:nth-of-type(2) td:nth-child(n+2){text-align:right}section:nth-of-type(3) th:last-child,section:nth-of-type(3) td:last-child{text-align:right;white-space:nowrap}footer{margin-top:18px;color:#526257;font-size:11px}
+      @page{size:A4 landscape;margin:12mm}@media print{body{padding:0}main{max-width:none}thead{display:table-header-group}h2{break-after:avoid}}
+    </style></head><body><main><header><h1>${escapeHtml(title)}</h1><p>${escapeHtml(periodLabel(from, to))} · ${escapeHtml(today)}</p></header>
+      <section><h2>Kharchay ka khulasa</h2>${printTable(["Pehlu", "Tafseel"], summaryRows)}</section>
+      <section><h2>Category ke mutabiq</h2>${printTable(["Category", "Qism", "Entries", "Raqam (Rs)"], categoryRows)}</section>
+      <section><h2>Tafseeli kharchay</h2>${printTable(["Tareekh", "Tafseel", "Category", "Account", "Qism", "Raqam lene wala", "Raqam (Rs)"], expenseRows)}</section>
+      <footer>${escapeHtml(farmName)} · Kharcha Report</footer></main></body></html>`;
+}
+
 export default function KharchaReport() {
   const today = todayPK();
   const [preset, setPreset] = useState<Preset>("month");
@@ -137,19 +172,16 @@ export default function KharchaReport() {
         const outcome = await sharePdfFile(filename, bytes, `${settings.data.farm_name} Kharcha Report`, `${periodLabel(range.from, range.to)} ka kharcha report.`);
         setStatus(outcome === "shared" ? "Share sheet khul gayi. File aur recipient check karke Send karein." : outcome === "cancelled" ? "Share cancel ho gaya." : "File share dastiyab nahi thi; PDF download ho gayi.");
       } else if (printWindow) {
-        const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
-        let printed = false;
-        const printPdf = () => {
-          if (printed) return;
-          printed = true;
-          printWindow.focus();
-          printWindow.print();
-        };
-        printWindow.location.href = url;
-        printWindow.addEventListener("load", printPdf, { once: true });
-        window.setTimeout(() => { if (!printed) printPdf(); }, 1200);
-        window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
-        setStatus("Mukammal report print ke liye khol di gayi.");
+        printWindow.document.open();
+        printWindow.document.write(makePrintHtml(settings.data.farm_name, range.from, range.to, recipient, today, summary, categories, allRows));
+        printWindow.document.close();
+        window.setTimeout(() => {
+          if (!printWindow.closed) {
+            printWindow.focus();
+            printWindow.print();
+            setStatus("Report print ke liye tayyar hai.");
+          }
+        }, 250);
       } else {
         downloadBlob(filename, new Blob([bytes], { type: "application/pdf" }));
         setStatus("Popup band hai; PDF download ho gayi.");

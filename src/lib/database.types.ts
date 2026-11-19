@@ -640,6 +640,7 @@ export type Database = {
           id: string
           note: string | null
           quantity: number | null
+          received_by: string | null
           revision: number
           salary_period_id: string | null
           staff_id: string | null
@@ -654,6 +655,7 @@ export type Database = {
           id?: string
           note?: string | null
           quantity?: number | null
+          received_by?: string | null
           revision?: number
           salary_period_id?: string | null
           staff_id?: string | null
@@ -668,6 +670,7 @@ export type Database = {
           id?: string
           note?: string | null
           quantity?: number | null
+          received_by?: string | null
           revision?: number
           salary_period_id?: string | null
           staff_id?: string | null
@@ -1459,6 +1462,46 @@ export type Database = {
           p_category: string; p_account: string; p_amount: number; p_note: string | null; p_reason: string
         }
         Returns: number
+      }
+      assert_kharcha_report_period: {
+        Args: { p_from: string; p_to: string }
+        Returns: undefined
+      }
+      correct_expense_with_recipient: {
+        Args: {
+          p_request_id: string; p_id: string; p_revision: number; p_date: string;
+          p_category: string; p_account: string; p_amount: number; p_note: string | null;
+          p_received_by: string | null; p_reason: string
+        }
+        Returns: number
+      }
+      kharcha_report_category_totals: {
+        Args: { p_from: string; p_to: string; p_recipient?: string | null }
+        Returns: { category: string; expense_type: string; entry_count: number; total_amount: number }[]
+      }
+      kharcha_report_date_bounds: {
+        Args: Record<PropertyKey, never>
+        Returns: { first_date: string | null; last_date: string }[]
+      }
+      kharcha_report_people: {
+        Args: { p_from: string; p_to: string }
+        Returns: { recipient: string }[]
+      }
+      kharcha_report_rows: {
+        Args: {
+          p_from: string; p_to: string; p_recipient?: string | null; p_limit?: number; p_offset?: number
+        }
+        Returns: {
+          expense_id: string; expense_date: string; description: string; category: string;
+          account: string; expense_type: string; amount: number; recipient: string | null
+        }[]
+      }
+      kharcha_report_summary: {
+        Args: { p_from: string; p_to: string; p_recipient?: string | null }
+        Returns: {
+          entry_count: number; total_expenses: number; farm_expenses: number;
+          home_expenses: number; personal_expenses: number
+        }[]
       }
       correct_manual_payment: {
         Args: {

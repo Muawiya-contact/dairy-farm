@@ -1,2 +1,3 @@
-import ReportCategoryPlaceholder from "@/components/ReportCategoryPlaceholder";
-export default function AnimalReportPage() { return <ReportCategoryPlaceholder title="Animal Report" />; }
+import AnimalMilkReport from "@/components/AnimalMilkReport";
+
+export default function AnimalReportPage() { return <AnimalMilkReport />; }

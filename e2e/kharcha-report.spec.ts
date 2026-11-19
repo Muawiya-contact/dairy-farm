@@ -55,6 +55,9 @@ test("Kharcha Report filters periods, prints, downloads, and shares with a fallb
   const printPage = await printPopup;
   await expect(printPage.getByRole("heading", { name: "Kharchay ka khulasa" })).toBeVisible();
   await expect(printPage.getByRole("heading", { name: "Tafseeli kharchay" })).toBeVisible();
+  await expect(printPage.getByRole("link", { name: "Developed by Coding Moves · CodingMoves.com" })).toHaveAttribute("href", "https://codingmoves.com/");
+  await expect(printPage.getByRole("link", { name: "contact@codingmoves.com" })).toHaveAttribute("href", "mailto:contact@codingmoves.com");
+  await expect(printPage.getByRole("img", { name: "Coding Moves website QR code" })).toBeVisible();
   await expect(page.getByText("Report print ke liye tayyar hai.", { exact: true })).toBeVisible();
   await printPage.close();
 

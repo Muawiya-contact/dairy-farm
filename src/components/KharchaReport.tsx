@@ -9,6 +9,11 @@ import { rs } from "@/lib/format";
 import { todayPK } from "@/lib/dates";
 import { getSettings } from "@/lib/settings";
 import { sharePdfFile } from "@/lib/pdf-share";
+import { loadPdfDeveloperQr } from "@/lib/pdf-brand";
+import {
+  CODING_MOVES_CONTACT_EMAIL, CODING_MOVES_CONTACT_URL, CODING_MOVES_DEVELOPER_CREDIT,
+  CODING_MOVES_DISPLAY_URL, CODING_MOVES_URL,
+} from "@/lib/coding-moves";
 import {
   isKharchaReportDateRange, kharchaMonthRange, kharchaYearRange,
   loadAllKharchaReportRows, loadKharchaReportBounds, loadKharchaReportCategories,
@@ -59,7 +64,7 @@ function printTable(headers: string[], rows: (string | number)[][]) {
 }
 
 function makePrintHtml(
-  farmName: string, from: string, to: string, recipient: string, today: string,
+  farmName: string, from: string, to: string, recipient: string, today: string, developerQr: string,
   summary: { entry_count: number; total_expenses: number; farm_expenses: number; home_expenses: number; personal_expenses: number },
   categories: KharchaReportCategory[], rows: KharchaReportRow[],
 ) {
@@ -75,13 +80,13 @@ function makePrintHtml(
     typeLabel(row.expense_type), row.recipient ?? "—", rs(row.amount)]);
   return `<!doctype html><html lang="ur-Latn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title>
     <style>
-      *{box-sizing:border-box}body{margin:0;padding:28px;color:#17251b;font:14px/1.45 Arial,sans-serif}main{max-width:1180px;margin:auto}header{border-bottom:2px solid #314d38;padding-bottom:14px}h1{margin:0;font-size:25px}header p{margin:5px 0 0;color:#526257}section{margin-top:20px}h2{margin:0 0 8px;font-size:17px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #cbd5cc;padding:6px 8px;text-align:left;vertical-align:top}th{background:#eef3ee;font-weight:700}tbody tr{break-inside:avoid}section:first-of-type td:first-child{width:30%;font-weight:600}section:nth-of-type(2) th:nth-child(n+2),section:nth-of-type(2) td:nth-child(n+2){text-align:right}section:nth-of-type(3) th:last-child,section:nth-of-type(3) td:last-child{text-align:right;white-space:nowrap}footer{margin-top:18px;color:#526257;font-size:11px}
+      *{box-sizing:border-box}body{margin:0;padding:28px;color:#17251b;font:14px/1.45 Arial,sans-serif}main{max-width:1180px;margin:auto}header{display:flex;align-items:center;gap:12px;border-bottom:2px solid #314d38;padding-bottom:14px}.farm-mark{width:48px;height:48px;object-fit:contain}h1{margin:0;font-size:25px}header p{margin:5px 0 0;color:#526257}section{margin-top:20px}h2{margin:0 0 8px;font-size:17px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #cbd5cc;padding:6px 8px;text-align:left;vertical-align:top}th{background:#eef3ee;font-weight:700}tbody tr{break-inside:avoid}section:first-of-type td:first-child{width:30%;font-weight:600}section:nth-of-type(2) th:nth-child(n+2),section:nth-of-type(2) td:nth-child(n+2){text-align:right}section:nth-of-type(3) th:last-child,section:nth-of-type(3) td:last-child{text-align:right;white-space:nowrap}footer{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:18px;border-top:1px solid #cbd5cc;padding-top:12px;color:#526257;font-size:10px;break-inside:avoid}.developer-credit{display:flex;align-items:center;gap:9px}.developer-mark{width:34px;height:34px;object-fit:contain}.developer-links{display:grid;gap:2px}.developer-links a{color:inherit}.developer-qr{width:42px;height:42px}
       @page{size:A4 landscape;margin:12mm}@media print{body{padding:0}main{max-width:none}thead{display:table-header-group}h2{break-after:avoid}}
-    </style></head><body><main><header><h1>${escapeHtml(title)}</h1><p>${escapeHtml(periodLabel(from, to))} · ${escapeHtml(today)}</p></header>
+    </style></head><body><main><header><img class="farm-mark" src="/brand/icon-192.png" alt=""><div><h1>${escapeHtml(title)}</h1><p>${escapeHtml(periodLabel(from, to))} · ${escapeHtml(today)}</p></div></header>
       <section><h2>Kharchay ka khulasa</h2>${printTable(["Pehlu", "Tafseel"], summaryRows)}</section>
       <section><h2>Category ke mutabiq</h2>${printTable(["Category", "Qism", "Entries", "Raqam (Rs)"], categoryRows)}</section>
       <section><h2>Tafseeli kharchay</h2>${printTable(["Tareekh", "Tafseel", "Category", "Account", "Qism", "Raqam lene wala", "Raqam (Rs)"], expenseRows)}</section>
-      <footer>${escapeHtml(farmName)} · Kharcha Report</footer></main></body></html>`;
+      <footer><span>${escapeHtml(farmName)} · Kharcha Report</span><div class="developer-credit"><img class="developer-mark" src="/brand/coding-moves-services.png" alt=""><div class="developer-links"><a href="${escapeHtml(CODING_MOVES_URL)}">${escapeHtml(CODING_MOVES_DEVELOPER_CREDIT)} · ${escapeHtml(CODING_MOVES_DISPLAY_URL)}</a><a href="${escapeHtml(CODING_MOVES_CONTACT_URL)}">${escapeHtml(CODING_MOVES_CONTACT_EMAIL)}</a></div><img class="developer-qr" src="${escapeHtml(developerQr)}" alt="Coding Moves website QR code"></div></footer></main></body></html>`;
 }
 
 export default function KharchaReport() {
@@ -172,16 +177,17 @@ export default function KharchaReport() {
         const outcome = await sharePdfFile(filename, bytes, `${settings.data.farm_name} Kharcha Report`, `${periodLabel(range.from, range.to)} ka kharcha report.`);
         setStatus(outcome === "shared" ? "Share sheet khul gayi. File aur recipient check karke Send karein." : outcome === "cancelled" ? "Share cancel ho gaya." : "File share dastiyab nahi thi; PDF download ho gayi.");
       } else if (printWindow) {
+        const developerQr = await loadPdfDeveloperQr();
+        if (printWindow.closed) return;
         printWindow.document.open();
-        printWindow.document.write(makePrintHtml(settings.data.farm_name, range.from, range.to, recipient, today, summary, categories, allRows));
+        printWindow.document.write(makePrintHtml(settings.data.farm_name, range.from, range.to, recipient, today, developerQr, summary, categories, allRows));
         printWindow.document.close();
-        window.setTimeout(() => {
-          if (!printWindow.closed) {
-            printWindow.focus();
-            printWindow.print();
-            setStatus("Report print ke liye tayyar hai.");
-          }
-        }, 250);
+        await Promise.all(Array.from(printWindow.document.images, (image) => image.decode().catch(() => undefined)));
+        if (!printWindow.closed) {
+          printWindow.focus();
+          printWindow.print();
+          setStatus("Report print ke liye tayyar hai.");
+        }
       } else {
         downloadBlob(filename, new Blob([bytes], { type: "application/pdf" }));
         setStatus("Popup band hai; PDF download ho gayi.");

@@ -179,7 +179,7 @@ export default function FinancialReport() {
           {status && <p role={status.includes("failed") ? "alert" : "status"} className="mt-2 text-sm text-berseem-deep">{status}</p>}
         </Panel>
 
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid min-w-0 gap-4 lg:grid-cols-2 [&>*]:min-w-0">
           <Panel title="Income by source">
             <p className="mb-3 text-sm text-muted">Billed sales and other recorded income are revenue. Customer payments are displayed separately and do not reduce billed income.</p>
             <dl className="divide-y divide-line">
@@ -212,7 +212,7 @@ export default function FinancialReport() {
           </Panel>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid min-w-0 gap-4 lg:grid-cols-2 [&>*]:min-w-0">
           <Panel title="Expenses by recorded category">
             <p className="mb-3 text-sm text-muted">Farm categories stay in Farm Munafa. Home and personal categories are listed separately.</p>
             <div className="space-y-3">{expenseGroups.map((row) => <div key={`${row.classification}-${row.category}`}>

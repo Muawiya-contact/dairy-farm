@@ -9,11 +9,13 @@ import { buildPdfReport, downloadBlob, type PdfSection } from "@/lib/export-data
 import { friendlyError } from "@/lib/errors";
 import { litres, parseLitres, rs } from "@/lib/format";
 import { addDays, todayPK } from "@/lib/dates";
+import { SHIFT_LABELS } from "@/lib/milk-shifts";
 import { getSettings } from "@/lib/settings";
 import { isReportDateRange, loadMilkReportBounds, loadMilkReportCustomers, loadMilkReportDaily, loadMilkReportDistributionDaily, loadMilkReportDistributionShifts, loadMilkReportDistributionTotals, saveMilkDayWaste, type MilkReportDistributionDetail } from "@/lib/reporting";
 import { sharePdfFile } from "@/lib/pdf-share";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
+const shiftLabel = (shift: string) => SHIFT_LABELS[shift as keyof typeof SHIFT_LABELS] ?? shift;
 
 const kindLabel = (kind: string) => kind === "free" ? "Muft" : kind === "company" ? "Company" : "Customer";
 const dispositionLabel = (category: string) => ({
@@ -121,7 +123,7 @@ export default function MilkReport() {
         free_details: detailsLabel(row.free_details), farm_use_details: detailsLabel(row.farm_use_details), waste_details: detailsLabel(row.waste_details),
       }));
       const shiftRows = shifts.map((row) => ({
-        report_date: row.report_date, milk_shift: row.milk_shift, produced_litres: litres(row.produced_litres),
+        report_date: row.report_date, milk_shift: shiftLabel(row.milk_shift), produced_litres: litres(row.produced_litres),
         khata_litres: litres(row.khata_litres), cash_litres: litres(row.cash_litres), free_litres: litres(row.free_litres),
         farm_use_litres: litres(row.farm_use_litres), wasted_litres: litres(row.wasted_litres),
         allocated_litres: litres(row.allocated_litres), remaining_litres: litres(row.remaining_litres),
@@ -186,7 +188,7 @@ export default function MilkReport() {
           <p className="mb-3 text-sm text-muted">Yahan sirf saved Subah, Dopehr aur Shaam shifts hain. Company bills shift se link nahi hotay, is liye woh daily aur grand Khata total mein hain. Shift ki wasooli usi din ki cash sale payment dikhati hai; baad ki collections unki asal tareekh ke daily total mein hain.</p>
           <div className="overflow-x-auto"><table className="w-full min-w-[1500px] text-sm"><thead><tr>{["Tareekh", "Shift", "Naya doodh", "Khata (L)", "Cash (L)", "Muft (L)", "Ghar / farm (L)", "Zaya (L)", "Allocated (L)", "Shift se bacha (L)", "Khata delivery amount", "Cash sale", "Cash wasool", "Galla mein"].map((label) => <th key={label} className="border-b border-line px-2 py-2 text-right first:text-left">{label}</th>)}</tr></thead>
             <tbody>{data.shifts.map((row) => <tr key={`${row.report_date}-${row.milk_shift}`}>
-              <td className="border-b border-line px-2 py-2">{row.report_date}</td><td className="border-b border-line px-2 py-2">{row.milk_shift}</td>
+              <td className="border-b border-line px-2 py-2">{row.report_date}</td><td className="border-b border-line px-2 py-2">{shiftLabel(row.milk_shift)}</td>
               <td className="border-b border-line px-2 py-2 text-right">{litres(row.produced_litres)}</td><td className="border-b border-line px-2 py-2 text-right">{litres(row.khata_litres)}</td>
               <td className="border-b border-line px-2 py-2 text-right">{litres(row.cash_litres)}</td>
               <td className="border-b border-line px-2 py-2 text-right">{litres(row.free_litres)}{row.free_details.length > 0 && <span className="block max-w-40 text-left text-xs text-muted">{detailsLabel(row.free_details)}</span>}</td>

@@ -66,11 +66,13 @@ it("shows reconciled daily and customer results and exports the selected period"
   );
   expect(screen.getByText("Rozana doodh ki taqseem aur wasooli")).toBeInTheDocument();
   expect(screen.getByText("Shift-wise milk distribution")).toBeInTheDocument();
+  expect(screen.getByText("Subah")).toBeInTheDocument();
+  expect(screen.queryByText("morning")).not.toBeInTheDocument();
   expect(screen.getAllByText("Rs 900").length).toBeGreaterThan(0);
   expect(reportMocks.buildPdfReport.mock.calls[0]?.[1]).toEqual(expect.arrayContaining([
     expect.objectContaining({ title: "Grand summary", rows: expect.arrayContaining([expect.objectContaining({ item: "Khata billed", value: "Rs 600" })]) }),
     expect.objectContaining({ title: "Daily milk distribution and collections", rows: expect.arrayContaining([expect.objectContaining({ khata_litres: "4 L", cash_received: "Rs 300" })]) }),
-    expect.objectContaining({ title: "Shift distribution and collections", rows: expect.arrayContaining([expect.objectContaining({ milk_shift: "morning", khata_delivery_amount: "Rs 600" })]) }),
+    expect.objectContaining({ title: "Shift distribution and collections", rows: expect.arrayContaining([expect.objectContaining({ milk_shift: "Subah", khata_delivery_amount: "Rs 600" })]) }),
   ]));
   expect(reportMocks.downloadBlob).toHaveBeenCalledWith("milk-report-2026-10-16-to-2026-10-16.pdf", expect.any(Blob));
 });

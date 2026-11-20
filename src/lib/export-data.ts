@@ -102,13 +102,44 @@ const COLUMN_LABELS: Record<string, string> = {
   description: "Tafseel", expense_type: "Kharcha ki qism", recipient: "Naam / recipient",
   entry_count: "Entries ki tadaad", total_expenses: "Kul kharcha (Rs)", home_expenses: "Ghar ka kharcha (Rs)",
   total_amount: "Kul raqam (Rs)", report_period: "Report ki muddat", pdf_date: "PDF ki tareekh",
+  item_name: "Item", category_name: "Category", stock_unit: "Stock unit",
+  opening_stock: "Opening stock", opening_entries_in: "Initial stock added",
+  purchases_in: "Purchased stock", usage_out: "Stock used / issued",
+  adjustment_in: "Positive adjustments", adjustment_out: "Negative adjustments",
+  wastage_out: "Wastage", closing_stock: "Closing stock", current_stock: "Current stock",
+  current_status: "Current status", total_quantity: "Quantity", transaction_count: "Transactions",
+  movement_date: "Movement date", movement_type: "Movement type", entered_quantity: "Entered quantity",
+  entered_unit: "Entered unit", quantity_delta: "Stock change", running_balance_after: "Balance after movement",
+  unit_rate: "Unit purchase rate (Rs)", account_name: "Paid from Galla", expense_id: "Kharcha reference",
+  supplier: "Supplier", reference: "Invoice / reference", batch_code: "Batch", expiry_date: "Expiry date",
+  purpose: "Purpose", reason: "Reason",
   contact_phone: "Farm contact number",
   counted_amount: "Gini hui cash (Rs)", expected_balance: "Hisaab ke mutabiq (Rs)",
   before_row: "Purani entry (JSON)", after_row: "Nayi entry (JSON)",
   changed_at: "Badalne ka waqt", actor_id: "Badalne wala user ID",
 };
 
+const INVENTORY_REPORT_COLUMN_LABELS: Record<string, string> = {
+  detail: "Report detail", value: "Value", item_name: "Item", category_name: "Category", stock_unit: "Stock unit",
+  opening_stock: "Opening stock", opening_entries_in: "Initial stock added", purchases_in: "Purchased stock",
+  usage_out: "Stock used / issued", adjustment_in: "Positive adjustments", adjustment_out: "Negative adjustments",
+  wastage_out: "Wastage", closing_stock: "Closing stock", purchase_amount: "Purchase amount (Rs)",
+  current_stock: "Current stock", current_status: "Current status", total_quantity: "Quantity",
+  transaction_count: "Transactions", movement_date: "Movement date", movement_type: "Movement type",
+  entered_quantity: "Entered quantity", entered_unit: "Entered unit", quantity_delta: "Stock change",
+  running_balance_after: "Balance after movement", unit_rate: "Unit purchase rate (Rs)",
+  total_amount: "Purchase amount (Rs)", account_name: "Paid from Galla", expense_id: "Kharcha reference",
+  staff_name: "Employee / usage attribution", supplier: "Supplier", reference: "Invoice / reference",
+  batch_code: "Batch", expiry_date: "Expiry date", purpose: "Purpose", reason: "Reason", note: "Note",
+  actor_id: "Recorded by user ID",
+};
+const INVENTORY_REPORT_TITLES = new Set([
+  "Inventory Report", "Report details", "Item-wise stock balances", "Employee-wise usage", "Inventory movements",
+  "Item balances", "Usage by employee", "Movements",
+]);
+
 export function columnLabel(column: string, title = ""): string {
+  if (INVENTORY_REPORT_TITLES.has(title) && INVENTORY_REPORT_COLUMN_LABELS[column]) return INVENTORY_REPORT_COLUMN_LABELS[column];
   const auditLabels: Record<string, string> = { month: "Maheena", action: "Faisla", reason: "Wajah", created_at: "Waqt" };
   if (title === "Maheena band faislay" && auditLabels[column]) return auditLabels[column];
   if (column === "category" && (title === "Category ke mutabiq" || title === "Tafseeli entries")) return "Category";

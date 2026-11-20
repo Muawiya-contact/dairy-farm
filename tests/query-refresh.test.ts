@@ -4,9 +4,9 @@ import { refreshFarmViews } from "../src/lib/query-refresh";
 
 it("invalidates account and customer totals after a milk save", async () => {
   const client = new QueryClient();
-  for (const key of ["farm-data", "galla", "customer-report", "salary"]) client.setQueryData([key], 1);
+  for (const key of ["farm-data", "galla", "customer-report", "herd-alerts", "salary"]) client.setQueryData([key], 1);
   await refreshFarmViews(client, "milk");
-  for (const key of ["farm-data", "galla", "customer-report"]) expect(client.getQueryState([key])?.isInvalidated).toBe(true);
+  for (const key of ["farm-data", "galla", "customer-report", "herd-alerts"]) expect(client.getQueryState([key])?.isInvalidated).toBe(true);
   expect(client.getQueryState(["salary"])?.isInvalidated).toBe(false);
 });
 

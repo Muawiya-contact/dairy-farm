@@ -12,7 +12,7 @@ test("Farm Inventory creates a unit-aware item, posts stock movements, and filte
   await page.getByRole("button", { name: "Add item", exact: true }).first().click();
   const itemForm = page.locator("form").last();
   await itemForm.getByLabel("Item name").fill(itemName);
-  await itemForm.getByLabel("Category", { exact: true }).selectOption({ label: "Animal feed & fodder" });
+  await itemForm.locator('select[name="category"]').selectOption({ label: "Animal feed & fodder" });
   await itemForm.getByLabel("Stock unit").selectOption("bag");
   await itemForm.getByLabel("Low-stock minimum (stock unit)").fill("3");
   await itemForm.getByLabel("Opening stock (in stock unit)").fill("0");

@@ -5,8 +5,8 @@ import { go, section, signIn, testId, todayPK } from "./helpers";
 test("manual breeding dates and care reminders survive dismissal until completed", async ({ page }, info) => {
   const tag = testId(info, "CARE-COW");
   const today = todayPK();
-  const manualUltrasound = addDays(today, 3);
-  const manualCalving = addDays(today, 40);
+  const manualUltrasound = addDays(today, 120);
+  const manualCalving = addDays(today, 120);
   await signIn(page);
   await go(page, "Janwar");
   await page.getByRole("button", { name: "Naya" }).click();

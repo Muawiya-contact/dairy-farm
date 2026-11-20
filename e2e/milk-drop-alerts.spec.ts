@@ -20,6 +20,14 @@ test("shows a shift-specific production drop in the reminder bell and dismisses 
       days_left: 0,
     }]),
   }));
+  // This test isolates its milk alert; breeding and care reminders use separate RPCs.
+  for (const rpc of ["animal_breeding_alerts", "animal_care_alerts"]) {
+    await page.route(`**/rest/v1/rpc/${rpc}*`, (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: "[]",
+    }));
+  }
 
   await signIn(page);
   const banner = page.getByRole("status").filter({ hasText: "Aaj ke kaam" });

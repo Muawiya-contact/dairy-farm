@@ -158,15 +158,16 @@ function AccountEditor({ account }: { account: FarmAccount }) {
   const [balance, setBalance] = useState(account.opening_balance === 0 ? "" : String(account.opening_balance));
   const [date, setDate] = useState(account.opening_date);
   const [active, setActive] = useState(account.active);
+  const [isOwner, setIsOwner] = useState(account.is_owner);
   const [validation, setValidation] = useState("");
   const mutation = useMutation({
-    mutationFn: () => updateAccount(account.id, { name, opening_balance: Number(balance), opening_date: date, active }),
+    mutationFn: () => updateAccount(account.id, { name, opening_balance: Number(balance), opening_date: date, active, is_owner: isOwner }),
     onSuccess: () => { void client.invalidateQueries({ queryKey: ["accounts"] }); void client.invalidateQueries({ queryKey: ["farm-data"] }); },
   });
   const edit = () => { setValidation(""); mutation.reset(); };
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault(); setValidation("");
-    const issue = validateAccount({ name, opening_balance: Number(balance), opening_date: date, active }, account.is_farm_cash);
+    const issue = validateAccount({ name, opening_balance: Number(balance), opening_date: date, active }, account.is_farm_cash, account.kind, isOwner);
     if (issue) { setValidation(issue); return; }
     mutation.mutate();
   };
@@ -175,6 +176,7 @@ function AccountEditor({ account }: { account: FarmAccount }) {
     <div className="grid gap-3 sm:grid-cols-3"><label className="text-sm font-semibold">Naam<input required disabled={mutation.isPending} placeholder="Account ka naam" value={name} onChange={(event) => { edit(); setName(event.target.value); }} className={inputClass} /></label>
       <label className="text-sm font-semibold">{UI_TEXT.openingBalance} (Rs)<input disabled={mutation.isPending} type="number" step="0.01" placeholder="Khali = Rs 0" value={balance} onChange={(event) => { edit(); setBalance(event.target.value); }} className={inputClass} /></label>
       <label className="text-sm font-semibold">{UI_TEXT.openingDate}<input required disabled={mutation.isPending} type="date" max={todayPK()} value={date} onChange={(event) => { edit(); setDate(event.target.value); }} className={inputClass} /></label></div>
+    {account.kind === "person" && <label className="mt-3 flex min-h-11 items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={isOwner} disabled={mutation.isPending} onChange={(event) => { edit(); setIsOwner(event.target.checked); }} />Yeh account farm ke malik ka hai</label>}
     <div className="mt-3 flex flex-wrap items-center gap-4"><label className="text-sm font-semibold"><input type="checkbox" checked={active} disabled={account.is_farm_cash || mutation.isPending} onChange={(event) => { edit(); setActive(event.target.checked); }} /> {UI_TEXT.active}</label>
       <button disabled={mutation.isPending} className="min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem disabled:opacity-50">{mutation.isPending ? "Save ho raha hai…" : "Account save karein"}</button></div>
     {account.is_farm_cash && <p className="mt-2 text-sm text-muted">Farm galla band nahi ho sakta.</p>}
@@ -189,17 +191,18 @@ function AccountsSection() {
   const query = useQuery({ queryKey: ["accounts"], queryFn: getAccounts });
   const [name, setName] = useState("");
   const [kind, setKind] = useState<"cash" | "bank" | "person">("bank");
+  const [isOwner, setIsOwner] = useState(false);
   const [balance, setBalance] = useState("");
   const [date, setDate] = useState(() => todayPK());
   const [validation, setValidation] = useState("");
   const mutation = useMutation({
-    mutationFn: () => createAccount({ name, kind, opening_balance: Number(balance), opening_date: date, active: true }),
-    onSuccess: () => { setName(""); setBalance(""); void client.invalidateQueries({ queryKey: ["accounts"] }); void client.invalidateQueries({ queryKey: ["farm-data"] }); },
+    mutationFn: () => createAccount({ name, kind, opening_balance: Number(balance), opening_date: date, active: true, is_owner: isOwner }),
+    onSuccess: () => { setName(""); setBalance(""); setIsOwner(false); void client.invalidateQueries({ queryKey: ["accounts"] }); void client.invalidateQueries({ queryKey: ["farm-data"] }); },
   });
   const edit = () => { setValidation(""); mutation.reset(); };
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault(); setValidation("");
-    const issue = validateAccount({ name, opening_balance: Number(balance), opening_date: date, active: true });
+    const issue = validateAccount({ name, opening_balance: Number(balance), opening_date: date, active: true }, false, kind, isOwner);
     if (issue) { setValidation(issue); return; }
     mutation.mutate();
   };
@@ -209,9 +212,10 @@ function AccountsSection() {
     {query.data && <div className="mt-4 grid gap-3">{query.data.map((account) => <AccountEditor key={account.id} account={account} />)}</div>}
     <form onSubmit={submit} className="mt-5 border-t border-line pt-4"><h3 className="font-semibold">Naya account</h3><div className="mt-2 grid gap-3 sm:grid-cols-2">
       <label className="text-sm font-semibold">Naam<input required disabled={mutation.isPending} placeholder="Account ka naam" value={name} onChange={(event) => { edit(); setName(event.target.value); }} className={inputClass} /></label>
-      <label className="text-sm font-semibold">Qism<select disabled={mutation.isPending} value={kind} onChange={(event) => { edit(); setKind(event.target.value as typeof kind); }} className={inputClass}><option value="cash">Cash</option><option value="bank">Bank</option><option value="person">Person</option></select></label>
+      <label className="text-sm font-semibold">Qism<select disabled={mutation.isPending} value={kind} onChange={(event) => { edit(); const next = event.target.value as typeof kind; setKind(next); if (next !== "person") setIsOwner(false); }} className={inputClass}><option value="cash">Cash</option><option value="bank">Bank</option><option value="person">Person</option></select></label>
       <label className="text-sm font-semibold">{UI_TEXT.openingBalance} (Rs)<input disabled={mutation.isPending} type="number" step="0.01" placeholder="Khali = Rs 0" value={balance} onChange={(event) => { edit(); setBalance(event.target.value); }} className={inputClass} /></label>
       <label className="text-sm font-semibold">{UI_TEXT.openingDate}<input required disabled={mutation.isPending} type="date" max={todayPK()} value={date} onChange={(event) => { edit(); setDate(event.target.value); }} className={inputClass} /></label></div>
+      {kind === "person" && <div className="mt-3"><label className="flex min-h-11 items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={isOwner} disabled={mutation.isPending} onChange={(event) => { edit(); setIsOwner(event.target.checked); }} />Yeh account farm ke malik ka hai</label><p className="mt-1 text-xs text-muted">Sirf is nishan walay Person accounts owner deposit aur withdrawal mein shamil honge.</p></div>}
       <button disabled={mutation.isPending} className="mt-3 min-h-11 rounded-xl bg-berseem px-4 font-semibold text-white disabled:opacity-50">{mutation.isPending ? "Save ho raha hai…" : "Account shamil karein"}</button>
       {validation && <p role="alert" className="mt-2 text-udhaar">{validation}</p>}
       {mutation.isError && <p role="alert" className="mt-2 text-udhaar">{friendlyError(mutation.error)}</p>}

@@ -149,11 +149,86 @@ test("milk report customer sales include company bills without attributing bill 
   } finally { await companyDb.close(); }
 });
 
+test("milk distribution report reconciles all destinations, shift sales, dated receipts and Galla cash", async () => {
+  const reportDb = await freshFarmDb({ farmDay: "2026-10-20" });
+  try {
+    const ids = (await reportDb.query<Record<string, string>>(`
+      insert into customers(name,kind,free_reason,opening_date) values
+        ('Khata buyer','regular',null,'2026-10-01'),
+        ('Cash buyer','cash',null,'2026-10-01'),
+        ('Company buyer','company',null,'2026-10-01')
+      returning id,name
+    `)).rows;
+    const khata = ids.find((row) => row.name === "Khata buyer")!.id;
+    const cash = ids.find((row) => row.name === "Cash buyer")!.id;
+    const company = ids.find((row) => row.name === "Company buyer")!.id;
+    await reportDb.query("insert into customer_rates(customer_id,rate,effective_from) values ($1,10,'2026-10-01'),($2,12,'2026-10-01')", [khata,cash]);
+    await reportDb.exec("insert into milk_shifts(milk_date,shift,total_litres) values ('2026-10-10','morning',500),('2026-10-11','morning',160)");
+    await reportDb.query("insert into milk_deliveries(delivery_date,shift,customer_id,litres) values ('2026-10-11','morning',$1,65),('2026-10-11','morning',$2,75)", [khata,cash]);
+    await reportDb.exec(`
+      insert into milk_dispositions(milk_date,shift_id,disposition_type,category,litres,recipient,note)
+        select '2026-10-11'::date,s.id,'free','charity',10,'Charity House',null from milk_shifts s where s.milk_date='2026-10-11'
+        union all
+        select '2026-10-11'::date,s.id,'internal','owner_home',5,null,'Family use' from milk_shifts s where s.milk_date='2026-10-11'
+        union all
+        select '2026-10-11'::date,s.id,'wastage','spillage',5,null,'Spilled bucket' from milk_shifts s where s.milk_date='2026-10-11'
+    `);
+    await reportDb.query("insert into company_bills(customer_id,from_date,to_date,litres,amount) values ($1,'2026-10-11','2026-10-11',0,80)", [company]);
+    await reportDb.query("insert into payments(customer_id,payment_date,amount,kind,method,account_id,note) select $1,'2026-10-12',150,'payment','cash',id,'Later Khata collection' from accounts where is_farm_cash", [khata]);
+
+    const day = (await reportDb.query<Record<string, unknown>>(
+      "select * from milk_report_distribution_daily('2026-10-11','2026-10-11')",
+    )).rows[0];
+    expect(day).toMatchObject({
+      opening_litres: "500.00", produced_litres: "160.00", available_litres: "660.00",
+      khata_litres: "65.00", cash_litres: "75.00", free_litres: "10.00", farm_use_litres: "5.00",
+      wasted_litres: "5.00", allocated_litres: "160.00", remaining_litres: "500.00",
+      khata_delivery_amount: "650.00", company_bill_amount: "80.00", khata_amount: "730.00",
+      cash_sale_amount: "900.00", total_sales_amount: "1630.00",
+      cash_received: "900.00", galla_cash_received: "900.00",
+    });
+    expect(day.free_details).toContainEqual(expect.objectContaining({ category: "charity", recipient: "Charity House", litres: 10 }));
+    expect(day.farm_use_details).toContainEqual(expect.objectContaining({ category: "owner_home", note: "Family use" }));
+    expect(day.waste_details).toContainEqual(expect.objectContaining({ category: "spillage", note: "Spilled bucket" }));
+
+    const shift = (await reportDb.query<Record<string, string>>(
+      "select * from milk_report_distribution_shifts('2026-10-11','2026-10-11')",
+    )).rows[0];
+    expect(shift).toMatchObject({
+      report_date: new Date("2026-10-11T00:00:00.000Z"), milk_shift: "morning", produced_litres: "160.00",
+      khata_litres: "65.00", cash_litres: "75.00", free_litres: "10.00", farm_use_litres: "5.00",
+      wasted_litres: "5.00", allocated_litres: "160.00", remaining_litres: "0.00",
+      khata_delivery_amount: "650.00", cash_sale_amount: "900.00", cash_received: "900.00", galla_cash_received: "900.00",
+    });
+
+    const period = (await reportDb.query<Record<string, string>>(
+      "select * from milk_report_distribution_summary('2026-10-11','2026-10-12')",
+    )).rows[0];
+    expect(period).toMatchObject({
+      opening_litres: "500.00", produced_litres: "160.00", available_litres: "660.00",
+      khata_litres: "65.00", cash_litres: "75.00", free_litres: "10.00", farm_use_litres: "5.00",
+      wasted_litres: "5.00", allocated_litres: "160.00", closing_litres: "500.00",
+      khata_delivery_amount: "650.00", company_bill_amount: "80.00", khata_amount: "730.00",
+      cash_sale_amount: "900.00", total_sales_amount: "1630.00",
+      cash_received: "1050.00", galla_cash_received: "900.00", outstanding_khata_amount: "580.00",
+    });
+
+    await reportDb.query("update milk_deliveries set litres=60 where customer_id=$1 and delivery_date='2026-10-11'", [khata]);
+    const corrected = (await reportDb.query<Record<string, string>>(
+      "select khata_litres,allocated_litres,remaining_litres,khata_delivery_amount,company_bill_amount,khata_amount from milk_report_distribution_daily('2026-10-11','2026-10-11')",
+    )).rows[0];
+    expect(corrected).toEqual({ khata_litres: "60.00", allocated_litres: "155.00", remaining_litres: "505.00", khata_delivery_amount: "600.00", company_bill_amount: "80.00", khata_amount: "680.00" });
+  } finally { await reportDb.close(); }
+});
+
 test("period functions stay owner-only in production and are explicitly available to the staging demo", async () => {
   await db.exec("set role anon");
   await expect(db.query("select * from report_period_summary('2026-10-10', '2026-10-10')")).rejects.toThrow(/permission|denied/i);
   await expect(db.query("select * from milk_report_date_bounds()")).rejects.toThrow(/permission|denied/i);
   await expect(db.query("select * from milk_report_summary('2026-10-10', '2026-10-10')")).rejects.toThrow(/permission|denied/i);
+  await expect(db.query("select * from milk_report_distribution_summary('2026-10-10', '2026-10-10')")).rejects.toThrow(/permission|denied/i);
+  await expect(db.query("select * from milk_report_distribution_daily('2026-10-10', '2026-10-10')")).rejects.toThrow(/permission|denied/i);
+  await expect(db.query("select * from milk_report_distribution_shifts('2026-10-10', '2026-10-10')")).rejects.toThrow(/permission|denied/i);
   await expect(db.query("select * from milk_report_customers('2026-10-10', '2026-10-10')")).rejects.toThrow(/permission|denied/i);
   await expect(db.query("select * from milk_report_animals('2026-10-10', '2026-10-10', null)")).rejects.toThrow(/permission|denied/i);
   await expect(db.query("select * from milk_report_animals_summary('2026-10-10', '2026-10-10', null)")).rejects.toThrow(/permission|denied/i);
@@ -167,6 +242,9 @@ test("period functions stay owner-only in production and are explicitly availabl
     await expect(demo.query("select * from report_period_summary('2026-10-10', '2026-10-10')")).resolves.toBeDefined();
     await expect(demo.query("select * from milk_report_date_bounds()")).resolves.toBeDefined();
     await expect(demo.query("select * from milk_report_summary('2026-10-10', '2026-10-10')")).resolves.toBeDefined();
+    await expect(demo.query("select * from milk_report_distribution_summary('2026-10-10', '2026-10-10')")).resolves.toBeDefined();
+    await expect(demo.query("select * from milk_report_distribution_daily('2026-10-10', '2026-10-10')")).resolves.toBeDefined();
+    await expect(demo.query("select * from milk_report_distribution_shifts('2026-10-10', '2026-10-10')")).resolves.toBeDefined();
     await expect(demo.query("select * from milk_report_customers('2026-10-10', '2026-10-10')")).resolves.toBeDefined();
     await expect(demo.query("select save_milk_day_waste('2026-10-10', 0, null)")).resolves.toBeDefined();
     await expect(demo.query("select * from customer_period_ledger_summary('00000000-0000-0000-0000-000000000001', '2026-10-10', '2026-10-10')")).rejects.toThrow("CUSTOMER_NOT_FOUND");

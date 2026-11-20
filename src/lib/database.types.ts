@@ -1776,6 +1776,7 @@ export type Database = {
           cash_litres: number
           cash_received: number
           cash_sale_amount: number
+          company_bill_amount: number
           farm_use_litres: number
           free_litres: number
           khata_amount: number
@@ -1784,6 +1785,77 @@ export type Database = {
           produced_litres: number
           remaining_litres: number
           report_date: string
+          wasted_litres: number
+        }[]
+      }
+      milk_report_distribution_daily: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          allocated_litres: number
+          available_litres: number
+          cash_litres: number
+          cash_received: number
+          cash_sale_amount: number
+          company_bill_amount: number
+          farm_use_details: Json
+          farm_use_litres: number
+          free_details: Json
+          free_litres: number
+          galla_cash_received: number
+          khata_amount: number
+          khata_delivery_amount: number
+          khata_litres: number
+          opening_litres: number
+          produced_litres: number
+          remaining_litres: number
+          report_date: string
+          total_sales_amount: number
+          waste_details: Json
+          wasted_litres: number
+        }[]
+      }
+      milk_report_distribution_summary: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          allocated_litres: number
+          available_litres: number
+          cash_litres: number
+          cash_received: number
+          cash_sale_amount: number
+          company_bill_amount: number
+          closing_litres: number
+          farm_use_litres: number
+          free_litres: number
+          galla_cash_received: number
+          khata_amount: number
+          khata_delivery_amount: number
+          khata_litres: number
+          opening_litres: number
+          outstanding_khata_amount: number
+          produced_litres: number
+          total_sales_amount: number
+          wasted_litres: number
+        }[]
+      }
+      milk_report_distribution_shifts: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          allocated_litres: number
+          cash_litres: number
+          cash_received: number
+          cash_sale_amount: number
+          farm_use_details: Json
+          farm_use_litres: number
+          free_details: Json
+          free_litres: number
+          galla_cash_received: number
+          khata_delivery_amount: number
+          khata_litres: number
+          milk_shift: string
+          produced_litres: number
+          remaining_litres: number
+          report_date: string
+          waste_details: Json
           wasted_litres: number
         }[]
       }

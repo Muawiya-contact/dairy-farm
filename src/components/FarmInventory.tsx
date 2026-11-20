@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { amount, farmToday, money, shortDate } from "@/lib/farm-data";
 import {
@@ -225,6 +225,12 @@ export default function FarmInventory() {
     setFrom(monthStart(today)); setTo(today);
   };
   const availableFor = (id: string) => stockRows.find((row) => row.item_id === id);
+  const baseUnitFor = (id: string): InventoryUnit => (items.data ?? []).find((item) => item.id === id)?.base_unit as InventoryUnit
+    ?? activeItems[0]?.base_unit as InventoryUnit ?? "kg";
+  const updateUnitFromItem = (event: ChangeEvent<HTMLSelectElement>) => {
+    const unit = event.currentTarget.form?.elements.namedItem("unit");
+    if (unit instanceof HTMLSelectElement) unit.value = baseUnitFor(event.currentTarget.value);
+  };
 
   return <>
     <PageHeader title="Farm Inventory" sub="Manage stock, purchases, issues, and item history." />
@@ -269,7 +275,7 @@ export default function FarmInventory() {
             <label className="text-sm">Category<select name="category" required defaultValue={editingItem.category_id} className={field}><option value="" disabled>Select category</option>{activeCategories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
             <label className="text-sm">Stock unit<select name="unit" defaultValue={editingItem.base_unit} className={field}>{INVENTORY_UNITS.map((unit) => <option key={unit} value={unit}>{unitLabel(unit)}</option>)}</select></label>
             <label className="text-sm">Item type<select name="type" defaultValue={editingItem.item_type} className={field}><option value="consumable">Consumable</option><option value="durable">Durable equipment</option></select></label>
-            <label className="text-sm">Low-stock minimum<input name="minimum" type="number" min="0" step="0.000001" required defaultValue={editingItem.minimum_stock} className={field} /></label>
+            <label className="text-sm">Low-stock minimum (stock unit)<input name="minimum" type="number" min="0" step="0.000001" required defaultValue={editingItem.minimum_stock} className={field} /></label>
             <label className="flex min-h-11 items-center gap-2 self-end rounded-xl border border-line px-3 text-sm"><input name="active" type="checkbox" defaultChecked={editingItem.active} className="h-5 w-5" />Item is active</label>
             <button disabled={busy} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50">Save item</button>
             <button type="button" disabled={busy} onClick={() => setEditingItem(null)} className="min-h-11 rounded-xl border border-line font-semibold">Cancel</button>
@@ -279,8 +285,8 @@ export default function FarmInventory() {
             <label className="text-sm">Category<select name="category" required defaultValue="" className={field}><option value="" disabled>Select category</option>{activeCategories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
             <label className="text-sm">Stock unit<select name="unit" defaultValue="kg" className={field}>{INVENTORY_UNITS.map((unit) => <option key={unit} value={unit}>{unitLabel(unit)}</option>)}</select></label>
             <label className="text-sm">Item type<select name="type" defaultValue="consumable" className={field}><option value="consumable">Consumable</option><option value="durable">Durable equipment</option></select></label>
-            <label className="text-sm">Low-stock minimum<input name="minimum" type="number" min="0" step="0.000001" required defaultValue="0" className={field} /></label>
-            <div className="grid grid-cols-2 gap-2"><label className="text-sm">Opening stock<input name="opening" type="number" min="0" step="0.000001" defaultValue="0" className={field} /></label><label className="text-sm">Opening unit<select name="opening_unit" defaultValue="kg" className={field}>{INVENTORY_UNITS.map((unit) => <option key={unit} value={unit}>{unitLabel(unit)}</option>)}</select></label></div>
+            <label className="text-sm">Low-stock minimum (stock unit)<input name="minimum" type="number" min="0" step="0.000001" required defaultValue="0" className={field} /></label>
+            <label className="text-sm">Opening stock (in stock unit)<input name="opening" type="number" min="0" step="0.000001" defaultValue="0" className={field} /></label>
             <label className="text-sm">Shuru ki tareekh<input name="opening_date" type="date" max={today} defaultValue={today} className={field} /></label>
             <p className="self-end text-xs text-muted">Opening stock is saved as an audited movement; leave quantity at 0 if there is no opening stock.</p>
             <button disabled={busy || !activeCategories.length} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50 sm:col-span-2">Add item</button>
@@ -289,10 +295,10 @@ export default function FarmInventory() {
 
         {operation === "purchase" && <form onSubmit={onPurchase} className="mt-4 grid gap-3 border-t border-line pt-4 sm:grid-cols-2">
           <h3 className="font-semibold sm:col-span-2">Purchase / stock in</h3>
-          <label className="text-sm">Item<select name="item" required defaultValue={selectedItemId && activeItems.some((item) => item.id === selectedItemId) ? selectedItemId : ""} className={field}><option value="" disabled>Select item</option>{activeItems.map((item) => <option key={item.id} value={item.id}>{item.name} · {unitLabel(item.base_unit)}</option>)}</select></label>
+          <label className="text-sm">Item<select name="item" required defaultValue={selectedItemId && activeItems.some((item) => item.id === selectedItemId) ? selectedItemId : ""} onChange={updateUnitFromItem} className={field}><option value="" disabled>Select item</option>{activeItems.map((item) => <option key={item.id} value={item.id}>{item.name} · {unitLabel(item.base_unit)}</option>)}</select></label>
           <label className="text-sm">Purchase date<input name="date" type="date" required max={today} defaultValue={today} className={field} /></label>
           <label className="text-sm">Quantity<input name="quantity" type="number" min="0.000001" step="0.000001" required className={field} /></label>
-          <label className="text-sm">Unit<select name="unit" defaultValue="kg" className={field}>{INVENTORY_UNITS.map((unit) => <option key={unit} value={unit}>{unitLabel(unit)}</option>)}</select></label>
+          <label className="text-sm">Unit<select name="unit" defaultValue={baseUnitFor(selectedItemId)} className={field}>{INVENTORY_UNITS.map((unit) => <option key={unit} value={unit}>{unitLabel(unit)}</option>)}</select></label>
           <label className="text-sm">Rate per selected unit (Rs)<input name="rate" type="number" min="0.0001" step="0.0001" required className={field} /></label>
           <label className="text-sm">Total paid (Rs)<input name="total" type="number" min="0.01" step="0.01" required className={field} /></label>
           <label className="text-sm">Paid from Galla account<select name="account" required defaultValue="" className={field}><option value="" disabled>Select account</option>{activeAccounts.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
@@ -308,10 +314,10 @@ export default function FarmInventory() {
 
         {operation === "usage" && <form onSubmit={onUsage} className="mt-4 grid gap-3 border-t border-line pt-4 sm:grid-cols-2">
           <h3 className="font-semibold sm:col-span-2">Issue stock / record usage</h3>
-          <label className="text-sm">Item<select name="item" required defaultValue={selectedItemId && activeItems.some((item) => item.id === selectedItemId) ? selectedItemId : ""} className={field}><option value="" disabled>Select item</option>{activeItems.map((item) => { const row = availableFor(item.id); return <option key={item.id} value={item.id}>{item.name} — {quantity(row?.current_stock)} {unitLabel(item.base_unit)} available</option>; })}</select></label>
+          <label className="text-sm">Item<select name="item" required defaultValue={selectedItemId && activeItems.some((item) => item.id === selectedItemId) ? selectedItemId : ""} onChange={updateUnitFromItem} className={field}><option value="" disabled>Select item</option>{activeItems.map((item) => { const row = availableFor(item.id); return <option key={item.id} value={item.id}>{item.name} — {quantity(row?.current_stock)} {unitLabel(item.base_unit)} available</option>; })}</select></label>
           <label className="text-sm">Issue date<input name="date" type="date" required max={today} defaultValue={today} className={field} /></label>
           <label className="text-sm">Quantity<input name="quantity" type="number" min="0.000001" step="0.000001" required className={field} /></label>
-          <label className="text-sm">Unit<select name="unit" defaultValue="kg" className={field}>{INVENTORY_UNITS.map((unit) => <option key={unit} value={unit}>{unitLabel(unit)}</option>)}</select></label>
+          <label className="text-sm">Unit<select name="unit" defaultValue={baseUnitFor(selectedItemId)} className={field}>{INVENTORY_UNITS.map((unit) => <option key={unit} value={unit}>{unitLabel(unit)}</option>)}</select></label>
           <label className="text-sm">Issued to (optional)<select name="staff" defaultValue="" className={field}><option value="">General farm use</option>{staff.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
           <label className="text-sm">Purpose<input name="purpose" required minLength={2} maxLength={300} placeholder="Animal feed, treatment, repair…" className={field} /></label>
           <label className="text-sm sm:col-span-2">Notes (optional)<input name="note" maxLength={1000} className={field} /></label>
@@ -321,12 +327,12 @@ export default function FarmInventory() {
 
         {operation === "adjustment" && <form onSubmit={onAdjustment} className="mt-4 grid gap-3 border-t border-line pt-4 sm:grid-cols-2">
           <h3 className="font-semibold sm:col-span-2">Stock adjustment / wastage</h3>
-          <label className="text-sm">Item<select name="item" required defaultValue={selectedItemId && activeItems.some((item) => item.id === selectedItemId) ? selectedItemId : ""} className={field}><option value="" disabled>Select item</option>{activeItems.map((item) => <option key={item.id} value={item.id}>{item.name} · {unitLabel(item.base_unit)}</option>)}</select></label>
+          <label className="text-sm">Item<select name="item" required defaultValue={selectedItemId && activeItems.some((item) => item.id === selectedItemId) ? selectedItemId : ""} onChange={updateUnitFromItem} className={field}><option value="" disabled>Select item</option>{activeItems.map((item) => <option key={item.id} value={item.id}>{item.name} · {unitLabel(item.base_unit)}</option>)}</select></label>
           <label className="text-sm">Date<input name="date" type="date" required max={today} defaultValue={today} className={field} /></label>
           <label className="text-sm">Adjustment type<select name="type" value={adjustmentType} onChange={(event) => setAdjustmentType(event.target.value as "adjustment" | "wastage")} className={field}><option value="adjustment">Physical count correction</option><option value="wastage">Damage / expiry / wastage</option></select></label>
           {adjustmentType === "adjustment" ? <label className="text-sm">Direction<select name="direction" defaultValue="-1" className={field}><option value="1">Increase stock</option><option value="-1">Decrease stock</option></select></label> : <input type="hidden" name="direction" value="-1" />}
           <label className="text-sm">Quantity<input name="quantity" type="number" min="0.000001" step="0.000001" required className={field} /></label>
-          <label className="text-sm">Unit<select name="unit" defaultValue="kg" className={field}>{INVENTORY_UNITS.map((unit) => <option key={unit} value={unit}>{unitLabel(unit)}</option>)}</select></label>
+          <label className="text-sm">Unit<select name="unit" defaultValue={baseUnitFor(selectedItemId)} className={field}>{INVENTORY_UNITS.map((unit) => <option key={unit} value={unit}>{unitLabel(unit)}</option>)}</select></label>
           <label className="text-sm sm:col-span-2">Reason (required)<input name="reason" required minLength={3} maxLength={500} placeholder="Explain the count difference or loss" className={field} /></label>
           <label className="text-sm sm:col-span-2">Notes (optional)<input name="note" maxLength={1000} className={field} /></label>
           <p className="text-xs text-muted sm:col-span-2">Wastage always reduces stock. All adjustments are dated, attributed to the recording user, and preserved in the movement history.</p>

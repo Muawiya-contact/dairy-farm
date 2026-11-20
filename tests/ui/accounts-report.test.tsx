@@ -36,6 +36,7 @@ beforeEach(() => {
 it("filters owner deposits and withdrawals by the inclusive selected period", async () => {
   const user = userEvent.setup();
   renderWithQuery(<AccountsReport />);
+  expect(await screen.findByRole("link", { name: "Wapas" })).toHaveAttribute("href", "/reports");
   expect((await screen.findAllByText("Rs 75")).length).toBeGreaterThan(0);
   expect(screen.getByText("Personal use")).toBeInTheDocument();
   expect(screen.getByText("Cash returned")).toBeInTheDocument();

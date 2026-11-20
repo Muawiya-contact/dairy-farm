@@ -99,7 +99,7 @@ export default function AccountsReport() {
   const rangeReady = validRange && !bounds.isError;
 
   return <>
-    <PageHeader title="Accounts Report" sub="Maalik aur farm ke darmiyan jama aur nikli raqam" />
+    <PageHeader title="Accounts Report" sub="Maalik aur farm ke darmiyan jama aur nikli raqam" back="/reports/" />
     <Body className="grid gap-4 pb-8">
       <p className="text-sm text-muted">Yeh report sirf un transfers ko dikhati hai jo Farm Galla aur Settings mein wazeh taur par Maalik mark kiye gaye Person account ke darmiyan huay. Yeh raqam farm ki aamdani ya kharcha nahi hoti.</p>
       <ReportPeriodPicker label="Accounts Report" today={today} allFrom={allFrom} from={from} to={to} preset={preset}

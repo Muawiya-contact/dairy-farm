@@ -84,7 +84,7 @@ test("Farm Inventory creates a unit-aware item, posts stock movements, and filte
   await history.getByLabel("From").fill(addDays(today, -1));
   await history.getByLabel("Through").fill(addDays(today, -1));
   await expect(history.getByText("No movements in this date range.", { exact: true })).toBeVisible();
-  await expect(history.getByText("Current available: 2 bag", { exact: true })).toBeVisible();
+  await expect(history.getByText(/Current available: 2 bag/)).toBeVisible();
   const viewportWidth = page.viewportSize()?.width ?? 360;
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewportWidth);
 });

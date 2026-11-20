@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { animalDueTasks, animalProfileStatuses, sevenDayMilkAverage } from "@/lib/animal-profile";
+import { breedingDueDate, nextBreedingTask } from "@/lib/breeding-register";
 import { ANIMAL_PHOTO_MAX_BYTES, validateAnimalPhoto } from "@/lib/animal-photos";
-import type { Animal, HealthEvent } from "@/lib/farm-data";
+import type { Animal, HealthEvent, Insemination } from "@/lib/farm-data";
 
 const animal = {
   id: "animal-1", tag: "A-1", name: null, species: "cow", breed: null, sex: "female", category: "cow",
@@ -45,6 +46,29 @@ describe("animal profile overview", () => {
     expect(tasks.map((task) => [task.label, task.overdue])).toEqual([
       ["Hamal ka check-up", true], ["Doodh band karne ka check", false], ["Hoof care · agla check-up", false], ["Mutawaqqa paidaish", false],
     ]);
+  });
+
+  it("uses an animal-specific breeding override and preserves its calculated fallback", () => {
+    const record = {
+      status: "pending", ultrasound_due: "2026-11-25", ultrasound_due_override: "2026-11-29",
+      checkup_due: "2027-02-08", checkup_due_override: null, dry_off_due: "2027-06-19", dry_off_due_override: null,
+      calving_due: "2027-08-18", calving_due_override: null, ultrasound_date: null, ultrasound_result: null,
+      checkup_date: null, checkup_result: null, dry_off_date: null,
+    } as Insemination;
+    expect(breedingDueDate(record, "ultrasound")).toEqual({ date: "2026-11-29", overridden: true });
+    expect(nextBreedingTask(record)?.date).toBe("2026-11-29");
+    expect(breedingDueDate({ ...record, ultrasound_due_override: null }, "ultrasound"))
+      .toEqual({ date: "2026-11-25", overridden: false });
+  });
+
+  it("excludes completed care follow-ups from the active due list", () => {
+    const tasks = animalDueTasks({ today: "2026-11-21", health: [], milking: false,
+      careTasks: [
+        { title: "FMD vaccine", due_date: "2026-11-20", completed_date: null },
+        { title: "Completed deworming", due_date: "2026-11-18", completed_date: "2026-11-18" },
+      ],
+    });
+    expect(tasks).toEqual([{ date: "2026-11-20", label: "FMD vaccine", overdue: true }]);
   });
 });
 

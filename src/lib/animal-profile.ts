@@ -1,5 +1,6 @@
-import type { Animal, HealthEvent } from "./farm-data";
+import type { Animal, AnimalCareTask, HealthEvent, Insemination } from "./farm-data";
 import { addDays } from "./dates";
+import { breedingDueDate } from "./breeding-register";
 
 export function currentHealthFollowups(health: HealthEvent[]): HealthEvent[] {
   const latestByFollowup = new Map<string, HealthEvent>();
@@ -41,8 +42,10 @@ export type DueTask = { date: string; label: string; overdue: boolean };
 export function animalDueTasks(input: {
   today: string;
   health: HealthEvent[];
-  cycle?: { status: string; ultrasound_due: string; ultrasound_date: string | null; checkup_due: string; checkup_date: string | null; dry_off_due: string; dry_off_date: string | null; calving_due: string };
+  cycle?: Pick<Insemination, "status" | "ultrasound_due" | "ultrasound_date" | "checkup_due" | "checkup_date" | "dry_off_due" | "dry_off_date" | "calving_due">
+    & Partial<Pick<Insemination, "ultrasound_due_override" | "checkup_due_override" | "dry_off_due_override" | "calving_due_override">>;
   milking: boolean;
+  careTasks?: Pick<AnimalCareTask, "title" | "due_date" | "completed_date">[];
 }): DueTask[] {
   const tasks: DueTask[] = [];
   const addTask = (date: string | null | undefined, label: string) => {
@@ -50,11 +53,12 @@ export function animalDueTasks(input: {
   };
   currentHealthFollowups(input.health).forEach((event) => addTask(event.next_due_date, `${event.title} · agla check-up`));
   const cycle = input.cycle;
-  if (cycle && cycle.status === "pending" && !cycle.ultrasound_date) addTask(cycle.ultrasound_due, "Ultrasound check");
+  if (cycle && cycle.status === "pending" && !cycle.ultrasound_date) addTask(breedingDueDate(cycle, "ultrasound").date, "Ultrasound check");
   if (cycle && cycle.status === "pregnant") {
-    if (!cycle.checkup_date) addTask(cycle.checkup_due, "Hamal ka check-up");
-    if (input.milking && !cycle.dry_off_date) addTask(cycle.dry_off_due, "Doodh band karne ka check");
-    addTask(cycle.calving_due, "Mutawaqqa paidaish");
+    if (!cycle.checkup_date) addTask(breedingDueDate(cycle, "checkup").date, "Hamal ka check-up");
+    if (input.milking && !cycle.dry_off_date) addTask(breedingDueDate(cycle, "dry_off").date, "Doodh band karne ka check");
+    addTask(breedingDueDate(cycle, "calving").date, "Mutawaqqa paidaish");
   }
+  input.careTasks?.filter((task) => !task.completed_date).forEach((task) => addTask(task.due_date, task.title));
   return tasks.sort((a, b) => a.date.localeCompare(b.date) || a.label.localeCompare(b.label));
 }

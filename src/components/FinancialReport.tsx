@@ -263,7 +263,7 @@ export default function FinancialReport() {
 
         <Panel title="Income, profit, and cash trends">
           <p className="mb-3 text-sm text-muted">Periods up to 90 days use daily buckets; longer periods use monthly buckets. Transfers are excluded from the cash chart; dated account-opening balances are included in cash received or paid.</p>
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div className="grid min-w-0 gap-4 xl:grid-cols-2 [&>*]:min-w-0">
             <div><h3 className="mb-2 font-semibold">Farm income and operating expenses</h3><TrendBars rows={data.trends} from={from} to={to} /></div>
             <div><h3 className="mb-2 font-semibold">Account cash received and paid</h3><TrendBars rows={data.trends} from={from} to={to} cash /></div>
           </div>

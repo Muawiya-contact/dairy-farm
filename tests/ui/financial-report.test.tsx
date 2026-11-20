@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import { renderWithQuery } from "./utils";
@@ -82,4 +82,14 @@ it("loads the inclusive Yesterday period and exports the same filtered report", 
   expect(csv).toContain("Test Farm");
   expect(csv).toContain("Customer receivables");
   expect(csv).toContain("Financial overview");
+});
+
+it("rejects a future report date with the farm's usual date guidance", async () => {
+  renderWithQuery(<FinancialReport />);
+  await screen.findByRole("heading", { name: "Overview" });
+  const endDate = screen.getByLabelText("Financial report end date");
+  fireEvent.change(endDate, { target: { value: addDays(todayPK(), 1) } });
+  expect(await screen.findByRole("alert")).toHaveTextContent("Tareekh ki muddat durust rakhein");
+  expect(screen.queryByRole("heading", { name: "Overview" })).not.toBeInTheDocument();
+  expect(mocks.loadFinancialReport).toHaveBeenCalledTimes(1);
 });

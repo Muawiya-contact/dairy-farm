@@ -150,7 +150,7 @@ export default function FinancialReport() {
           <label className="text-sm font-semibold">From date<input aria-label="Financial report start date" type="date" value={from} max={to || today} onChange={(event) => { setPreset("custom"); setFrom(event.target.value); setStatus(""); }} className={`${input} mt-1`} /></label>
           <label className="text-sm font-semibold">To date<input aria-label="Financial report end date" type="date" value={to} min={from || undefined} max={today} onChange={(event) => { setPreset("custom"); setTo(event.target.value); setStatus(""); }} className={`${input} mt-1`} /></label>
         </div>
-        {!valid && <p role="alert" className="mt-3 text-sm text-udhaar">Choose a valid inclusive date range ending today or earlier, up to ten years.</p>}
+        {!valid && <p role="alert" className="mt-3 text-sm text-udhaar">Tareekh ki muddat durust rakhein: aaj ya us se pehle khatam ho aur 10 saal se lambi na ho.</p>}
         {valid && <p className="mt-3 text-sm text-muted">Showing both dates: <strong>{periodText(from, to)}</strong></p>}
       </Panel>
 

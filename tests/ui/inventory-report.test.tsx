@@ -102,6 +102,13 @@ it("keeps each item unit separate, labels unassigned usage, and exports filtered
   await user.selectOptions(screen.getByRole("combobox", { name: "Issued to" }), "general");
   await waitFor(() => expect(mocks.getInventoryReportUsage).toHaveBeenLastCalledWith("2026-11-14", "2026-11-20", null, null, null, true));
 
+  await user.type(screen.getByRole("textbox", { name: "Search movement details" }), "General farm use");
+  await waitFor(() => expect(mocks.getInventoryReportTransactions).toHaveBeenLastCalledWith(expect.objectContaining({
+    search: "General farm use", unassigned: true, limit: 50, offset: 0,
+  })));
+  expect(screen.getAllByRole("row").some((row) => row.textContent?.includes("Medicine"))).toBe(true);
+  expect(screen.getAllByText("General farm use (unassigned)").length).toBeGreaterThan(0);
+
   await user.click(screen.getByRole("button", { name: "PDF download" }));
   await waitFor(() => expect(mocks.buildPdfReport).toHaveBeenCalledOnce());
   expect(mocks.buildPdfReport).toHaveBeenCalledWith(
@@ -109,7 +116,7 @@ it("keeps each item unit separate, labels unassigned usage, and exports filtered
     expect.arrayContaining([
       expect.objectContaining({ title: "Report details", rows: expect.arrayContaining([
         expect.objectContaining({ detail: "Period (inclusive)", value: "2026-11-14 through 2026-11-20" }),
-        expect.objectContaining({ detail: "Filters", value: "Usage: General farm use (unassigned)" }),
+        expect.objectContaining({ detail: "Filters", value: "Search: General farm use · Usage: General farm use (unassigned)" }),
         expect.objectContaining({ detail: "Balance scope", value: expect.stringContaining("farm-wide") }),
       ]) }),
       expect.objectContaining({ title: "Item-wise stock balances", rows: expect.arrayContaining([expect.objectContaining({ stock_unit: "kg" }), expect.objectContaining({ stock_unit: "litre" })]) }),

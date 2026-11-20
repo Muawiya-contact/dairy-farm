@@ -56,6 +56,12 @@ test("Inventory Report shows ledger balances, usage attribution, filters, and ex
   await expect(usageRow).toContainText("1 bag");
   await expect(page.getByText("Usage value is unavailable: stock issues do not record a reliable cost basis.", { exact: true })).toBeVisible();
 
+  await page.getByRole("textbox", { name: "Search movement details" }).fill("E2E report general farm use");
+  await expect(itemRow).toHaveCount(1);
+  await expect(usageRow).toContainText("1 bag");
+  const movementSection = page.locator("section").filter({ has: page.getByRole("heading", { name: "Dated stock movements" }) });
+  await expect(movementSection.getByRole("row").filter({ hasText: itemName })).toContainText("E2E report general farm use");
+
   const viewportWidth = page.viewportSize()?.width ?? 390;
   if (viewportWidth <= 400) {
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewportWidth);

@@ -67,10 +67,8 @@ export default function InventoryReport() {
       staffId, unassigned: generalOnly, search: searchValue, limit: pageSize, offset: page * pageSize }),
   });
 
-  const summaryRows = (summary.data ?? []).filter((row) =>
-    !searchValue || `${row.item_name} ${row.category_name}`.toLocaleLowerCase().includes(searchValue.toLocaleLowerCase()));
-  const usageRows = (usage.data ?? []).filter((row) =>
-    !searchValue || `${row.item_name} ${row.category_name} ${row.staff_name ?? "General farm use"}`.toLocaleLowerCase().includes(searchValue.toLocaleLowerCase()));
+  const summaryRows = summary.data ?? [];
+  const usageRows = usage.data ?? [];
   const transactionRows = movements.data ?? [];
   const totalTransactions = Number(transactionRows[0]?.matched_count ?? 0);
   const totalPages = Math.max(1, Math.ceil(totalTransactions / pageSize));
@@ -89,8 +87,8 @@ export default function InventoryReport() {
   const exportContext = {
     from, to, filters: exportFilters,
     balanceScope: employeeFilter === "all"
-      ? "Balances and purchase totals are farm-wide per item. Usage and movements follow the selected item, category, and search filters."
-      : "Opening/closing balances and purchase totals are farm-wide per item; usage and movements are filtered to the selected employee.",
+      ? "Balances and purchase totals are farm-wide per item. Item/category filters narrow the listed items, and text search narrows dated movement details."
+      : "Balances and purchase totals remain farm-wide per selected item; usage and movements follow the employee filter, and text search narrows dated movement details.",
   };
 
   useEffect(() => {
@@ -192,7 +190,7 @@ export default function InventoryReport() {
 
       <Panel title="Search and filters">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <label className="text-sm">Search items and movements<input value={search} maxLength={120} onChange={(event) => updateFilter(() => setSearch(event.target.value))}
+          <label className="text-sm">Search movement details<input value={search} maxLength={120} onChange={(event) => updateFilter(() => setSearch(event.target.value))}
             placeholder="Item, supplier, invoice, purpose…" className={field} /></label>
           <label className="text-sm">Inventory item<select value={itemFilter} onChange={(event) => updateFilter(() => setItemFilter(event.target.value))} className={field}>
             <option value="all">All items</option>{itemOptions.map((item) => <option key={item.id} value={item.id}>{item.name}{item.active ? "" : " (inactive)"}</option>)}
@@ -205,6 +203,7 @@ export default function InventoryReport() {
             {(staff.data ?? []).map((employee) => <option key={employee.id} value={employee.id}>{employee.name}{employee.active ? "" : " (inactive)"}</option>)}
           </select></label>
         </div>
+        <p className="mt-2 text-xs text-muted">Text search narrows dated movements. Item, category, and employee filters control their relevant report sections.</p>
         {hasFilter && <button type="button" onClick={() => { setSearch(""); setItemFilter("all"); setCategoryFilter("all"); setEmployeeFilter("all"); setPage(0); }} className="mt-3 min-h-10 rounded-xl border border-line px-3 text-sm font-semibold">Clear filters</button>}
         {employeeFilter !== "all" && <p className="mt-2 text-xs text-muted">The employee filter narrows issue transactions and usage totals. Item balances and purchase totals remain whole-farm ledger values.</p>}
       </Panel>
@@ -295,7 +294,7 @@ export default function InventoryReport() {
       <h1 className="text-2xl font-bold">{settings.data?.farm_name ?? "Dairy farm"} — Inventory Report</h1>
       <p className="mt-1 text-sm">{from} through {to} · Printed {today}</p>
       {hasFilter && <p className="mt-1 text-xs">Filters: {searchValue || ""} {itemFilter !== "all" ? `· Item ${items.data?.find((item) => item.id === itemFilter)?.name ?? "Selected"}` : ""} {categoryFilter !== "all" ? `· ${setup.data?.categories.find((entry) => entry.id === categoryFilter)?.name ?? "Category"}` : ""} {employeeFilter !== "all" ? `· ${employeeFilter === "general" ? "General farm use" : staff.data?.find((entry) => entry.id === employeeFilter)?.name ?? "Employee"}` : ""}</p>}
-      {employeeFilter !== "all" && <p className="mt-1 text-xs">Balances and purchase totals remain farm-wide per item; usage and movements follow the selected employee.</p>}
+      {(employeeFilter !== "all" || searchValue) && <p className="mt-1 text-xs">Balances and purchase totals remain farm-wide per item. The employee filter narrows usage and movements; text search narrows dated movement details.</p>}
       <h2 className="mt-5 font-bold">Item-wise stock balances</h2>
       <div className="overflow-x-auto"><table className="w-full border-collapse text-xs"><thead><tr>{["Item", "Unit", "Opening", "Initial added", "Purchased", "Used", "Adjustment +", "Adjustment −", "Wastage", "Closing", "Purchase Rs", "Current stock"].map((heading) => <th key={heading} className="border border-line p-1 text-left">{heading}</th>)}</tr></thead>
         <tbody>{printSnapshot.summary.map((row) => <tr key={row.item_id}><td className="border border-line p-1">{row.item_name} · {row.category_name}</td><td className="border border-line p-1">{unitName(row.stock_unit)}</td>{[row.opening_stock,row.opening_entries_in,row.purchases_in,row.usage_out,row.adjustment_in,row.adjustment_out,row.wastage_out,row.closing_stock].map((value,index)=><td key={index} className="border border-line p-1">{number(value)}</td>)}<td className="border border-line p-1">{rs(row.purchase_amount)}</td><td className="border border-line p-1">{number(row.current_stock)} {unitName(row.stock_unit)}</td></tr>)}</tbody></table></div>

@@ -35,7 +35,7 @@ it("adds 7.3 L from one animal, blocks excess deliveries, and fills company milk
   await user.type(screen.getByRole("spinbutton", { name: "Naqd litres" }), "8");
   expect(screen.getByRole("button", { name: "Entry save karein" })).toBeDisabled();
   await user.clear(screen.getByRole("spinbutton", { name: "Naqd litres" }));
-  const fill = screen.getByRole("button", { name: "Baqi collection center ko" });
+  const fill = screen.getByRole("button", { name: "Baqi company ko dein" });
   await user.dblClick(fill);
   expect(screen.getByRole("spinbutton", { name: "Collection litres" })).toHaveValue(7.3);
 });
@@ -49,6 +49,53 @@ it("refreshes galla and customer reports after saving milk", async () => {
   await waitFor(() => expect(farmMocks.saveMilkEntry).toHaveBeenCalledOnce());
   await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ["customer-report"] }, { throwOnError: true }));
   expect(invalidate).toHaveBeenCalledWith({ queryKey: ["galla"] }, { throwOnError: true });
+});
+
+it("saves Khata, cash, free, internal use, and wastage separately in one balanced shift", async () => {
+  const user = userEvent.setup();
+  const cash = { ...fixtures.customer, id: "cash-1", name: "Naqd", kind: "cash", active: true, is_local: false, opening_date: "2025-01-01", default_morning: 0 };
+  const khata = { ...cash, id: "khata-1", name: "Ahmed", kind: "regular" };
+  farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({ customers: [khata, cash] }), error: null });
+  renderWithQuery(<FarmMilk />);
+  await user.type(screen.getByRole("spinbutton", { name: "Kul doodh" }), "500");
+  await user.type(screen.getByRole("spinbutton", { name: "Ahmed litres" }), "65");
+  await user.type(screen.getByRole("spinbutton", { name: "Naqd litres" }), "75");
+  await user.click(screen.getByRole("button", { name: "Free milk add karein" }));
+  await user.type(screen.getByRole("spinbutton", { name: "Free milk / diya hua 1 litres" }), "10");
+  await user.type(screen.getByRole("textbox", { name: "Free milk / diya hua 1 recipient" }), "Ismail");
+  await user.click(screen.getByRole("button", { name: "Istemaal add karein" }));
+  await user.type(screen.getByRole("spinbutton", { name: "Farm / home use 1 litres" }), "5");
+  await user.click(screen.getByRole("button", { name: "Waste add karein" }));
+  await user.type(screen.getByRole("spinbutton", { name: "Wastage / spillage 1 litres" }), "5");
+  await user.type(screen.getByRole("textbox", { name: "Wastage / spillage 1 note" }), "Balti gir gayi");
+  expect(screen.getByText("340 L")).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Entry save karein" }));
+  await waitFor(() => expect(farmMocks.saveMilkEntry).toHaveBeenCalledWith(expect.objectContaining({
+    total: 500,
+    deliveries: [{ customer_id: "khata-1", litres: 65 }, { customer_id: "cash-1", litres: 75 }],
+    dispositions: [
+      { disposition_type: "free", category: "charity", litres: 10, recipient: "Ismail", note: null },
+      { disposition_type: "internal", category: "owner_home", litres: 5, recipient: null, note: null },
+      { disposition_type: "wastage", category: "spillage", litres: 5, recipient: null, note: "Balti gir gayi" },
+    ],
+  })));
+});
+
+it("shows combined daily totals and the saved breakdown for each shift", async () => {
+  farmMocks.loadMilkDayDistribution.mockResolvedValueOnce({
+    report_date: fixtures.today, opening_litres: 10, produced_litres: 300, available_litres: 310,
+    khata_litres: 20, cash_litres: 30, free_litres: 5, farm_use_litres: 4, wasted_litres: 1,
+    allocated_litres: 60, remaining_litres: 250, khata_amount: 2000, cash_sale_amount: 4500,
+    cash_received: 4500, shifts: [{ milk_shift: "morning", produced_litres: 100, khata_litres: 10,
+      cash_litres: 15, free_litres: 2, farm_use_litres: 1, wasted_litres: 0, allocated_litres: 28,
+      remaining_litres: 72, khata_amount: 1000, cash_sale_amount: 2250, cash_received: 2250 }] as never,
+  });
+  renderWithQuery(<FarmMilk />);
+  const summary = await screen.findByRole("region", { name: "Subah shift summary" });
+  expect(summary).toHaveTextContent("100 L");
+  expect(summary).toHaveTextContent("15 L");
+  expect(summary).toHaveTextContent("Rs 2,250");
+  expect(screen.getByText("Rs 6,500")).toBeInTheDocument();
 });
 
 it("requires a reason before correcting a saved milk shift and sends one audited correction", async () => {

@@ -230,6 +230,7 @@ describe("checked daily milk entry", () => {
       await db.query(save, base);
       // Simulate a clock correction: the next write must advance the version
       // even when the wall clock is earlier than the stored timestamp.
+      await db.exec("set constraints all immediate");
       await db.exec("alter table public.milk_shifts disable trigger milk_shifts_touch");
       await db.query("update public.milk_shifts set updated_at = clock_timestamp() + interval '1 minute' where milk_date = $1 and shift = 'evening'", [date]);
       await db.exec("alter table public.milk_shifts enable trigger milk_shifts_touch");
@@ -237,6 +238,7 @@ describe("checked daily milk entry", () => {
       await db.query("update public.milk_deliveries set litres = 0.5 where delivery_date = $1 and shift = 'evening'", [date]);
       expect((await db.query<{ advanced: boolean }>("select updated_at > $2::timestamptz as advanced from public.milk_shifts where milk_date = $1 and shift = 'evening'", [date, before])).rows[0].advanced).toBe(true);
       await expectRejected(save, [...base.slice(0, 6), before, ""], /MILK_STALE/);
+      await db.exec("set constraints all deferred");
     } finally { await db.exec("rollback"); }
   });
 
@@ -247,6 +249,70 @@ describe("checked daily milk entry", () => {
       await expectRejected("insert into public.milk_deliveries (delivery_date, shift, customer_id, litres) select public.farm_today() + 1, 'morning', id, 1 from public.customers limit 1", [], /FUTURE_DATE/);
       await db.exec("insert into public.month_locks (month) values (date_trunc('month', public.farm_today())::date)");
       await expectRejected(save, [null, "morning", 0, "total", "[]", "[]", null, ""], /MONTH_LOCKED/);
+    } finally { await db.exec("rollback"); }
+  });
+});
+
+describe("milk dispositions and daily reconciliation", () => {
+  it("saves all five destinations, posts one cash receipt, and audits disposition corrections", async () => {
+    await db.exec("begin");
+    try {
+      const date = (await db.query<{ day: string }>("select (public.farm_today() - 20)::text as day")).rows[0].day;
+      const khata = (await db.query<{ id: string }>("select id from public.customers where name = 'Ahmed'")).rows[0].id;
+      const cash = (await db.query<{ id: string }>("select id from public.customers where name = 'Naqd'")).rows[0].id;
+      const deliveries = JSON.stringify([{ customer_id: khata, litres: 65 }, { customer_id: cash, litres: 75 }]);
+      const dispositions = JSON.stringify([
+        { disposition_type: "free", category: "employee", litres: 10, recipient: "Ismail", note: null },
+        { disposition_type: "internal", category: "owner_home", litres: 5, recipient: null, note: null },
+        { disposition_type: "wastage", category: "spillage", litres: 5, recipient: null, note: "Balti gir gayi" },
+      ]);
+      const save = `select public.save_milk_entry_with_dispositions($1::date,'morning',500,'total','[]'::jsonb,$2::jsonb,$3::jsonb,null,'')::text version`;
+      const version = (await db.query<{ version: string }>(save, [date, deliveries, dispositions])).rows[0].version;
+      const first = (await db.query<Record<string, string>>("select * from public.milk_day_distribution_summary($1::date)", [date])).rows[0];
+      expect(first).toMatchObject({ produced_litres: "500.00", available_litres: "500.00", khata_litres: "65.00", cash_litres: "75.00", free_litres: "10.00", farm_use_litres: "5.00", wasted_litres: "5.00", allocated_litres: "160.00", remaining_litres: "340.00", cash_sale_amount: "11250.00", cash_received: "11250.00" });
+      const shifts = (await db.query<Record<string, string>>("select * from public.milk_shift_distribution_summary($1::date)", [date])).rows;
+      expect(shifts).toHaveLength(1);
+      expect(shifts[0]).toMatchObject({ milk_shift: "morning", produced_litres: "500.00", khata_litres: "65.00", cash_litres: "75.00", free_litres: "10.00", farm_use_litres: "5.00", wasted_litres: "5.00", allocated_litres: "160.00", remaining_litres: "340.00", khata_amount: "9750.00", cash_sale_amount: "11250.00", cash_received: "11250.00" });
+      const payment = (await db.query<{ count: string; total: string }>(`
+        select count(*)::text count, coalesce(sum(p.amount),0)::text total from public.payments p
+        join public.milk_deliveries d on d.id=p.delivery_id where d.delivery_date=$1 and d.shift='morning' and d.customer_id=$2`, [date, cash])).rows[0];
+      expect(payment).toEqual({ count: "1", total: "11250.00" });
+
+      const owner = "9fb34167-f97d-4938-be7f-ca9a45ef509d";
+      await db.query("insert into auth.users(id) values ($1) on conflict (id) do nothing", [owner]);
+      await db.query("insert into private.app_owner(singleton,user_id) values (true,$1) on conflict (singleton) do update set user_id=excluded.user_id", [owner]);
+      await db.query("select set_config('request.jwt.claim.sub',$1,true)", [owner]);
+      const corrected = JSON.stringify([
+        { disposition_type: "free", category: "employee", litres: 12, recipient: "Ismail", note: null },
+        { disposition_type: "internal", category: "owner_home", litres: 5, recipient: null, note: null },
+        { disposition_type: "wastage", category: "spillage", litres: 5, recipient: null, note: "Balti gir gayi" },
+      ]);
+      await db.query(`select public.correct_milk_entry_with_dispositions($1::date,'morning',500,'total','[]'::jsonb,$2::jsonb,$3::jsonb,$4::timestamptz,'','Correct free milk litres')`, [date, deliveries, corrected, version]);
+      const after = (await db.query<Record<string, string>>("select * from public.milk_day_distribution_summary($1::date)", [date])).rows[0];
+      expect(after).toMatchObject({ free_litres: "12.00", allocated_litres: "162.00", remaining_litres: "338.00", cash_received: "11250.00" });
+      expect((await db.query<{ count: string }>("select count(*)::text count from public.payments p join public.milk_deliveries d on d.id=p.delivery_id where d.delivery_date=$1 and d.shift='morning' and d.customer_id=$2", [date, cash])).rows[0].count).toBe("1");
+      const audit = (await db.query<{ before_count: number; after_count: number }>(`
+        select jsonb_array_length(before_row->'dispositions') before_count,
+          jsonb_array_length(after_row->'dispositions') after_count
+        from private.milk_entry_audit where milk_date=$1 and shift='morning'`, [date])).rows[0];
+      expect(audit).toEqual({ before_count: 3, after_count: 3 });
+      const report = (await db.query<Record<string, string>>("select * from public.milk_report_daily($1::date,$1::date)", [date])).rows[0];
+      expect(report).toMatchObject({ sold_litres: "140.00", charity_litres: "12.00", farm_use_litres: "5.00", wasted_litres: "5.00", closing_litres: "338.00" });
+    } finally { await db.exec("rollback"); }
+  });
+
+  it("rejects missing waste reasons and over-allocation before any shift is saved", async () => {
+    await db.exec("begin");
+    try {
+      const date = (await db.query<{ day: string }>("select (public.farm_today() - 20)::text as day")).rows[0].day;
+      const badWaste = JSON.stringify([{ disposition_type: "wastage", category: "spillage", litres: 1, recipient: null, note: "" }]);
+      const incompleteFree = JSON.stringify([{ disposition_type: "free", category: "employee", litres: 1, recipient: null, note: null }]);
+      const tooMuch = JSON.stringify([{ disposition_type: "internal", category: "farm_use", litres: 2, recipient: null, note: null }]);
+      const save = `select public.save_milk_entry_with_dispositions($1::date,'noon',1,'total','[]'::jsonb,'[]'::jsonb,$2::jsonb,null,'')`;
+      await expectRejected(save, [date, badWaste], /MILK_DISPOSITION_INVALID/);
+      await expectRejected(save, [date, incompleteFree], /MILK_DISPOSITION_INVALID/);
+      await expectRejected(save, [date, tooMuch], /MILK_DISTRIBUTION_EXCEEDS_PRODUCTION/);
+      expect(Number((await db.query<{ count: string }>("select count(*) count from public.milk_shifts where milk_date=$1 and shift='noon'", [date])).rows[0].count)).toBe(0);
     } finally { await db.exec("rollback"); }
   });
 });

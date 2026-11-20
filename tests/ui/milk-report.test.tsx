@@ -17,9 +17,9 @@ vi.mock("@/lib/dates", async (original) => ({ ...(await original<typeof import("
 
 beforeEach(() => {
   reportMocks.loadMilkReportBounds.mockResolvedValue({ first_date: "2026-09-01", last_date: "2026-10-16" });
-  reportMocks.loadMilkReportDaily.mockResolvedValue([{ report_date: "2026-10-16", opening_litres: 2, produced_litres: 10, available_litres: 12, sold_litres: 4, charity_litres: 2, wasted_litres: 1, waste_reason: "Balti gir gayi", closing_litres: 5 }]);
+  reportMocks.loadMilkReportDaily.mockResolvedValue([{ report_date: "2026-10-16", opening_litres: 2, produced_litres: 10, available_litres: 12, sold_litres: 4, charity_litres: 2, farm_use_litres: 0, wasted_litres: 1, waste_reason: "Balti gir gayi", day_wasted_litres: 1, day_waste_reason: "Balti gir gayi", closing_litres: 5 }]);
   reportMocks.loadMilkReportCustomers.mockResolvedValue([{ customer_id: "buyer-1", name: "Ali", kind: "regular", sort_order: 1, litres: 4, charged: 600, paid: 300, outstanding: 900 }]);
-  reportMocks.loadMilkReportTotals.mockResolvedValue({ opening_litres: 2, produced_litres: 10, available_litres: 12, sold_litres: 4, charity_litres: 2, wasted_litres: 1, closing_litres: 5, sales_amount: 600, received_amount: 300, outstanding_amount: 900 });
+  reportMocks.loadMilkReportTotals.mockResolvedValue({ opening_litres: 2, produced_litres: 10, available_litres: 12, sold_litres: 4, charity_litres: 2, farm_use_litres: 0, wasted_litres: 1, closing_litres: 5, sales_amount: 600, received_amount: 300, outstanding_amount: 900 });
   reportMocks.saveMilkDayWaste.mockResolvedValue(undefined);
   reportMocks.getSettings.mockResolvedValue({ farm_name: "Saim Dairy Farm" });
   reportMocks.buildPdfReport.mockResolvedValue(new Uint8Array([1, 2, 3]));
@@ -57,7 +57,7 @@ it("waits for the database date bounds before enabling all-records period", asyn
 it("requires a waste reason and saves corrections through the guarded database action", async () => {
   const user = userEvent.setup();
   renderWithQuery(<MilkReport />);
-  const amount = await screen.findByRole("spinbutton", { name: "Zaya doodh litre" });
+  const amount = await screen.findByRole("spinbutton", { name: "Shift ke baghair waste litre" });
   await waitFor(() => expect(screen.getByRole("textbox", { name: "Waste ki wajah" })).toHaveValue("Balti gir gayi"));
   await user.clear(amount);
   await user.type(amount, "1.5");

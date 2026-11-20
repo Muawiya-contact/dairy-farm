@@ -48,8 +48,8 @@ export default function MilkReport() {
     queryKey: ["milk-report-waste", wasteDate], enabled: validWasteDate,
     queryFn: async () => (await loadMilkReportDaily(wasteDate, wasteDate))[0],
   });
-  const wasteLitres = wasteForm?.date === wasteDate ? wasteForm.litres : String(wasteQuery.data?.wasted_litres ?? 0);
-  const wasteReason = wasteForm?.date === wasteDate ? wasteForm.reason : wasteQuery.data?.waste_reason ?? "";
+  const wasteLitres = wasteForm?.date === wasteDate ? wasteForm.litres : String(wasteQuery.data?.day_wasted_litres ?? 0);
+  const wasteReason = wasteForm?.date === wasteDate ? wasteForm.reason : wasteQuery.data?.day_waste_reason ?? "";
 
   const choosePreset = (value: ReportPeriodPreset) => {
     setPreset(value);
@@ -94,13 +94,13 @@ export default function MilkReport() {
         ["Selected muddat", `${from} se ${to}`], ["PDF tayyar ki tareekh", today],
         ["Pichla doodh balance", litres(totals.opening_litres)], ["Naya paida hua doodh", litres(totals.produced_litres)],
         ["Kul available doodh", litres(totals.available_litres)], ["Doodh farokht", litres(totals.sold_litres)],
-        ["Charity / muft diya", litres(totals.charity_litres)], ["Doodh zaya", litres(totals.wasted_litres)],
+        ["Charity / muft diya", litres(totals.charity_litres)], ["Ghar / farm mein istemal", litres(totals.farm_use_litres)], ["Doodh zaya", litres(totals.wasted_litres)],
         ["Aakhir ka doodh balance", litres(totals.closing_litres)], ["Kul sale amount", rs(totals.sales_amount)],
         ["Wusool hui raqam", rs(totals.received_amount)], ["Aakhir ka customer baqaya", rs(totals.outstanding_amount)],
       ].map(([item, value]) => ({ item, value }));
       const dailyRows = daily.map((row) => ({
         report_date: row.report_date, opening_litres: litres(row.opening_litres), produced_litres: litres(row.produced_litres),
-        available_litres: litres(row.available_litres), sold_litres: litres(row.sold_litres), charity_litres: litres(row.charity_litres),
+        available_litres: litres(row.available_litres), sold_litres: litres(row.sold_litres), charity_litres: litres(row.charity_litres), farm_use_litres: litres(row.farm_use_litres),
         wasted_litres: litres(row.wasted_litres), waste_reason: row.waste_reason ?? "", closing_litres: litres(row.closing_litres),
       }));
       const customerRows = customers.map((row) => ({
@@ -109,7 +109,7 @@ export default function MilkReport() {
       }));
       const sections: PdfSection[] = [
         { title: "Grand summary", columns: ["item", "value"], rows: summaryRows },
-        { title: "Daily milk balance", columns: ["report_date", "opening_litres", "produced_litres", "available_litres", "sold_litres", "charity_litres", "wasted_litres", "waste_reason", "closing_litres"], rows: dailyRows },
+        { title: "Daily milk balance", columns: ["report_date", "opening_litres", "produced_litres", "available_litres", "sold_litres", "charity_litres", "farm_use_litres", "wasted_litres", "waste_reason", "closing_litres"], rows: dailyRows },
         { title: "Customer sales and outstanding", columns: ["name", "kind", "litres", "charged", "paid", "outstanding"], rows: customerRows },
       ];
       const bytes = await buildPdfReport(`Milk Report — ${from} se ${to}`, sections, settings.data!.farm_name);
@@ -136,10 +136,10 @@ export default function MilkReport() {
       {report.isPending && valid && <p role="status" className="text-sm text-muted">Milk Report load ho rahi hai…</p>}
       {report.isError && <p role="alert" className="text-sm text-udhaar">Milk Report nahi khuli: {friendlyError(report.error)} <button type="button" onClick={() => void report.refetch()} className="underline">Dobara koshish</button></p>}
       {data && <>
-        {!data.daily.some((row) => row.produced_litres || row.sold_litres || row.charity_litres || row.wasted_litres) && !data.customers.some((row) => row.litres || row.charged || row.paid || row.outstanding) && <Panel title="Koi record nahi"><p className="text-sm text-muted">Chuni hui muddat mein doodh ki production, delivery ya customer ka baqaya record nahi hai.</p></Panel>}
+        {!data.daily.some((row) => row.produced_litres || row.sold_litres || row.charity_litres || row.farm_use_litres || row.wasted_litres) && !data.customers.some((row) => row.litres || row.charged || row.paid || row.outstanding) && <Panel title="Koi record nahi"><p className="text-sm text-muted">Chuni hui muddat mein doodh ki production, delivery ya customer ka baqaya record nahi hai.</p></Panel>}
         <Panel title="Rozana doodh balance">
-          <div className="overflow-x-auto"><table className="w-full min-w-[1040px] text-sm"><thead><tr>{["Tareekh", "Pichla balance", "Naya doodh", "Kul available", "Farokht", "Charity", "Zaya", "Waste ki wajah", "Aakhir balance"].map((label) => <th key={label} className="border-b border-line px-2 py-2 text-right first:text-left">{label}</th>)}</tr></thead>
-            <tbody>{data.daily.map((row) => <tr key={row.report_date}><td className="border-b border-line px-2 py-2">{row.report_date}</td><td className="border-b border-line px-2 py-2 text-right">{litres(row.opening_litres)}</td><td className="border-b border-line px-2 py-2 text-right">{litres(row.produced_litres)}</td><td className="border-b border-line px-2 py-2 text-right">{litres(row.available_litres)}</td><td className="border-b border-line px-2 py-2 text-right">{litres(row.sold_litres)}</td><td className="border-b border-line px-2 py-2 text-right">{litres(row.charity_litres)}</td><td className="border-b border-line px-2 py-2 text-right">{litres(row.wasted_litres)}</td><td className="border-b border-line px-2 py-2 text-left">{row.waste_reason ?? ""}</td><td className="border-b border-line px-2 py-2 text-right font-bold">{litres(row.closing_litres)}</td></tr>)}</tbody>
+          <div className="overflow-x-auto"><table className="w-full min-w-[1150px] text-sm"><thead><tr>{["Tareekh", "Pichla balance", "Naya doodh", "Kul available", "Farokht", "Charity", "Ghar / farm use", "Zaya", "Waste ki wajah", "Aakhir balance"].map((label) => <th key={label} className="border-b border-line px-2 py-2 text-right first:text-left">{label}</th>)}</tr></thead>
+            <tbody>{data.daily.map((row) => <tr key={row.report_date}><td className="border-b border-line px-2 py-2">{row.report_date}</td><td className="border-b border-line px-2 py-2 text-right">{litres(row.opening_litres)}</td><td className="border-b border-line px-2 py-2 text-right">{litres(row.produced_litres)}</td><td className="border-b border-line px-2 py-2 text-right">{litres(row.available_litres)}</td><td className="border-b border-line px-2 py-2 text-right">{litres(row.sold_litres)}</td><td className="border-b border-line px-2 py-2 text-right">{litres(row.charity_litres)}</td><td className="border-b border-line px-2 py-2 text-right">{litres(row.farm_use_litres)}</td><td className="border-b border-line px-2 py-2 text-right">{litres(row.wasted_litres)}</td><td className="border-b border-line px-2 py-2 text-left">{row.waste_reason ?? ""}</td><td className="border-b border-line px-2 py-2 text-right font-bold">{litres(row.closing_litres)}</td></tr>)}</tbody>
           </table></div>
         </Panel>
         <Panel title="Customer-wise sales aur baqaya">
@@ -157,18 +157,18 @@ export default function MilkReport() {
             {[
               ["Pichla doodh balance", litres(data.totals.opening_litres)], ["Naya paida hua doodh", litres(data.totals.produced_litres)],
               ["Kul available doodh", litres(data.totals.available_litres)], ["Doodh farokht", litres(data.totals.sold_litres)],
-              ["Charity / muft diya", litres(data.totals.charity_litres)], ["Doodh zaya", litres(data.totals.wasted_litres)],
+              ["Charity / muft diya", litres(data.totals.charity_litres)], ["Ghar / farm mein istemal", litres(data.totals.farm_use_litres)], ["Doodh zaya", litres(data.totals.wasted_litres)],
               ["Aakhir ka doodh balance", litres(data.totals.closing_litres)], ["Kul sale amount", rs(data.totals.sales_amount)],
               ["Wusool hui raqam", rs(data.totals.received_amount)], ["Aakhir ka customer baqaya", rs(data.totals.outstanding_amount)],
             ].map(([label, value]) => <div key={label} className="rounded-xl bg-ground p-3"><dt className="text-sm text-muted">{label}</dt><dd className="font-bold">{value}</dd></div>)}
           </dl>
         </Panel>
-        <Panel title="Waste / zaya doodh record" className="no-print">
-          <p className="mb-3 text-sm text-muted">Zaya doodh likhne se us din aur aglay dinon ka closing balance dobara calculate hota hai. Wajah 3 se 500 harf tak likhein.</p>
+        <Panel title="Shift ke baghair waste record" className="no-print">
+          <p className="mb-3 text-sm text-muted">Yahan sirf woh waste darj karein jo Doodh entry mein kisi shift ke saath record nahi hua. Shift ka waste report mein khud shamil hai. Yeh entry aglay dinon ka closing balance dobara calculate karti hai. Wajah 3 se 500 harf tak likhein.</p>
           {wasteQuery.isError && <p role="alert" className="mb-2 text-sm text-udhaar">Is din ki waste entry nahi khuli: {friendlyError(wasteQuery.error)} <button type="button" onClick={() => void wasteQuery.refetch()} className="underline">Dobara koshish</button></p>}
           <form noValidate onSubmit={(event) => void onWasteSubmit(event)} className="grid gap-3 sm:grid-cols-2">
             <label className="text-sm font-semibold">Waste ki tareekh<input aria-label="Waste ki tareekh" type="date" value={wasteDate} max={today} onChange={(event) => { setWasteDate(event.target.value); setWasteStatus(""); }} className={`${field} mt-1`} /></label>
-            <label className="text-sm font-semibold">Zaya doodh (L)<input aria-label="Zaya doodh litre" type="number" min="0" max="5000" step="0.01" inputMode="decimal" value={wasteLitres} onChange={(event) => setWasteForm({ date: wasteDate, litres: event.target.value, reason: wasteReason })} disabled={wasteQuery.isPending} className={`${field} mt-1`} /></label>
+            <label className="text-sm font-semibold">Shift ke baghair waste (L)<input aria-label="Shift ke baghair waste litre" type="number" min="0" max="5000" step="0.01" inputMode="decimal" value={wasteLitres} onChange={(event) => setWasteForm({ date: wasteDate, litres: event.target.value, reason: wasteReason })} disabled={wasteQuery.isPending} className={`${field} mt-1`} /></label>
             <label className="text-sm font-semibold sm:col-span-2">Waste ki wajah<textarea aria-label="Waste ki wajah" rows={2} maxLength={500} value={wasteReason} onChange={(event) => setWasteForm({ date: wasteDate, litres: wasteLitres, reason: event.target.value })} disabled={wasteQuery.isPending} className={`${field} mt-1 py-2`} placeholder="Misal: balti gir gayi" /></label>
             {wasteQuery.data && <p className="text-sm text-muted sm:col-span-2">Is din total available {litres(wasteQuery.data.available_litres)} · waste ke baad closing {litres(wasteQuery.data.closing_litres)}.</p>}
             {!validWasteDate && <p role="alert" className="text-sm text-udhaar sm:col-span-2">Aaj tak ki sahi tareekh chunein.</p>}

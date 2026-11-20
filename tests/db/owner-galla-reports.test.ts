@@ -31,6 +31,33 @@ beforeAll(async () => {
 afterAll(async () => { await db?.close(); });
 
 describe("owner transaction reporting and daily Galla close", () => {
+  it("includes a dated opening balance in opening-day cash flows", async () => {
+    const openingDb = await freshFarmDb({ farmDay: "2026-11-20" });
+    try {
+      const cash = (await openingDb.query<{ id: string }>(
+        "select id from accounts where is_farm_cash",
+      )).rows[0].id;
+      await openingDb.query(
+        "update accounts set opening_date = '2026-11-20', opening_balance = 6400 where id = $1", [cash],
+      );
+
+      const positive = (await openingDb.query<{
+        opening_balance: string; money_received: string; money_paid: string; expected_closing: string;
+      }>("select * from galla_daily_closing($1, '2026-11-20')", [cash])).rows[0];
+      expect([Number(positive.opening_balance), Number(positive.money_received), Number(positive.money_paid),
+        Number(positive.expected_closing)]).toEqual([0, 6400, 0, 6400]);
+
+      await openingDb.query("update accounts set opening_balance = -125 where id = $1", [cash]);
+      const negative = (await openingDb.query<{
+        opening_balance: string; money_received: string; money_paid: string; expected_closing: string;
+      }>("select * from galla_daily_closing($1, '2026-11-20')", [cash])).rows[0];
+      expect([Number(negative.opening_balance), Number(negative.money_received), Number(negative.money_paid),
+        Number(negative.expected_closing)]).toEqual([0, 0, 125, -125]);
+    } finally {
+      await openingDb.close();
+    }
+  });
+
   it("classifies explicit owner transfers once and leaves P&L unchanged", async () => {
     const beforeProfit = (await db.query("select * from pnl_month('2026-11-01')")).rows;
     await expect(db.query("insert into accounts(name,kind,is_owner) values ('Wrong owner kind','bank',true)"))

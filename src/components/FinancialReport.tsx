@@ -140,7 +140,7 @@ export default function FinancialReport() {
 
   return <>
     <PageHeader title="Financial Report" sub="Farm income, expenses, cash movement, and outstanding balances" back="/reports/" />
-    <Body className="space-y-4 pb-8">
+    <Body className="print-report space-y-4 pb-8">
       <Panel title="Report period" className="no-print">
         <div className="flex flex-wrap gap-2">{(Object.keys(presetLabels) as Preset[]).map((value) => <button
           type="button" key={value} aria-pressed={preset === value} onClick={() => choosePreset(value)}

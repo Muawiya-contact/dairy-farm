@@ -58,6 +58,7 @@ it("shows the selected financial period and separate supported totals", async ()
   renderWithQuery(<FinancialReport />);
   expect(await screen.findByRole("heading", { name: "Financial Report" })).toBeInTheDocument();
   await screen.findByRole("heading", { name: "Overview" });
+  expect(document.querySelector(".print-report")).toBeInTheDocument();
   expect(screen.getAllByText("Rs 1,200").length).toBeGreaterThan(0);
   expect(screen.getByText("Cash received")).toBeInTheDocument();
   expect(screen.getAllByText("Rs 600").length).toBeGreaterThan(0);

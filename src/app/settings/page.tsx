@@ -52,6 +52,7 @@ function SettingsForm({ initial, open, onToggle }: { initial: FarmSettings; open
   const [days, setDays] = useState(() => Object.fromEntries(breedingFields.map(({ key }) => [key, String(initial[key])])) as Record<(typeof breedingFields)[number]["key"], string>);
   const [reminderDays, setReminderDays] = useState(String(initial.reminder_days));
   const [calvingReminderDays, setCalvingReminderDays] = useState(String(initial.calving_reminder_days));
+  const [milkDropThreshold, setMilkDropThreshold] = useState(String(initial.milk_drop_threshold_percent));
   const [noonDraft, setNoonDraft] = useState<boolean | null>(null);
   const noonQuery = useQuery({ queryKey: ["noon-enabled"], queryFn: async () => {
     const { data, error } = await getSupabase().rpc("noon_enabled_on", { p_date: todayPK() });
@@ -91,6 +92,7 @@ function SettingsForm({ initial, open, onToggle }: { initial: FarmSettings; open
       checkup_days: Number(days.checkup_days), dry_off_days: Number(days.dry_off_days),
       calving_days: Number(days.calving_days), fresh_days: Number(days.fresh_days),
       reminder_days: Number(reminderDays), calving_reminder_days: Number(calvingReminderDays),
+      milk_drop_threshold_percent: Number(milkDropThreshold),
       gyarhwin_reminder_enabled: gyarhwinEnabled, hijri_date_adjustment: Number(hijriAdjustment),
       eid_fitr_start_date: eidFitrDate || null, eid_adha_start_date: eidAdhaDate || null,
     };
@@ -129,6 +131,13 @@ function SettingsForm({ initial, open, onToggle }: { initial: FarmSettings; open
       </fieldset>
       </SettingsSection>
       <SettingsSection id="milk" title="Doodh ke auqaat" open={open === "milk"} onToggle={onToggle}>
+        <fieldset className="mb-5 max-w-2xl border-b border-line pb-5"><legend className="font-display text-lg font-bold">Doodh kam honay ka alert</legend>
+          <label className="mt-2 block max-w-xs font-semibold">Kami ka threshold (feesad)
+            <input required disabled={mutation.isPending} type="number" min="5" max="80" step="1" value={milkDropThreshold}
+              onChange={(event) => { edit(); setMilkDropThreshold(event.target.value); }} className={inputClass} />
+          </label>
+          <p className="mt-2 text-sm text-muted">Har shift ka pichlay 7 din se muqabla hota hai. Kam az kam 5 darj din hon; khali din zero nahi gine jayenge. Default 20% hai.</p>
+        </fieldset>
         <label className="flex items-center gap-3 font-semibold"><input type="checkbox" checked={noonDraft ?? noonQuery.data ?? false}
           disabled={noonQuery.isPending || noonMutation.isPending || noonQuery.isError}
           onChange={(event) => { setNoonDraft(event.target.checked); noonMutation.mutate(event.target.checked); }} />Dopehr ka doodh (din mein 3 dafa)</label>

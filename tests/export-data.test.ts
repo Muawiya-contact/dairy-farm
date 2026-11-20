@@ -43,6 +43,9 @@ describe("CSV exports", () => {
     expect(columnLabel("difference", "Cash counts")).toBe("Farq (Rs)");
     expect(columnLabel("difference", "Doodh ka khulasa")).toBe("Farq (L)");
     expect(columnLabel("counted_amount")).toContain("Rs");
+    expect(columnLabel("khata_amount")).toBe("Khata billed (Rs)");
+    expect(columnLabel("company_bill_amount")).toBe("Company bill (Rs)");
+    expect(columnLabel("galla_cash_received")).toBe("Cash sale Galla credit (Rs)");
     expect(displayCell({ amount: 10, method: "cash" })).toBe('{"amount":10,"method":"cash"}');
     expect(toCsv(["before_row"], [{ before_row: { amount: 10 } }])).toContain('{""amount"":10}');
   });

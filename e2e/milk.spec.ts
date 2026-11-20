@@ -31,8 +31,20 @@ test("a Naqd shift refreshes Home, Khata and Galla through client navigation", a
   }
   await page.getByRole("spinbutton", { name: "Kul doodh" }).fill("200");
   await expect(page.getByRole("spinbutton", { name: "Naqd litres" })).toHaveValue(morning ? "3" : "2");
+  await page.getByRole("button", { name: "Free milk add karein" }).click();
+  await page.getByRole("spinbutton", { name: "Free milk / diya hua 1 litres" }).fill("2");
+  await page.getByRole("textbox", { name: "Free milk / diya hua 1 recipient" }).fill("Staff");
+  await page.getByRole("button", { name: "Istemaal add karein" }).click();
+  await page.getByRole("spinbutton", { name: "Farm / home use 1 litres" }).fill("1");
+  await page.getByRole("button", { name: "Waste add karein" }).click();
+  await page.getByRole("spinbutton", { name: "Wastage / spillage 1 litres" }).fill("1");
+  await page.getByRole("textbox", { name: "Wastage / spillage 1 note" }).fill("Spill during transfer");
   await page.getByRole("button", { name: "Entry save karein" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Entry farm ke data mein save ho gayi." })).toBeVisible();
+  const shiftSummary = page.getByRole("region", { name: `${morning ? "Subah" : "Shaam"} shift summary` });
+  await expect(shiftSummary).toContainText("200 L");
+  await expect(shiftSummary).toContainText("2 L");
+  await expect(shiftSummary).toContainText("1 L");
 
   await go(page, "Home");
   await expect.poll(() => heroMilk(page)).toBe(beforeMilk + 200);

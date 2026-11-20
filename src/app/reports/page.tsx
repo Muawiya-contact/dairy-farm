@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Body, PageHeader } from "@/components/ui";
-import { BookIcon, BoxesIcon, CanIcon, ChartIcon, CowIcon, PeopleIcon, WalletIcon } from "@/components/icons";
+import { BankIcon, BookIcon, BoxesIcon, CanIcon, ChartIcon, CowIcon, PeopleIcon, ReportIcon, WalletIcon } from "@/components/icons";
 
 const REPORTS = [
   { label: "Customer Report", href: "/reports/customer/", Icon: PeopleIcon },
@@ -10,6 +10,8 @@ const REPORTS = [
   { label: "Inventory Report", href: "/reports/inventory/", Icon: BoxesIcon },
   { label: "Animal Report", href: "/reports/animal/", Icon: CowIcon },
   { label: "Financial Report", href: "/reports/financial/", Icon: ChartIcon },
+  { label: "Accounts Report", href: "/reports/accounts/", Icon: BankIcon },
+  { label: "Final Report", href: "/reports/final/", Icon: ReportIcon },
 ];
 
 export default function ReportsPage() {

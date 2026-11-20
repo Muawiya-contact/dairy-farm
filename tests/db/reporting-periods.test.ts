@@ -80,9 +80,9 @@ test("Khata summary applies a customer opening balance on its actual opening dat
 });
 
 test("daily milk balance carries closing litres forward and separates charity", async () => {
-  await db.exec("insert into milk_day_adjustments(milk_date,wasted_litres,waste_reason) values ('2026-10-10', 1, 'Spill')");
+  await db.query("select save_milk_day_waste('2026-10-10', 1, 'Spill')");
   const rows = (await db.query<Record<string, string>>("select * from milk_report_daily('2026-10-10', '2026-10-11')")).rows;
-  expect(rows[0]).toMatchObject({ produced_litres: "10.00", sold_litres: "4.00", charity_litres: "2.00", wasted_litres: "1.00", closing_litres: "3.00" });
+  expect(rows[0]).toMatchObject({ produced_litres: "10.00", sold_litres: "4.00", charity_litres: "2.00", wasted_litres: "1.00", day_wasted_litres: "1.00", closing_litres: "3.00" });
   expect(rows[1]).toMatchObject({ opening_litres: "3.00", produced_litres: "0", closing_litres: "3.00" });
 });
 

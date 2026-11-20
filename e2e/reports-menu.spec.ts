@@ -6,7 +6,7 @@ test("Reports menu routes each category to its matching entry page", async ({ pa
   await go(page, "Reports");
 
   const menu = page.getByRole("navigation", { name: "Report categories" });
-  await expect(menu.getByRole("link")).toHaveCount(7);
+  await expect(menu.getByRole("link")).toHaveCount(9);
   const destinations = [
     ["Customer Report", "Customer Report"],
     ["Milk Report", "Milk Report"],
@@ -15,6 +15,8 @@ test("Reports menu routes each category to its matching entry page", async ({ pa
     ["Inventory Report", "Inventory Report"],
     ["Animal Report", "Animal-wise Milk Report"],
     ["Financial Report", "Financial Report"],
+    ["Accounts Report", "Accounts Report"],
+    ["Final Report", "Reports aur PDF"],
   ] as const;
 
   for (const [label, heading] of destinations) {

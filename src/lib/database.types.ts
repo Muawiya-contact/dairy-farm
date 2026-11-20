@@ -907,6 +907,63 @@ export type Database = {
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "milk_deliveries_milk_shift_fkey"
+            columns: ["delivery_date", "shift"]
+            isOneToOne: false
+            referencedRelation: "milk_shifts"
+            referencedColumns: ["milk_date", "shift"]
+          },
+        ]
+      }
+      milk_dispositions: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          disposition_type: string
+          id: string
+          litres: number
+          milk_date: string
+          note: string | null
+          recipient: string | null
+          shift_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          created_by?: string | null
+          disposition_type: string
+          id?: string
+          litres: number
+          milk_date: string
+          note?: string | null
+          recipient?: string | null
+          shift_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          disposition_type?: string
+          id?: string
+          litres?: number
+          milk_date?: string
+          note?: string | null
+          recipient?: string | null
+          shift_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "milk_dispositions_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "milk_shifts"
+            referencedColumns: ["id"]
+          },
         ]
       }
       milk_shift_config: {
@@ -1681,6 +1738,71 @@ export type Database = {
           p_total: number
         }
         Returns: string
+      }
+      save_milk_entry_with_dispositions: {
+        Args: {
+          p_animals: Json
+          p_date: string
+          p_deliveries: Json
+          p_dispositions: Json
+          p_expected_updated_at: string | null
+          p_mode: string
+          p_notes: string | null
+          p_shift: string
+          p_total: number
+        }
+        Returns: string
+      }
+      correct_milk_entry_with_dispositions: {
+        Args: {
+          p_animals: Json
+          p_date: string
+          p_deliveries: Json
+          p_dispositions: Json
+          p_expected_updated_at: string
+          p_mode: string
+          p_notes: string | null
+          p_reason: string
+          p_shift: string
+          p_total: number
+        }
+        Returns: string
+      }
+      milk_day_distribution_summary: {
+        Args: { p_date: string }
+        Returns: {
+          allocated_litres: number
+          available_litres: number
+          cash_litres: number
+          cash_received: number
+          cash_sale_amount: number
+          farm_use_litres: number
+          free_litres: number
+          khata_amount: number
+          khata_litres: number
+          opening_litres: number
+          produced_litres: number
+          remaining_litres: number
+          report_date: string
+          wasted_litres: number
+        }[]
+      }
+      milk_shift_distribution_summary: {
+        Args: { p_date: string }
+        Returns: {
+          allocated_litres: number
+          cash_litres: number
+          cash_received: number
+          cash_sale_amount: number
+          farm_use_litres: number
+          free_litres: number
+          khata_amount: number
+          khata_litres: number
+          milk_shift: string
+          produced_litres: number
+          remaining_litres: number
+          wasted_litres: number
+        }[]
       }
       void_manual_payment: {
         Args: { p_id: string; p_reason: string; p_revision: number }

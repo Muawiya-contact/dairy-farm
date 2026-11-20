@@ -50,9 +50,10 @@ type MilkReportRpc<T> = (name: string, args: Record<string, unknown>) => Promise
 export type MilkReportBounds = { first_date: string; last_date: string };
 export type MilkReportDailyRow = {
   report_date: string; opening_litres: number; produced_litres: number; available_litres: number;
-  sold_litres: number; charity_litres: number; wasted_litres: number; waste_reason: string | null; closing_litres: number;
+  sold_litres: number; charity_litres: number; farm_use_litres: number; wasted_litres: number; waste_reason: string | null;
+  day_wasted_litres: number; day_waste_reason: string | null; closing_litres: number;
 };
-export type MilkReportTotals = Omit<MilkReportDailyRow, "report_date" | "waste_reason"> & {
+export type MilkReportTotals = Omit<MilkReportDailyRow, "report_date" | "waste_reason" | "day_wasted_litres" | "day_waste_reason"> & {
   sales_amount: number; received_amount: number; outstanding_amount: number;
 };
 export type MilkReportCustomer = {
@@ -106,7 +107,7 @@ export async function loadMilkReportBounds(): Promise<MilkReportBounds> {
 
 export async function loadMilkReportDaily(from: string, to: string): Promise<MilkReportDailyRow[]> {
   const rows = await loadPagedMilkRows<MilkReportDailyRow>("milk_report_daily", { p_from: from, p_to: to });
-  return rows.map((row) => ({ ...row, report_date: String(row.report_date), opening_litres: Number(row.opening_litres ?? 0), produced_litres: Number(row.produced_litres ?? 0), available_litres: Number(row.available_litres ?? 0), sold_litres: Number(row.sold_litres ?? 0), charity_litres: Number(row.charity_litres ?? 0), wasted_litres: Number(row.wasted_litres ?? 0), waste_reason: row.waste_reason ?? null, closing_litres: Number(row.closing_litres ?? 0) }));
+  return rows.map((row) => ({ ...row, report_date: String(row.report_date), opening_litres: Number(row.opening_litres ?? 0), produced_litres: Number(row.produced_litres ?? 0), available_litres: Number(row.available_litres ?? 0), sold_litres: Number(row.sold_litres ?? 0), charity_litres: Number(row.charity_litres ?? 0), farm_use_litres: Number(row.farm_use_litres ?? 0), wasted_litres: Number(row.wasted_litres ?? 0), waste_reason: row.waste_reason ?? null, day_wasted_litres: Number(row.day_wasted_litres ?? 0), day_waste_reason: row.day_waste_reason ?? null, closing_litres: Number(row.closing_litres ?? 0) }));
 }
 
 export async function loadMilkReportTotals(from: string, to: string): Promise<MilkReportTotals> {
@@ -116,7 +117,7 @@ export async function loadMilkReportTotals(from: string, to: string): Promise<Mi
   return {
     opening_litres: Number(row.opening_litres ?? 0), produced_litres: Number(row.produced_litres ?? 0),
     available_litres: Number(row.available_litres ?? 0), sold_litres: Number(row.sold_litres ?? 0),
-    charity_litres: Number(row.charity_litres ?? 0), wasted_litres: Number(row.wasted_litres ?? 0),
+    charity_litres: Number(row.charity_litres ?? 0), farm_use_litres: Number(row.farm_use_litres ?? 0), wasted_litres: Number(row.wasted_litres ?? 0),
     closing_litres: Number(row.closing_litres ?? 0), sales_amount: Number(row.sales_amount ?? 0),
     received_amount: Number(row.received_amount ?? 0), outstanding_amount: Number(row.outstanding_amount ?? 0),
   };

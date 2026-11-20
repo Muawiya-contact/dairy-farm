@@ -16,6 +16,19 @@ update accounts set opening_date = farm_today() - 30;
 update accounts set opening_balance = 5000 where is_farm_cash;
 insert into accounts (name, kind, opening_date, sort_order)
 values ('Jahangir Sahab', 'person', farm_today() - 30, 2);
+insert into accounts (name, kind, opening_date, sort_order, is_owner)
+values ('Demo Owner', 'person', farm_today() - 30, 3, true);
+
+-- Balanced sample owner movements keep the documented Rs 7,500 Farm Galla
+-- closing amount unchanged while making both report directions visible.
+insert into transfers (transfer_date, from_account_id, to_account_id, amount, note)
+select farm_today() - 2, farm.id, owner_account.id, 250, 'Demo: owner withdrawal'
+from accounts farm cross join accounts owner_account
+where farm.is_farm_cash and owner_account.name = 'Demo Owner';
+insert into transfers (transfer_date, from_account_id, to_account_id, amount, note)
+select farm_today() - 1, owner_account.id, farm.id, 250, 'Demo: owner deposit'
+from accounts farm cross join accounts owner_account
+where farm.is_farm_cash and owner_account.name = 'Demo Owner';
 
 -- ── Customers ──────────────────────────────────────────────────────
 insert into customers (name, kind, free_reason, phone, default_morning, default_evening, opening_balance, opening_date, sort_order) values

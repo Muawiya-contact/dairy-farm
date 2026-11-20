@@ -100,6 +100,7 @@ export type Database = {
           created_at: string
           id: string
           is_farm_cash: boolean
+          is_owner: boolean
           kind: string
           name: string
           opening_balance: number
@@ -111,6 +112,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_farm_cash?: boolean
+          is_owner?: boolean
           kind: string
           name: string
           opening_balance?: number
@@ -122,6 +124,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_farm_cash?: boolean
+          is_owner?: boolean
           kind?: string
           name?: string
           opening_balance?: number
@@ -1359,6 +1362,7 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
+          created_by: string | null
           from_account_id: string
           id: string
           note: string | null
@@ -1368,6 +1372,7 @@ export type Database = {
         Insert: {
           amount: number
           created_at?: string
+          created_by?: string | null
           from_account_id: string
           id?: string
           note?: string | null
@@ -1377,6 +1382,7 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string
+          created_by?: string | null
           from_account_id?: string
           id?: string
           note?: string | null
@@ -1496,6 +1502,58 @@ export type Database = {
           money_out: number
           name: string
           opening: number
+        }[]
+      }
+      galla_daily_closing: {
+        Args: { p_account: string; p_date: string }
+        Returns: {
+          account_id: string
+          account_name: string
+          expected_closing: number
+          internal_transfers_in: number
+          internal_transfers_out: number
+          latest_count_date: string | null
+          latest_count_difference: number | null
+          latest_count_id: string | null
+          latest_count_is_stale: boolean | null
+          latest_count_reason: string | null
+          latest_counted_amount: number | null
+          money_paid: number
+          money_received: number
+          opening_balance: number
+          other_transfers_in: number
+          other_transfers_out: number
+          owner_deposits: number
+          owner_withdrawals: number
+        }[]
+      }
+      owner_transfer_bounds: {
+        Args: never
+        Returns: { first_date: string; last_date: string }[]
+      }
+      owner_transfer_rows: {
+        Args: { p_from: string; p_limit?: number; p_offset?: number; p_to: string }
+        Returns: {
+          amount: number
+          direction: string
+          farm_account_id: string
+          farm_account_name: string
+          note: string | null
+          owner_account_id: string
+          owner_account_name: string
+          recorded_by: string | null
+          transfer_date: string
+          transfer_id: string
+        }[]
+      }
+      owner_transfer_summary: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          deposit_count: number
+          net_amount: number
+          total_deposits: number
+          total_withdrawals: number
+          withdrawal_count: number
         }[]
       }
       close_animal: {

@@ -5,6 +5,7 @@ import type { AccountEntry } from "../../src/lib/galla";
 
 const account: FarmAccount = {
   id: "account-1", name: "Test bank", kind: "bank", is_farm_cash: false,
+  is_owner: false,
   opening_balance: 40, opening_date: "2026-10-15", active: true,
 };
 const payment: AccountEntry = {

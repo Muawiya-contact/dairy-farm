@@ -2,6 +2,7 @@
 
 import { useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { getAccounts } from "@/lib/accounts";
 import { friendlyError } from "@/lib/errors";
 import { amount, money, shortDate } from "@/lib/farm-data";
@@ -13,6 +14,7 @@ import { buildAccountLedger, groupAutomaticCashReceipts, type DisplayLedgerRow }
 import { Body, PageHeader, Panel } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
 import { DateFormatHint } from "./DateFormatHint";
+import { getGallaDailyClosing } from "@/lib/owner-account-report";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 type Pending = { id: string; signature: string };
@@ -28,7 +30,10 @@ export default function FarmGalla() {
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const transferPending = useRef<Pending | null>(null);
+  const ownerTransferPending = useRef<Pending | null>(null);
   const countPending = useRef<Pending | null>(null);
+  const [ownerDirection, setOwnerDirection] = useState<"withdrawal" | "deposit">("withdrawal");
+  const [selectedClosingDate, setSelectedClosingDate] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const meta = useQuery({ queryKey: ["galla", "meta"], queryFn: async () => {
@@ -43,6 +48,10 @@ export default function FarmGalla() {
     ? month === today.slice(0, 7) ? today : addDays(monthBounds(month).end, -1)
     : "");
   const activeAccounts = accounts.filter((account) => account.active);
+  const farmCash = accounts.find((account) => account.is_farm_cash);
+  const ownerAccounts = accounts.filter((account) => account.active && account.is_owner);
+  const closingDate = selectedClosingDate || today;
+  const validClosingDate = /^\d{4}-\d{2}-\d{2}$/.test(closingDate) && closingDate <= today;
   const selected = accounts.find((account) => account.id === accountId);
   const validMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(month) && month <= today.slice(0, 7);
   const summary = useQuery({ queryKey: ["galla", "summary", month], queryFn: () => getAccountMonth(month), enabled: validMonth });
@@ -51,6 +60,8 @@ export default function FarmGalla() {
   const counts = useQuery({ queryKey: ["galla", "counts", accountId, month], queryFn: () => getCashCounts(accountId, month), enabled: validMonth && !!accountId && selected?.kind === "cash" });
   const expected = useQuery({ queryKey: ["galla", "expected", accountId, countDate], queryFn: () => getAccountBalanceOn(accountId, countDate), enabled: !!accountId && selected?.kind === "cash" && /^\d{4}-\d{2}-\d{2}$/.test(countDate) && countDate <= today });
   const current = summary.data?.find((row) => row.account_id === accountId);
+  const dailyClosing = useQuery({ queryKey: ["galla", "daily-closing", farmCash?.id, closingDate],
+    queryFn: () => getGallaDailyClosing(farmCash!.id, closingDate), enabled: !!farmCash && validClosingDate });
 
   const run = async (action: () => Promise<void>, message: string): Promise<boolean> => {
     if (busyRef.current) return false;
@@ -58,6 +69,8 @@ export default function FarmGalla() {
     try {
       await action();
       await Promise.all([qc.invalidateQueries({ queryKey: ["galla"] }), qc.invalidateQueries({ queryKey: ["farm-data"] })]);
+      void qc.invalidateQueries({ queryKey: ["owner-transfer-summary"] });
+      void qc.invalidateQueries({ queryKey: ["owner-transfer-rows"] });
       setSuccess(message); return true;
     } catch (issue) { setError(friendlyError(issue)); return false; }
     finally { busyRef.current = false; setBusy(false); }
@@ -84,6 +97,29 @@ export default function FarmGalla() {
       await recordCashCount(countPending.current.id, input);
       countPending.current = null; form.reset(); setSelectedMonth(input.date.slice(0, 7)); setSelectedAccountId(input.accountId); setSelectedCountDate("");
     }, "Cash ginti save ho gayi. Ledger ka balance nahi badla.");
+  };
+  const onOwnerTransfer = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    void run(async () => {
+      if (!farmCash?.active) throw new RangeError("Farm Galla active nahi. Settings mein account check karein.");
+      const values = new FormData(form);
+      const ownerAccountId = values.get("owner_account");
+      if (typeof ownerAccountId !== "string" || !ownerAccounts.some((account) => account.id === ownerAccountId)) {
+        throw new RangeError("Wazeh owner account chunein.");
+      }
+      if (typeof values.get("note") !== "string" || !values.get("note")?.toString().trim()) {
+        throw new RangeError("Owner transaction ki wajah likhein.");
+      }
+      values.set("from", ownerDirection === "withdrawal" ? farmCash.id : ownerAccountId);
+      values.set("to", ownerDirection === "withdrawal" ? ownerAccountId : farmCash.id);
+      const input = parseTransfer(values, today, accounts);
+      const signature = JSON.stringify(input);
+      if (ownerTransferPending.current?.signature !== signature) ownerTransferPending.current = { id: crypto.randomUUID(), signature };
+      await recordTransfer(ownerTransferPending.current.id, input);
+      ownerTransferPending.current = null; form.reset(); setSelectedMonth(input.date.slice(0, 7)); setSelectedAccountId(farmCash.id);
+      setSelectedCountDate(""); setSelectedClosingDate(input.date);
+    }, ownerDirection === "withdrawal" ? "Owner ki withdrawal Farm Galla mein darj ho gayi." : "Owner ka deposit Farm Galla mein darj ho gaya.");
   };
 
   if (!meta.data) return <FarmLoading error={meta.error} retry={() => void meta.refetch()} />;
@@ -114,6 +150,28 @@ export default function FarmGalla() {
         {!summary.data.length && <p className="text-muted">Is maheene koi account nahi mila.</p>}
         {summary.data.some((row) => row.kind !== "person" && amount(row.closing) < 0) && <p role="status" className="mt-3 text-sm text-udhaar">Kisi account ka balance manfi hai. Entry aur opening balance check karein.</p>}
       </Panel>}
+      <Panel title="Rozana closing aur Farm cash position" className="lg:col-span-2">
+        <div className="mb-3 max-w-xs"><label className="text-sm font-semibold">Closing ki tareekh<input type="date" max={today} value={closingDate} onChange={(event) => setSelectedClosingDate(event.target.value)} className={`${field} mt-1`} /><DateFormatHint kind="date" /></label></div>
+        {!farmCash && <p role="alert" className="text-udhaar">Farm Galla account nahi mila. Settings mein accounts check karein.</p>}
+        {farmCash && !validClosingDate && <p role="alert" className="text-udhaar">Aaj ya guzri hui sahi tareekh chunein.</p>}
+        {farmCash && validClosingDate && dailyClosing.isPending && <p role="status" className="text-muted">Rozana closing load ho rahi hai…</p>}
+        {dailyClosing.isError && <p role="alert" className="text-udhaar">Rozana closing nahi khuli: {friendlyError(dailyClosing.error)} <button onClick={() => void dailyClosing.refetch()} className="underline">Dobara koshish</button></p>}
+        {dailyClosing.data && <>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-xl border border-line p-3"><span className="block text-sm text-muted">Hisaab ke mutabiq closing</span><strong className="text-lg">{money(dailyClosing.data.expected_closing)}</strong></div>
+            <div className="rounded-xl border border-line p-3"><span className="block text-sm text-muted">Aakhri physical cash ginti</span><strong className="text-lg">{dailyClosing.data.latest_count_id ? money(dailyClosing.data.latest_counted_amount) : "Abhi tak ginti nahi hui"}</strong>{dailyClosing.data.latest_count_date && <span className="block text-xs text-muted">{dailyClosing.data.latest_count_date}</span>}</div>
+            <div className="rounded-xl border border-line p-3"><span className="block text-sm text-muted">Ginti ka farq</span><strong className={`text-lg ${amount(dailyClosing.data.latest_count_difference) ? "text-udhaar" : "text-berseem-deep"}`}>{dailyClosing.data.latest_count_id ? money(dailyClosing.data.latest_count_difference) : "—"}</strong></div>
+            <div className="rounded-xl border border-line p-3"><span className="block text-sm text-muted">Ginti ki tareekh</span><strong className="text-lg">{dailyClosing.data.latest_count_date ?? "Abhi tak ginti nahi hui"}</strong></div>
+          </div>
+          {dailyClosing.data.latest_count_is_stale && <p role="alert" className="mt-3 text-udhaar">Is cash ginti ke baad us tareekh ka ledger badla hai. Purani ginti waise hi mehfooz hai; nayi ginti darj karein.</p>}
+          {dailyClosing.data.latest_count_reason && <p className="mt-2 text-sm text-muted">Pichli ginti ki wajah: {dailyClosing.data.latest_count_reason}</p>}
+          <div className="mt-4 border-t border-line pt-4"><h3 className="font-semibold">Is din ka hisaab</h3><p className="mt-1 text-xs text-muted">Aaya aur gaya total ledger se hai; transfer ki qismein neeche isi total ka hissa dikhati hain.</p>
+            <dl className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {[["Shuru ka balance", dailyClosing.data.opening_balance], ["Kul paisa aaya", dailyClosing.data.money_received], ["Kul paisa gaya", dailyClosing.data.money_paid], ["Owner deposits", dailyClosing.data.owner_deposits], ["Owner withdrawals", dailyClosing.data.owner_withdrawals], ["Internal transfer in", dailyClosing.data.internal_transfers_in], ["Internal transfer out", dailyClosing.data.internal_transfers_out], ["Doosre transfer in", dailyClosing.data.other_transfers_in], ["Doosre transfer out", dailyClosing.data.other_transfers_out], ["Expected closing", dailyClosing.data.expected_closing]].map(([label, value]) => <div key={label} className="rounded-xl bg-berseem-soft/50 p-3"><dt className="text-xs text-muted">{label}</dt><dd className="mt-1 font-semibold">{money(Number(value))}</dd></div>)}
+            </dl>
+          </div>
+        </>}
+      </Panel>
       {selected && validMonth && <Panel title={`${selected.name} ka register`} className="lg:col-span-2">
         <p className="mb-2 text-sm text-muted">{formatMonth(monthBounds(month).start)} · Shuru {money(current?.opening)} · {selected.kind === "person" ? personBalance(selected.name, amount(current?.closing)) : `Aakhir ${money(current?.closing)}`}</p>
         {entries.isPending && <p role="status">Entries load ho rahi hain…</p>}
@@ -136,6 +194,22 @@ export default function FarmGalla() {
           <button disabled={busy || activeAccounts.length < 2} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50">Transfer save karein</button>
         </form>
         {activeAccounts.length < 2 && <p className="mt-2 text-sm text-muted">Transfer ke liye do active accounts chahiye.</p>}
+      </Panel>
+      <Panel title="Owner deposit ya withdrawal">
+        {!ownerAccounts.length && <p className="text-sm text-muted">Pehle Settings → Accounts mein Person account banayein aur “Yeh account farm ke malik ka hai” ka nishan lagayein. Ghair-owner Person accounts report mein shamil nahi honge. <Link href="/settings/" className="font-semibold text-berseem underline">Settings kholein</Link></p>}
+        {ownerAccounts.length > 0 && <form onSubmit={onOwnerTransfer} className="grid gap-2" key={ownerDirection}>
+          <fieldset><legend className="mb-2 text-sm font-semibold">Transaction ki qism</legend><div className="grid gap-2 sm:grid-cols-2">
+            <label className={`flex min-h-12 cursor-pointer items-center gap-2 rounded-xl border p-3 ${ownerDirection === "withdrawal" ? "border-berseem bg-berseem-soft" : "border-line"}`}><input type="radio" name="owner-direction" value="withdrawal" checked={ownerDirection === "withdrawal"} disabled={busy} onChange={() => setOwnerDirection("withdrawal")} />Owner ne Farm Galla se paisay nikale</label>
+            <label className={`flex min-h-12 cursor-pointer items-center gap-2 rounded-xl border p-3 ${ownerDirection === "deposit" ? "border-berseem bg-berseem-soft" : "border-line"}`}><input type="radio" name="owner-direction" value="deposit" checked={ownerDirection === "deposit"} disabled={busy} onChange={() => setOwnerDirection("deposit")} />Owner ne farm mein paisay jama karwaye</label>
+          </div></fieldset>
+          <p className="rounded-xl bg-berseem-soft/50 p-3 text-sm">{ownerDirection === "withdrawal" ? "Farm Galla se chune huay owner account mein raqam jayegi." : "Chune huay owner account se Farm Galla mein raqam ayegi."}</p>
+          <label className="text-sm">Tareekh<input name="date" type="date" max={today} defaultValue={today} required className={field} /></label>
+          <label className="text-sm">Owner account<select name="owner_account" defaultValue="" required className={field}><option value="" disabled>Owner account chunein</option>{ownerAccounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}</select></label>
+          <input name="amount" type="number" min="0.01" step="0.01" required placeholder="Raqam Rs" aria-label="Owner transaction raqam" className={field} />
+          <input name="note" maxLength={500} required placeholder="Maqsad / wajah" aria-label="Owner transaction note" className={field} />
+          <button disabled={busy || !farmCash?.active} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50">{ownerDirection === "withdrawal" ? "Withdrawal darj karein" : "Deposit darj karein"}</button>
+          {!farmCash?.active && <p role="alert" className="text-sm text-udhaar">Owner transaction ke liye active Farm Galla zaroori hai.</p>}
+        </form>}
       </Panel>
       <Panel title="Cash ginti aur farq">
         <form onSubmit={onCount} className="grid gap-2">

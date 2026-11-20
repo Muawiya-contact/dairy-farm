@@ -1,2 +1,2 @@
-import ReportCategoryPlaceholder from "@/components/ReportCategoryPlaceholder";
-export default function AccountsReportPage() { return <ReportCategoryPlaceholder title="Accounts Report" />; }
+import AccountsReport from "@/components/AccountsReport";
+export default function AccountsReportPage() { return <AccountsReport />; }

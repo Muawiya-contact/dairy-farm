@@ -2,6 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterAll, beforeAll, expect, it } from "vitest";
+import { createStorageFixture } from "./db-fixture";
 
 let db: PGlite;
 let mother: string;
@@ -22,6 +23,7 @@ beforeAll(async () => {
     create function auth.uid() returns uuid language sql stable as $$
       select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   `);
+  await createStorageFixture(db);
   for (const name of readdirSync(migrations).filter((file) => file.endsWith(".sql")).sort())
     await db.exec(readFileSync(resolve(migrations, name), "utf8"));
   mother = (await db.query<{ id: string }>(

@@ -2,6 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createStorageFixture } from "./db-fixture";
 
 let db: PGlite;
 let farmCash: string;
@@ -19,6 +20,7 @@ beforeAll(async () => {
       select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
     $$;
   `);
+  await createStorageFixture(db);
   const dir = resolve("supabase/migrations");
   for (const file of readdirSync(dir).filter((name) => name.endsWith(".sql")).sort()) {
     await db.exec(readFileSync(resolve(dir, file), "utf8"));

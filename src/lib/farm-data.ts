@@ -16,14 +16,15 @@ export type Animal = {
   breed: string | null; sex: "female" | "male"; category: "cow" | "heifer" | "calf" | "bull";
   birth_date: string | null; arrival_date: string | null; estimated_age_months_at_arrival: number | null;
   mother_id: string | null; purchase_date: string | null;
-  purchase_price: number | null; source: "born" | "purchased" | "gift" | "transfer" | "other"; sire: string | null;
+  purchase_price: number | null; seller_name: string | null; purchase_location: string | null; photo_path: string | null;
+  source: "born" | "purchased" | "gift" | "transfer" | "other"; sire: string | null;
   milking_status: "milking" | "dry" | "none";
   life_status: "active" | "sold" | "dead" | "removed"; exit_date: string | null;
   exit_reason: string | null; sale_price: number | null; notes: string | null;
   updated_at: string;
 };
 export type AnimalStatus = { id: string; breeding_status: string; service_date: string | null; calving_due: string | null };
-export type HealthEvent = { id: string; animal_id: string; event_date: string; kind: string; title: string; notes: string | null; cost: number; next_due_date: string | null; expense_id: string | null };
+export type HealthEvent = { id: string; animal_id: string; event_date: string; kind: string; title: string; medicine: string | null; vet: string | null; notes: string | null; cost: number; next_due_date: string | null; expense_id: string | null };
 export type Insemination = Database["public"]["Tables"]["inseminations"]["Row"];
 export type Calving = Database["public"]["Tables"]["calvings"]["Row"];
 export type CalvingOffspring = Database["public"]["Tables"]["calving_offspring"]["Row"];
@@ -163,7 +164,7 @@ export async function loadFarmData(scope: FarmScope, id = "", date = farmToday()
     only(scope === "dashboard", () => allRows<OtherIncome>("other_income", "id", monthRows("income_date", month))),
     only(scope === "customers", () => report<CustomerReport>("customer_month_report", { p_month: today })),
     only(scope === "customers", () => allViewRows<CustomerBalance>("customer_balances", "customer_id")),
-    only(scope === "dashboard", () => report<HerdAlert>("herd_alerts", { p_today: today })),
+    only(scope === "dashboard" || detail, () => report<HerdAlert>("herd_alerts", { p_today: today })),
     Promise.all(months.map(async (item) => ({ month: item, data: (await report<Pnl>("pnl_month", { p_month: item }))[0] }))),
   ]);
   const [animalMilk, calvingOffspring] = await Promise.all([
@@ -176,8 +177,12 @@ export async function loadFarmData(scope: FarmScope, id = "", date = farmToday()
       return [...new Map([...related, ...children].map((child) => [child.id, child])).values()];
     }),
   ]);
+  const linkedBirthCalvings = detail && calvingOffspring.length
+    ? await rowsForIds<Calving>("calvings", "id", calvingOffspring.map((row) => row.calving_id))
+    : [];
+  const animalCalvings = [...new Map([...calvings, ...linkedBirthCalvings].map((row) => [row.id, row])).values()];
   const relevantShifts = detail && animalMilk.length ? await rowsForIds<MilkShift>("milk_shifts", "id", animalMilk.map((r) => r.shift_id)) : shifts;
-  return { today, settings, animals, animalStatus, health, inseminations, calvings, calvingOffspring, animalMilk,
+  return { today, settings, animals, animalStatus, health, inseminations, calvings: animalCalvings, calvingOffspring, animalMilk,
     customers, rates, shifts: relevantShifts, deliveries, dispositions, milkShiftConfig, payments, categories, expenses, accounts,
     companyBills, otherIncome, reports, balances, alerts, monthlyPnl: pnl };
 }

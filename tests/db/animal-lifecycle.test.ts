@@ -2,6 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterAll, beforeAll, expect, it } from "vitest";
+import { createStorageFixture } from "./db-fixture";
 
 let db: PGlite;
 const migrationDir = resolve("supabase/migrations");
@@ -20,6 +21,7 @@ beforeAll(async () => {
     create function auth.uid() returns uuid language sql stable as $$
       select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   `);
+  await createStorageFixture(db);
   for (const file of readdirSync(migrationDir).filter((name) => name.endsWith(".sql") && !lifecycleMigrations.includes(name)).sort())
     await db.exec(readFileSync(resolve(migrationDir, file), "utf8"));
   await db.exec("insert into animals (tag, source, purchase_date) values ('LEGACY', 'purchased', farm_today() - 100), ('UNKNOWN', 'purchased', null)");

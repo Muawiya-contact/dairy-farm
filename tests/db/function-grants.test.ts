@@ -2,6 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, test } from "vitest";
+import { createStorageFixture } from "./db-fixture";
 
 test("production grants anonymous execution only to keep_alive", async () => {
   const db = new PGlite();
@@ -17,6 +18,7 @@ test("production grants anonymous execution only to keep_alive", async () => {
       alter default privileges in schema public grant all on tables to anon, authenticated;
       alter default privileges in schema public grant execute on functions to anon, authenticated;
     `);
+    await createStorageFixture(db);
     for (const file of readdirSync(resolve("supabase/migrations")).filter((name) => name.endsWith(".sql")).sort()) {
       await db.exec(readFileSync(resolve("supabase/migrations", file), "utf8"));
     }

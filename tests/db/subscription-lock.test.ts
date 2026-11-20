@@ -2,6 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, it } from "vitest";
+import { createStorageFixture } from "./db-fixture";
 
 it("permits reads but blocks direct and RPC writes after expiry; browser roles cannot renew", async () => {
   const db = new PGlite();
@@ -10,6 +11,7 @@ it("permits reads but blocks direct and RPC writes after expiry; browser roles c
       create table auth.users(id uuid primary key);
       create function auth.uid() returns uuid language sql stable as $$
         select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;`);
+    await createStorageFixture(db);
     for (const file of readdirSync(resolve("supabase/migrations")).filter((f) => f.endsWith(".sql")).sort())
       await db.exec(readFileSync(resolve("supabase/migrations", file), "utf8"));
     const unguarded = await db.query<{ relname: string }>(`select c.relname from pg_class c

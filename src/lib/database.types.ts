@@ -907,6 +907,13 @@ export type Database = {
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "milk_deliveries_milk_shift_fkey"
+            columns: ["delivery_date", "shift"]
+            isOneToOne: false
+            referencedRelation: "milk_shifts"
+            referencedColumns: ["milk_date", "shift"]
+          },
         ]
       }
       milk_dispositions: {

@@ -315,6 +315,57 @@ describe("milk dispositions and daily reconciliation", () => {
       expect(Number((await db.query<{ count: string }>("select count(*) count from public.milk_shifts where milk_date=$1 and shift='noon'", [date])).rows[0].count)).toBe(0);
     } finally { await db.exec("rollback"); }
   });
+
+  it("prevents day-level waste and later edits from driving carried milk negative", async () => {
+    await db.exec("begin");
+    try {
+      const date = (await db.query<{ day: string }>("select (public.farm_today() - 20)::text as day")).rows[0].day;
+      const nextDate = (await db.query<{ day: string }>("select ($1::date + 1)::text as day", [date])).rows[0].day;
+      const save = `select public.save_milk_entry_with_dispositions($1::date,'morning',$2::numeric,'total','[]'::jsonb,'[]'::jsonb,$3::jsonb,$4::timestamptz,'')::text version`;
+      const version = (await db.query<{ version: string }>(save, [date, 100, "[]", null])).rows[0].version;
+      await db.query("select public.save_milk_day_waste($1::date,20,'Unassigned old waste')", [date]);
+
+      // Clear the valid deferred events before checking the two invalid edits.
+      await db.exec("set constraints all immediate");
+      await db.exec("set constraints all deferred");
+
+      const expectNegativeBalance = async (targetDate: string, targetVersion: string, litres: number) => {
+        const disposition = JSON.stringify([{ disposition_type: "internal", category: "farm_use", litres, recipient: null, note: null }]);
+        await db.exec("savepoint invalid_day_balance");
+        try {
+          await db.query(save, [targetDate, 100, disposition, targetVersion]);
+          await expect(db.exec("set constraints all immediate")).rejects.toThrow(/MILK_DISTRIBUTION_EXCEEDS_AVAILABLE/);
+        } finally {
+          await db.exec("rollback to savepoint invalid_day_balance");
+          await db.exec("release savepoint invalid_day_balance");
+          await db.exec("set constraints all deferred");
+        }
+      };
+
+      await expectNegativeBalance(date, version, 90);
+      await db.query("select public.save_milk_day_waste($1::date,80,'Unassigned next day waste')", [nextDate]);
+      await db.exec("set constraints all immediate");
+      await db.exec("set constraints all deferred");
+      await expectNegativeBalance(date, version, 10);
+
+      const first = (await db.query<Record<string, string>>("select * from public.milk_day_distribution_summary($1::date)", [date])).rows[0];
+      const second = (await db.query<Record<string, string>>("select * from public.milk_day_distribution_summary($1::date)", [nextDate])).rows[0];
+      expect(first.remaining_litres).toBe("80.00");
+      expect(second.remaining_litres).toBe("0.00");
+    } finally { await db.exec("rollback"); }
+  });
+
+  it("rejects a delivery without its production shift", async () => {
+    await db.exec("begin");
+    try {
+      const date = (await db.query<{ day: string }>("select (public.farm_today() - 20)::text as day")).rows[0].day;
+      const customer = (await db.query<{ id: string }>("select id from public.customers where name = 'Ahmed'")).rows[0].id;
+      await expectRejected(
+        "insert into public.milk_deliveries(delivery_date,shift,customer_id,litres) values ($1::date,'morning',$2::uuid,1)",
+        [date, customer], /milk_deliveries_milk_shift_fkey/,
+      );
+    } finally { await db.exec("rollback"); }
+  });
 });
 
 describe("owner month closing", () => {

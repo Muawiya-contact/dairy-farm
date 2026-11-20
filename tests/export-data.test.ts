@@ -43,6 +43,9 @@ describe("CSV exports", () => {
     expect(columnLabel("difference", "Cash counts")).toBe("Farq (Rs)");
     expect(columnLabel("difference", "Doodh ka khulasa")).toBe("Farq (L)");
     expect(columnLabel("counted_amount")).toContain("Rs");
+    expect(columnLabel("khata_amount")).toBe("Khata billed (Rs)");
+    expect(columnLabel("company_bill_amount")).toBe("Company bill (Rs)");
+    expect(columnLabel("galla_cash_received")).toBe("Cash sale Galla credit (Rs)");
     expect(displayCell({ amount: 10, method: "cash" })).toBe('{"amount":10,"method":"cash"}');
     expect(toCsv(["before_row"], [{ before_row: { amount: 10 } }])).toContain('{""amount"":10}');
   });
@@ -79,4 +82,14 @@ it("keeps supporting customer and expense rows in a combined period PDF", async 
   expect(text).toContain("Customer ka period hisaab");
   expect(text).toContain("Rozana kharchay");
   expect(text).toContain("Shoukat");
+});
+
+it("repeats row identifiers when a PDF table continues on another horizontal page", async () => {
+  const columns = ["report_date", ...Array.from({ length: 60 }, (_, index) => `field_${index}`)];
+  const row = Object.fromEntries(columns.map((column) => [column, column === "report_date" ? "DATE-REPEAT-CHECK" : "1"]));
+  const pdf = await buildPdfReport("Wide report", [
+    { title: "Wide table", columns, rows: [row], repeatColumns: ["report_date"] },
+  ], "Saim Dairy Farm");
+  const text = new TextDecoder().decode(pdf);
+  expect(text.split("DATE-REPEAT-CHECK").length - 1).toBeGreaterThan(1);
 });

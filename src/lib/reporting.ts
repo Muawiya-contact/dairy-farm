@@ -56,6 +56,27 @@ export type MilkReportDailyRow = {
 export type MilkReportTotals = Omit<MilkReportDailyRow, "report_date" | "waste_reason" | "day_wasted_litres" | "day_waste_reason"> & {
   sales_amount: number; received_amount: number; outstanding_amount: number;
 };
+export type MilkReportDistributionDetail = {
+  category: string; recipient: string | null; note: string | null; litres: number;
+};
+export type MilkReportDistributionDaily = {
+  report_date: string; opening_litres: number; produced_litres: number; available_litres: number;
+  khata_litres: number; cash_litres: number; free_litres: number; farm_use_litres: number;
+  wasted_litres: number; allocated_litres: number; remaining_litres: number;
+  khata_delivery_amount: number; company_bill_amount: number; khata_amount: number; cash_sale_amount: number; total_sales_amount: number;
+  cash_received: number; galla_cash_received: number;
+  free_details: MilkReportDistributionDetail[]; farm_use_details: MilkReportDistributionDetail[]; waste_details: MilkReportDistributionDetail[];
+};
+export type MilkReportDistributionTotals = Omit<MilkReportDistributionDaily, "report_date" | "remaining_litres" | "free_details" | "farm_use_details" | "waste_details"> & {
+  closing_litres: number; outstanding_khata_amount: number;
+};
+export type MilkReportDistributionShift = {
+  report_date: string; milk_shift: string; produced_litres: number;
+  khata_litres: number; cash_litres: number; free_litres: number;
+  farm_use_litres: number; wasted_litres: number; allocated_litres: number; remaining_litres: number;
+  khata_delivery_amount: number; cash_sale_amount: number; cash_received: number; galla_cash_received: number;
+  free_details: MilkReportDistributionDetail[]; farm_use_details: MilkReportDistributionDetail[]; waste_details: MilkReportDistributionDetail[];
+};
 export type MilkReportCustomer = {
   customer_id: string; name: string; kind: string; sort_order: number;
   litres: number; charged: number; paid: number; outstanding: number;
@@ -121,6 +142,36 @@ export async function loadMilkReportTotals(from: string, to: string): Promise<Mi
     closing_litres: Number(row.closing_litres ?? 0), sales_amount: Number(row.sales_amount ?? 0),
     received_amount: Number(row.received_amount ?? 0), outstanding_amount: Number(row.outstanding_amount ?? 0),
   };
+}
+
+function normalizeMilkReportDistribution<T extends Record<string, unknown>>(row: T) {
+  const numericFields = Object.fromEntries(Object.entries(row)
+    .filter(([key]) => key.endsWith("_litres") || key.endsWith("_amount") || key.endsWith("_received"))
+    .map(([key, value]) => [key, Number(value ?? 0)]));
+  const details = Object.fromEntries(["free_details", "farm_use_details", "waste_details"].map((key) => [
+    key,
+    Array.isArray(row[key]) ? (row[key] as MilkReportDistributionDetail[]).map((detail) => ({
+      ...detail, litres: Number(detail.litres ?? 0),
+    })) : [],
+  ]));
+  return { ...row, ...numericFields, ...details };
+}
+
+export async function loadMilkReportDistributionDaily(from: string, to: string): Promise<MilkReportDistributionDaily[]> {
+  const rows = await loadPagedMilkRows<MilkReportDistributionDaily>("milk_report_distribution_daily", { p_from: from, p_to: to });
+  return rows.map((row) => normalizeMilkReportDistribution({ ...row, report_date: String(row.report_date) }) as MilkReportDistributionDaily);
+}
+
+export async function loadMilkReportDistributionTotals(from: string, to: string): Promise<MilkReportDistributionTotals> {
+  const { data, error } = await milkRpc<MilkReportDistributionTotals>("milk_report_distribution_summary", { p_from: from, p_to: to });
+  if (error) throw error;
+  const row = data?.[0] ?? {} as MilkReportDistributionTotals;
+  return normalizeMilkReportDistribution(row) as MilkReportDistributionTotals;
+}
+
+export async function loadMilkReportDistributionShifts(from: string, to: string): Promise<MilkReportDistributionShift[]> {
+  const rows = await loadPagedMilkRows<MilkReportDistributionShift>("milk_report_distribution_shifts", { p_from: from, p_to: to });
+  return rows.map((row) => normalizeMilkReportDistribution({ ...row, report_date: String(row.report_date) }) as MilkReportDistributionShift);
 }
 
 export async function loadMilkReportCustomers(from: string, to: string): Promise<MilkReportCustomer[]> {

@@ -65,6 +65,13 @@ const COLUMN_LABELS: Record<string, string> = {
   report_date: "Tareekh", opening_litres: "Pichla balance (L)", produced_litres: "Naya doodh (L)",
   available_litres: "Kul available (L)", charity_litres: "Charity (L)",
   wasted_litres: "Zaya doodh (L)", waste_reason: "Waste ki wajah", closing_litres: "Aakhir balance (L)",
+  milk_shift: "Shift", khata_litres: "Khata sale (L)", cash_litres: "Cash sale (L)",
+  allocated_litres: "Kul allocated (L)", remaining_litres: "Baqi doodh (L)",
+  khata_delivery_amount: "Khata delivery (Rs)", company_bill_amount: "Company bill (Rs)",
+  khata_amount: "Khata billed (Rs)", cash_sale_amount: "Cash sale (Rs)", total_sales_amount: "Kul milk sales (Rs)",
+  cash_received: "Wasooli ki tareekh par received (Rs)", galla_cash_received: "Cash sale Galla credit (Rs)",
+  outstanding_khata_amount: "Aakhir Khata baqaya (Rs)", free_details: "Muft doodh tafseel",
+  farm_use_details: "Ghar / farm use tafseel", waste_details: "Waste tafseel",
   morning_litres: "Subah (L)", noon_litres: "Dopehr (L)", evening_litres: "Shaam (L)",
   outstanding: "Aakhir baqaya (Rs)", recorded_days: "Record walay din",
   amount: "Raqam (Rs)", cost: "Kharcha (Rs)", purchase_price: "Kharid qeemat (Rs)",
@@ -196,6 +203,7 @@ export type PdfSection = {
   title: string;
   columns: string[];
   rows: Record<string, unknown>[];
+  repeatColumns?: string[];
 };
 
 export async function buildXlsx(title: string, columns: string[], rows: Record<string, unknown>[]): Promise<Uint8Array<ArrayBuffer>> {
@@ -250,7 +258,10 @@ export async function buildPdfReport(title: string, sections: PdfSection[], farm
       body: section.rows.map((row) => section.columns.map((column) => displayCell(row[column]))),
       styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak" },
       headStyles: { fillColor: [45, 106, 57] },
-      horizontalPageBreak: true, horizontalPageBreakRepeat: 0,
+      horizontalPageBreak: true,
+      horizontalPageBreakRepeat: (section.repeatColumns ?? section.columns.slice(0, 1))
+        .map((column) => section.columns.indexOf(column))
+        .filter((index) => index >= 0),
       margin: { top: 10, right: 10, bottom: 16, left: 10 },
     });
     cursorY = ((pdf as typeof pdf & { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? cursorY) + 10;

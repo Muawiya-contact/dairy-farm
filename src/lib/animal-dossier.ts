@@ -1,8 +1,9 @@
-import type { Animal, Calving, CalvingOffspring, HealthEvent, HerdAlert, Insemination } from "./farm-data";
+import type { Animal, AnimalCareTask, Calving, CalvingOffspring, HealthEvent, HerdAlert, Insemination } from "./farm-data";
 import type { LoadedFarmSettings } from "./settings";
 import { addDays, formatDay } from "./dates";
 import { animalAge } from "./animal-life";
 import type { AnimalProfileStatuses } from "./animal-profile";
+import { breedingDueDate } from "./breeding-register";
 
 export type AnimalDossier = {
   animal: Animal;
@@ -17,6 +18,7 @@ export type AnimalDossier = {
   offspring: CalvingOffspring[];
   milk: { date: string; shift: string; litres: number }[];
   dueTasks: { date: string; label: string; overdue: boolean }[];
+  careTasks: AnimalCareTask[];
   photoDataUrl?: string;
 };
 
@@ -65,10 +67,15 @@ function dossierSheets(input: AnimalDossier) {
   const milk = [...input.milk].sort((a, b) => a.date.localeCompare(b.date) || a.shift.localeCompare(b.shift)).map((row) => ({ date: row.date, shift: row.shift, litres: num(row.litres) }));
   const breeding = [...input.inseminations].sort((a, b) => a.service_date.localeCompare(b.service_date)).map((record) => ({
     service_date: record.service_date, semen_type: record.semen_type, semen_name: record.semen_name || "", semen_batch: record.semen_batch || "",
-    technician: record.technician || "", status: record.status, ultrasound_due: record.ultrasound_due, ultrasound_date: record.ultrasound_date || "",
-    ultrasound_result: record.ultrasound_result || "", checkup_due: record.checkup_due, checkup_date: record.checkup_date || "",
-    checkup_result: record.checkup_result || "", dry_off_due: record.dry_off_due, dry_off_date: record.dry_off_date || "",
-    calving_due: record.calving_due, abortion_date: record.abortion_date || "", notes: record.notes || "",
+    technician: record.technician || "", status: record.status, ultrasound_due: breedingDueDate(record, "ultrasound").date,
+    ultrasound_due_type: breedingDueDate(record, "ultrasound").overridden ? "Manual" : "Calculated", ultrasound_date: record.ultrasound_date || "",
+    ultrasound_result: record.ultrasound_result || "", checkup_due: breedingDueDate(record, "checkup").date,
+    checkup_due_type: breedingDueDate(record, "checkup").overridden ? "Manual" : "Calculated", checkup_date: record.checkup_date || "",
+    checkup_result: record.checkup_result || "", dry_off_due: breedingDueDate(record, "dry_off").date,
+    dry_off_due_type: breedingDueDate(record, "dry_off").overridden ? "Manual" : "Calculated", dry_off_date: record.dry_off_date || "",
+    calving_due: breedingDueDate(record, "calving").date,
+    calving_due_type: breedingDueDate(record, "calving").overridden ? "Manual" : "Calculated",
+    abortion_date: record.abortion_date || "", notes: record.notes || "",
   }));
   const health = [...input.health].filter((event) => event.kind !== "vaccine" && event.kind !== "deworming")
     .sort((a, b) => a.event_date.localeCompare(b.event_date)).map((event) => ({
@@ -94,6 +101,11 @@ function dossierSheets(input: AnimalDossier) {
   }
   const weights = relatedBirth?.birth_weight_kg == null ? [] : [{ date: birthCalving?.calving_date ?? "", event: "Birth weight", weight_kg: num(relatedBirth.birth_weight_kg), source: "Calving record" }];
   const healthCosts = input.health.reduce((total, event) => total + Number(event.cost || 0), 0);
+  const careTasks = [...input.careTasks].sort((a, b) => (a.completed_date ?? "9999-12-31").localeCompare(b.completed_date ?? "9999-12-31") || a.due_date.localeCompare(b.due_date)).map((task) => ({
+    title: task.title, category: task.category, due_date: task.due_date, notes: task.notes || "",
+    status: task.completed_date ? "Completed" : "Active", completed_date: task.completed_date || "",
+    completion_notes: task.completion_notes || "",
+  }));
   const financial = [
     ...(animal.purchase_price == null ? [] : [{ date: animal.purchase_date || "", kind: "Purchase", detail: animal.seller_name || animal.purchase_location || "", amount_rs: num(animal.purchase_price) }]),
     ...(animal.sale_price == null ? [] : [{ date: animal.exit_date || "", kind: "Sale", detail: animal.exit_reason || "", amount_rs: num(animal.sale_price) }]),
@@ -102,7 +114,8 @@ function dossierSheets(input: AnimalDossier) {
   return [
     sheet("Profile", ["field", "value"], profile, "No profile data recorded."),
     sheet("Milk", ["date", "shift", "litres"], milk, "No milk records for this animal."),
-    sheet("Breeding", ["service_date", "semen_type", "semen_name", "semen_batch", "technician", "status", "ultrasound_due", "ultrasound_date", "ultrasound_result", "checkup_due", "checkup_date", "checkup_result", "dry_off_due", "dry_off_date", "calving_due", "abortion_date", "notes"], breeding, "No breeding records for this animal."),
+    sheet("Breeding", ["service_date", "semen_type", "semen_name", "semen_batch", "technician", "status", "ultrasound_due", "ultrasound_due_type", "ultrasound_date", "ultrasound_result", "checkup_due", "checkup_due_type", "checkup_date", "checkup_result", "dry_off_due", "dry_off_due_type", "dry_off_date", "calving_due", "calving_due_type", "abortion_date", "notes"], breeding, "No breeding records for this animal."),
+    sheet("Care reminders", ["title", "category", "due_date", "status", "completed_date", "notes", "completion_notes"], careTasks, "No care reminders for this animal."),
     sheet("Health", ["date", "kind", "title", "medicine", "veterinarian", "cost_rs", "next_due_date", "notes"], health, "No treatment or checkup records for this animal."),
     sheet("Vaccinations", ["date", "kind", "title", "medicine", "veterinarian", "next_due_date", "cost_rs", "notes"], vaccines, "No vaccination or deworming records for this animal."),
     sheet("Calving & offspring", ["date", "role", "outcome", "birth_order", "calf", "sex", "weight_kg", "notes"], calvingRows, "No calving or offspring records for this animal."),
@@ -208,7 +221,8 @@ export async function buildAnimalDossierPdf(input: AnimalDossier): Promise<Uint8
   const tableFor = (name: string) => sheets.find((section) => section.name === name)!;
   const pdfColumns: Record<string, string[]> = {
     Milk: ["date", "shift", "litres"],
-    Breeding: ["service_date", "semen_name", "technician", "status", "ultrasound_date", "checkup_date", "calving_due", "notes"],
+    Breeding: ["service_date", "semen_name", "technician", "status", "ultrasound_due", "ultrasound_due_type", "ultrasound_date", "checkup_due", "checkup_due_type", "checkup_date", "dry_off_due", "dry_off_due_type", "dry_off_date", "calving_due", "calving_due_type", "notes"],
+    "Care reminders": ["title", "category", "due_date", "status", "completed_date", "notes", "completion_notes"],
     Health: ["date", "kind", "title", "medicine", "veterinarian", "cost_rs", "next_due_date", "notes"],
     Vaccinations: ["date", "kind", "title", "medicine", "veterinarian", "next_due_date", "cost_rs", "notes"],
     "Calving & offspring": ["date", "role", "outcome", "calf", "sex", "weight_kg", "notes"],
@@ -216,7 +230,7 @@ export async function buildAnimalDossierPdf(input: AnimalDossier): Promise<Uint8
     Feed: ["date", "feed", "quantity", "unit", "notes"],
     "Financial summary": ["date", "kind", "detail", "amount_rs"],
   };
-  for (const name of ["Milk", "Breeding", "Health", "Vaccinations", "Calving & offspring", "Weight", "Feed", "Financial summary"]) {
+  for (const name of ["Milk", "Breeding", "Care reminders", "Health", "Vaccinations", "Calving & offspring", "Weight", "Feed", "Financial summary"]) {
     const section = tableFor(name);
     addTable(name, pdfColumns[name], section.rows);
   }

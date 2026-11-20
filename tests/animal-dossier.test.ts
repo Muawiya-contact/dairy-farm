@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildAnimalDossierPdf, buildAnimalDossierWorkbook, type AnimalDossier } from "@/lib/animal-dossier";
-import type { Animal, Calving, CalvingOffspring } from "@/lib/farm-data";
+import type { Animal, AnimalCareTask, Calving, CalvingOffspring } from "@/lib/farm-data";
 import type { LoadedFarmSettings } from "@/lib/settings";
 
 const cow = (id: string, tag: string): Animal => ({
@@ -15,7 +15,7 @@ const input: AnimalDossier = {
   animal: cow("animal-one", "A-101"), animals: [cow("animal-one", "A-101"), cow("other", "B-202")],
   farm: { id: 1, farm_name: "Test Farm", owner_name: "Farm Owner", contact_phone: "+923001234567", go_live_date: "2026-01-01" } as LoadedFarmSettings,
   today: "2026-11-21", status: { life: "active", production: "milking", breeding: "open", health: "no-record", healthDueDate: null },
-  health: [], activeAlerts: [], inseminations: [], calvings: [], offspring: [], dueTasks: [],
+  health: [], activeAlerts: [], inseminations: [], calvings: [], offspring: [], dueTasks: [], careTasks: [],
   milk: [{ date: "2026-11-20", shift: "Morning", litres: 6.5 }],
 };
 
@@ -36,7 +36,7 @@ describe("animal dossier exports", () => {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(Buffer.from(bytes) as unknown as Parameters<typeof workbook.xlsx.load>[0]);
     expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual([
-      "Profile", "Milk", "Breeding", "Health", "Vaccinations", "Calving & offspring", "Weight", "Feed", "Financial summary",
+      "Profile", "Milk", "Breeding", "Care reminders", "Health", "Vaccinations", "Calving & offspring", "Weight", "Feed", "Financial summary",
     ]);
     const profileValues = workbook.getWorksheet("Profile")!.getSheetValues().flat().map(String);
     expect(profileValues).toContain("A-101");
@@ -64,5 +64,15 @@ describe("animal dossier exports", () => {
     expect(calvingSheet.getRow(2).values).toContain("B-202");
     expect(calvingSheet.getRow(2).values).toContain(31.5);
     expect(calvingSheet.getRow(2).values).toContain("Routine calving · Healthy calf");
+  });
+
+  it("keeps completed care reminders in the animal dossier history", async () => {
+    const careTask = { id: "task-one", animal_id: "animal-one", category: "vaccination", title: "FMD vaccine", due_date: "2026-11-20",
+      notes: null, completed_date: "2026-11-20", completion_notes: "Given by vet", created_at: "2026-11-01T00:00:00Z", updated_at: "2026-11-20T00:00:00Z" } as AnimalCareTask;
+    const bytes = await buildAnimalDossierWorkbook({ ...input, careTasks: [careTask] });
+    const ExcelJS = (await import("exceljs")).default;
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(Buffer.from(bytes) as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+    expect(workbook.getWorksheet("Care reminders")!.getSheetValues().flat().map(String)).toEqual(expect.arrayContaining(["FMD vaccine", "Completed", "Given by vet"]));
   });
 });

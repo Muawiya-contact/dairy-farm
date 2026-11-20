@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildAnimalDossierPdf, buildAnimalDossierWorkbook, type AnimalDossier } from "@/lib/animal-dossier";
-import type { Animal } from "@/lib/farm-data";
+import type { Animal, Calving, CalvingOffspring } from "@/lib/farm-data";
 import type { LoadedFarmSettings } from "@/lib/settings";
 
 const cow = (id: string, tag: string): Animal => ({
@@ -45,5 +45,24 @@ describe("animal dossier exports", () => {
     expect(workbook.getWorksheet("Milk")!.getRow(2).values).toContain("2026-11-20");
     expect(workbook.getWorksheet("Milk")!.getRow(2).values).toContain(6.5);
     expect(workbook.getWorksheet("Feed")!.getRow(2).getCell(1).value).toMatch(/No feed history/);
+  });
+
+  it("includes only the selected animal's calving and offspring details", async () => {
+    const bytes = await buildAnimalDossierWorkbook({
+      ...input,
+      animals: [...input.animals, cow("calf-two", "B-202")],
+      calvings: [{ id: "calving-one", animal_id: "animal-one", calf_id: "calf-two", calving_date: "2026-10-01", created_at: "2026-10-01T00:00:00Z",
+        ease_score: null, insemination_id: null, notes: "Routine calving", outcome: "normal", request_hash: null, request_id: null } as Calving],
+      offspring: [{ id: "offspring-one", calving_id: "calving-one", animal_id: "calf-two", birth_order: 1, birth_weight_kg: 31.5,
+        created_at: "2026-10-01T00:00:00Z", notes: "Healthy calf", outcome: "alive", sex: "female", tag_at_birth: "B-202" } as CalvingOffspring],
+    });
+    const ExcelJS = (await import("exceljs")).default;
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(Buffer.from(bytes) as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+    const calvingSheet = workbook.getWorksheet("Calving & offspring")!;
+    expect(calvingSheet.getRow(2).values).toContain("2026-10-01");
+    expect(calvingSheet.getRow(2).values).toContain("B-202");
+    expect(calvingSheet.getRow(2).values).toContain(31.5);
+    expect(calvingSheet.getRow(2).values).toContain("Routine calving · Healthy calf");
   });
 });

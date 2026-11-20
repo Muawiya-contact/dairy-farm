@@ -166,6 +166,15 @@ export default function FarmAnimals() {
       <Panel title="Record ki tafseel" className="hidden print:block lg:col-span-2">
         <h3 className="font-semibold">Tareekh aur shift ke mutabiq doodh</h3><ul className="divide-y divide-line text-sm">{dossierInput.milk.length ? dossierInput.milk.map((row, index) => <li key={`${row.date}-${row.shift}-${index}`} className="flex justify-between py-1"><span>{longDate(row.date)} · {row.shift}</span><strong>{row.litres} L</strong></li>) : <li className="py-1">Doodh ka record nahi.</li>}</ul>
         <h3 className="mt-4 font-semibold">Nasl kashi ka record</h3><ul className="divide-y divide-line text-sm">{breeding.length ? breeding.map((row) => <li key={row.id} className="py-1">{longDate(row.service_date)} · {row.status} · {row.technician || "Technician darj nahi"}{row.calving_due ? ` · Mutawaqqa paidaish ${longDate(row.calving_due)}` : ""}</li>) : <li className="py-1">Nasl kashi ka record nahi.</li>}</ul>
+        <h3 className="mt-4 font-semibold">Paidaish aur bachon ka record</h3><ul className="divide-y divide-line text-sm">{dossierInput.calvings.length ? dossierInput.calvings.map((calving) => {
+          const children = dossierInput.offspring.filter((child) => child.calving_id === calving.id);
+          const calves = children.map((child) => {
+            const tag = child.animal_id ? d.animals.find((item) => item.id === child.animal_id)?.tag : child.tag_at_birth;
+            return [tag, child.sex, child.birth_weight_kg == null ? null : `${child.birth_weight_kg} kg`].filter(Boolean).join(" · ");
+          }).filter(Boolean);
+          if (!calves.length && calving.calf_id) calves.push(d.animals.find((item) => item.id === calving.calf_id)?.tag ?? "Bacha darj hai");
+          return <li key={calving.id} className="py-1">{longDate(calving.calving_date)} · {calving.outcome}{calves.length ? ` · ${calves.join("; ")}` : ""}{calving.notes ? ` · ${calving.notes}` : ""}</li>;
+        }) : <li className="py-1">Paidaish ka record nahi.</li>}</ul>
         <h3 className="mt-4 font-semibold">Sehat ka record</h3><ul className="divide-y divide-line text-sm">{health.length ? health.map((row) => <li key={row.id} className="py-1">{longDate(row.event_date)} · {row.kind} · {row.title}{row.medicine ? ` · ${row.medicine}` : ""}{row.vet ? ` · Vet: ${row.vet}` : ""}{row.notes ? ` · ${row.notes}` : ""}</li>) : <li className="py-1">Sehat ka record nahi.</li>}</ul>
       </Panel>
       {error && <p role="alert" className="text-udhaar lg:col-span-2">Save nahi hua: {error}</p>}</Body></>;

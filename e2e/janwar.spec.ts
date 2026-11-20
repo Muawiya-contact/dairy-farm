@@ -80,6 +80,7 @@ test("animal profile keeps statuses independent, manages private photos, and exp
 
   await page.emulateMedia({ media: "print" });
   await expect(page.getByRole("heading", { name: "Record ki tafseel" })).toBeVisible();
+  await expect(page.getByText("Paidaish ka record nahi.")).toBeVisible();
   await expect(photo.getByLabel("Tasveer upload karein")).toBeHidden();
   await expect(page.getByRole("button", { name: "PDF download karein" })).toBeHidden();
   await page.emulateMedia({ media: "screen" });

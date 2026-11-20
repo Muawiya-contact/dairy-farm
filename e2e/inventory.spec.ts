@@ -18,6 +18,7 @@ test("Farm Inventory creates a unit-aware item, posts stock movements, and filte
   await itemForm.locator('input[name="opening"]').fill("0");
   await page.getByRole("button", { name: "Add item", exact: true }).last().click();
   await expect(page.getByText("Inventory item added.", { exact: true })).toBeVisible();
+  const itemRow = page.locator("li").filter({ hasText: itemName });
 
   await page.getByRole("button", { name: "Stock in", exact: true }).click();
   const purchaseForm = page.locator("form").filter({ has: page.getByRole("heading", { name: "Purchase / stock in" }) });
@@ -38,7 +39,7 @@ test("Farm Inventory creates a unit-aware item, posts stock movements, and filte
   await purchaseForm.getByLabel("Expiry date (optional)").fill(addDays(today, 30));
   await purchaseForm.getByRole("button", { name: "Save purchase" }).click();
   await expect(page.getByText("Purchase saved to stock, Kharcha, and the selected Galla account.", { exact: true })).toBeVisible();
-  await expect(page.getByText("2 bag", { exact: true })).toBeVisible();
+  await expect(itemRow.getByText("2 bag", { exact: true })).toBeVisible();
   await expect(page.getByText("Low stock", { exact: true }).last()).toBeVisible();
 
   await page.getByRole("button", { name: "Issue stock", exact: true }).click();
@@ -49,13 +50,13 @@ test("Farm Inventory creates a unit-aware item, posts stock movements, and filte
   await usageForm.getByLabel("Quantity").fill("3");
   await usageForm.getByLabel("Purpose").fill("E2E stock guard");
   await usageForm.getByRole("button", { name: "Save stock issue" }).click();
-  await expect(page.getByRole("alert")).toContainText("This movement would make stock negative.");
-  await expect(page.getByText("2 bag", { exact: true })).toBeVisible();
+  await expect(page.locator("p[role='alert']")).toContainText("This movement would make stock negative.");
+  await expect(itemRow.getByText("2 bag", { exact: true })).toBeVisible();
 
   await usageForm.getByLabel("Quantity").fill("1");
   await usageForm.getByRole("button", { name: "Save stock issue" }).click();
   await expect(page.getByText("Stock issue saved. No new Kharcha or Galla entry was created.", { exact: true })).toBeVisible();
-  await expect(page.getByText("1 bag", { exact: true })).toBeVisible();
+  await expect(itemRow.getByText("1 bag", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Adjust stock", exact: true }).click();
   const adjustmentForm = page.locator("form").filter({ has: page.getByRole("heading", { name: "Stock adjustment / wastage" }) });
@@ -67,7 +68,7 @@ test("Farm Inventory creates a unit-aware item, posts stock movements, and filte
   await adjustmentForm.getByLabel("Reason (required)").fill("E2E physical count");
   await adjustmentForm.getByRole("button", { name: "Save adjustment" }).click();
   await expect(page.getByText("Stock adjustment saved with its reason and audit history.", { exact: true })).toBeVisible();
-  await expect(page.getByText("2 bag", { exact: true })).toBeVisible();
+  await expect(itemRow.getByText("2 bag", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: new RegExp(itemName) }).first().click();
   const history = page.locator("section").filter({ has: page.getByRole("heading", { name: "Item movement history" }) });

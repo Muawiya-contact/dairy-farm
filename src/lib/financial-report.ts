@@ -1,0 +1,243 @@
+import { getSupabase } from "./supabase";
+import {
+  loadKhataPeriodSummary, loadPeriodReport,
+  type KhataPeriodCustomer, type PeriodReport,
+} from "./reporting";
+import type { Database } from "./database.types";
+import type { PdfSection } from "./export-data";
+
+export type FinancialCashAccount = Database["public"]["Functions"]["financial_report_cashflow"]["Returns"][number];
+export type FinancialSalaryPayable = Database["public"]["Functions"]["financial_report_salary_payables"]["Returns"][number];
+export type FinancialIncomeRow = Database["public"]["Functions"]["financial_report_income_rows"]["Returns"][number];
+export type FinancialTrend = Database["public"]["Functions"]["financial_report_trends"]["Returns"][number];
+
+export type FinancialReportData = {
+  period: PeriodReport;
+  customers: KhataPeriodCustomer[];
+  accounts: FinancialCashAccount[];
+  salaryPayables: FinancialSalaryPayable[];
+  otherIncome: FinancialIncomeRow[];
+  trends: FinancialTrend[];
+};
+
+export type FinancialLedgerEntry = {
+  entry_date: string;
+  entry_kind: string;
+  description: string;
+  money_in: number;
+  money_out: number;
+  ref_id: string;
+};
+
+type Rpc = <T>(name: string, args: Record<string, unknown>) => Promise<{ data: T[] | null; error: Error | null }>;
+function rpc<T>(name: string, args: Record<string, unknown>): Promise<{ data: T[] | null; error: Error | null }> {
+  const supabase = getSupabase();
+  return (supabase.rpc.bind(supabase) as unknown as Rpc)<T>(name, args);
+}
+
+function normalizeNumbers<T extends Record<string, unknown>>(rows: T[], keys: (keyof T)[]): T[] {
+  return rows.map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => [
+    key, keys.includes(key as keyof T) ? Number(value ?? 0) : value,
+  ])) as T);
+}
+
+async function loadOtherIncome(from: string, to: string): Promise<FinancialIncomeRow[]> {
+  const rows: FinancialIncomeRow[] = [];
+  const pageSize = 1000;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await rpc<FinancialIncomeRow>("financial_report_income_rows", {
+      p_from: from, p_to: to, p_limit: pageSize, p_offset: offset,
+    });
+    if (error) throw error;
+    const page = (data ?? []).map((row) => ({ ...row, amount: Number(row.amount ?? 0) }));
+    rows.push(...page);
+    if (page.length < pageSize) return rows;
+  }
+}
+
+export async function loadFinancialReport(from: string, to: string): Promise<FinancialReportData> {
+  const [period, customers, accountsResult, salaryResult, otherIncome, trendsResult] = await Promise.all([
+    loadPeriodReport(from, to),
+    loadKhataPeriodSummary(from, to),
+    rpc<FinancialCashAccount>("financial_report_cashflow", { p_from: from, p_to: to }),
+    rpc<FinancialSalaryPayable>("financial_report_salary_payables", { p_as_of: to }),
+    loadOtherIncome(from, to),
+    rpc<FinancialTrend>("financial_report_trends", { p_from: from, p_to: to }),
+  ]);
+  if (accountsResult.error) throw accountsResult.error;
+  if (salaryResult.error) throw salaryResult.error;
+  if (trendsResult.error) throw trendsResult.error;
+  return {
+    period,
+    customers,
+    accounts: normalizeNumbers((accountsResult.data ?? []) as unknown as Record<string, unknown>[],
+      ["opening_balance", "money_received", "money_paid", "transfers_in", "transfers_out", "closing_balance", "opening_amount"] as (keyof Record<string, unknown>)[]) as unknown as FinancialCashAccount[],
+    salaryPayables: normalizeNumbers((salaryResult.data ?? []) as unknown as Record<string, unknown>[],
+      ["agreed_amount", "paid_amount", "outstanding_amount"] as (keyof Record<string, unknown>)[]) as unknown as FinancialSalaryPayable[],
+    otherIncome,
+    trends: normalizeNumbers((trendsResult.data ?? []) as unknown as Record<string, unknown>[],
+      ["milk_income", "other_income", "customer_collections", "farm_expenses", "home_expenses", "total_income", "net_profit", "cash_received", "cash_paid"] as (keyof Record<string, unknown>)[]) as unknown as FinancialTrend[],
+  };
+}
+
+export async function loadFinancialAccountLedger(
+  accountId: string, from: string, to: string, account: FinancialCashAccount,
+): Promise<FinancialLedgerEntry[]> {
+  const supabase = getSupabase();
+  type LedgerQuery = {
+    gte: (column: string, value: string) => LedgerQuery;
+    lte: (column: string, value: string) => LedgerQuery;
+    order: (column: string, options?: { ascending?: boolean }) => LedgerQuery;
+    range: (from: number, to: number) => Promise<{ data: FinancialLedgerEntry[] | null; error: Error | null }>;
+  };
+  const ledgerRpc = supabase.rpc.bind(supabase) as unknown as (name: string, args: { p_account: string }) => LedgerQuery;
+  const entries: FinancialLedgerEntry[] = [];
+  const pageSize = 1000;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await ledgerRpc("account_entries", { p_account: accountId })
+      .gte("entry_date", from).lte("entry_date", to)
+      .order("entry_date").order("ref_id").range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    const page = (data ?? []).map((row) => ({
+      ...row, money_in: Number(row.money_in ?? 0), money_out: Number(row.money_out ?? 0),
+    }));
+    entries.push(...page);
+    if (page.length < pageSize) break;
+  }
+
+  if (account.opening_amount !== 0) {
+    entries.push({
+      entry_date: account.opening_date,
+      entry_kind: "opening_balance",
+      description: "Account opening balance",
+      money_in: Math.max(account.opening_amount, 0),
+      money_out: Math.max(-account.opening_amount, 0),
+      ref_id: `opening-${account.account_id}`,
+    });
+  }
+  return entries.sort((a, b) => a.entry_date.localeCompare(b.entry_date)
+    || (a.entry_kind === "opening_balance" ? -1 : b.entry_kind === "opening_balance" ? 1 : a.ref_id.localeCompare(b.ref_id)));
+}
+
+export function receivableTotals(customers: KhataPeriodCustomer[]) {
+  return customers.reduce((totals, customer) => ({
+    due: totals.due + Math.max(customer.closing_balance, 0),
+    customerCredits: totals.customerCredits + Math.max(-customer.closing_balance, 0),
+  }), { due: 0, customerCredits: 0 });
+}
+
+export function salaryPayableTotal(rows: FinancialSalaryPayable[]): number {
+  return rows.reduce((total, row) => total + Math.max(row.outstanding_amount, 0), 0);
+}
+
+export function accountCashflowReconciles(account: FinancialCashAccount): boolean {
+  const calculated = account.opening_balance + account.money_received - account.money_paid
+    + account.transfers_in - account.transfers_out;
+  return Math.abs(Math.round(calculated * 100) - Math.round(account.closing_balance * 100)) <= 1;
+}
+
+const incomeLabels: Record<string, string> = {
+  animal_sale: "Animal sale",
+  manure: "Manure",
+  other: "Other recorded income",
+};
+
+export function groupOtherIncome(rows: FinancialIncomeRow[]) {
+  const totals = new Map<string, number>();
+  for (const row of rows) totals.set(row.kind, (totals.get(row.kind) ?? 0) + row.amount);
+  return [...totals.entries()].map(([kind, amount]) => ({
+    kind, label: incomeLabels[kind] ?? "Recorded income", amount,
+  })).sort((a, b) => a.label.localeCompare(b.label));
+}
+
+export function groupFinancialExpenses(rows: PeriodReport["expenses"]) {
+  const totals = new Map<string, { category: string; classification: string; amount: number; entries: number }>();
+  for (const row of rows) {
+    const classification = row.is_farm_cost ? "Farm" : "Home / personal";
+    const key = `${classification}:${row.category}`;
+    const current = totals.get(key) ?? { category: row.category, classification, amount: 0, entries: 0 };
+    current.amount += row.amount;
+    current.entries += 1;
+    totals.set(key, current);
+  }
+  return [...totals.values()].sort((a, b) => b.amount - a.amount || a.category.localeCompare(b.category));
+}
+
+export function financialReportExportSections(
+  data: FinancialReportData,
+  accountEntries: FinancialLedgerEntry[],
+  from: string,
+  to: string,
+  generatedAt: string,
+): PdfSection[] {
+  const summary = data.period.summary;
+  const incomeGroups = groupOtherIncome(data.otherIncome);
+  const expenseGroups = groupFinancialExpenses(data.period.expenses);
+  const pnlIncome = summary.milk_income + summary.other_income;
+  return [
+    { title: "Report details", columns: ["farm_name", "report_period", "generated_at"], rows: [{
+      farm_name: data.period.farmName, report_period: `${from} to ${to}`, generated_at: generatedAt,
+    }] },
+    { title: "Financial overview", columns: ["metric", "amount_rs"], rows: [
+      { metric: "Total farm income", amount_rs: pnlIncome },
+      { metric: "Customer collections net of refunds", amount_rs: summary.cash_collected },
+      { metric: "Other recorded income", amount_rs: summary.other_income },
+      { metric: "Total expenses including home/personal", amount_rs: summary.farm_expenses + summary.home_expenses },
+      { metric: "Farm profit / loss", amount_rs: summary.profit },
+      { metric: "Customer receivables at period end", amount_rs: receivableTotals(data.customers).due },
+      { metric: "Customer credit balances at period end", amount_rs: receivableTotals(data.customers).customerCredits },
+      { metric: "Unpaid salaries as of period end", amount_rs: salaryPayableTotal(data.salaryPayables) },
+    ] },
+    { title: "Income sources", columns: ["source", "amount_rs"], rows: [
+      { source: "Milk deliveries and company bills (billed)", amount_rs: summary.milk_income },
+      ...incomeGroups.map((row) => ({ source: row.label, amount_rs: row.amount })),
+    ] },
+    { title: "Expense categories", columns: ["category", "classification", "entries", "amount_rs"], rows: expenseGroups },
+    { title: "Profit and loss", columns: ["line", "amount_rs", "treatment"], rows: [
+      { line: "Milk deliveries and company bills", amount_rs: summary.milk_income, treatment: "Billed revenue" },
+      { line: "Other recorded income", amount_rs: summary.other_income, treatment: "Recorded income" },
+      { line: "Farm operating expenses", amount_rs: -summary.farm_expenses, treatment: "Cash-basis expense ledger; linked items counted once" },
+      { line: "Net farm profit / loss", amount_rs: summary.profit, treatment: "Matches report_period_summary; home/personal expenses excluded" },
+      { line: "Home / personal expenses (separate)", amount_rs: summary.home_expenses, treatment: "Shown separately; excluded from Farm Munafa" },
+    ] },
+    { title: "Account cash flow", columns: ["account_name", "account_kind", "opening_balance", "money_received", "money_paid", "transfers_in", "transfers_out", "closing_balance"], rows: data.accounts.map((row) => ({
+      account_name: row.account_name, account_kind: row.account_kind, opening_balance: row.opening_balance,
+      money_received: row.money_received, money_paid: row.money_paid, transfers_in: row.transfers_in,
+      transfers_out: row.transfers_out, closing_balance: row.closing_balance,
+    })) },
+    { title: "Customer receivables", columns: ["customer", "opening_balance", "opening_added", "charges", "payments", "discounts", "refunds", "closing_balance"], rows: data.customers.map((row) => ({
+      customer: row.name, opening_balance: row.opening_balance, opening_added: row.opening_added,
+      charges: row.charges, payments: row.payments, discounts: row.discounts, refunds: row.refunds,
+      closing_balance: row.closing_balance,
+    })) },
+    { title: "Salary payable records", columns: ["staff_name", "salary_month", "agreed_amount", "paid_amount", "outstanding_amount"], rows: data.salaryPayables.map((row) => ({
+      staff_name: row.staff_name, salary_month: row.salary_month, agreed_amount: row.agreed_amount,
+      paid_amount: row.paid_amount, outstanding_amount: row.outstanding_amount,
+    })) },
+    { title: "Financial trends", columns: ["bucket_start", "total_income", "farm_expenses", "home_expenses", "net_profit", "customer_collections", "cash_received", "cash_paid"], rows: data.trends.map((row) => ({
+      bucket_start: row.bucket_start, total_income: row.total_income, farm_expenses: row.farm_expenses,
+      home_expenses: row.home_expenses, net_profit: row.net_profit, customer_collections: row.customer_collections,
+      cash_received: row.cash_received, cash_paid: row.cash_paid,
+    })) },
+    { title: "Other income detail", columns: ["income_date", "kind", "animal_tag", "amount", "note"], rows: data.otherIncome.map((row) => ({
+      income_date: row.income_date, kind: incomeLabels[row.kind] ?? row.kind, animal_tag: row.animal_tag,
+      amount: row.amount, note: row.note,
+    })) },
+    { title: "Customer charges and collections", columns: ["customer", "litres", "charged", "paid", "discount", "refund", "period_balance_change"], rows: data.period.customers.map((row) => ({
+      customer: row.name, litres: row.litres, charged: row.charged, paid: row.paid,
+      discount: row.discount, refund: row.refund, period_balance_change: row.period_balance_change,
+    })) },
+    { title: "Expense detail", columns: ["expense_date", "category", "is_farm_cost", "account", "amount", "note"], rows: data.period.expenses },
+    { title: "Selected account ledger", columns: ["entry_date", "entry_kind", "description", "money_in", "money_out", "ref_id"], rows: accountEntries },
+    { title: "Data limitations", columns: ["item", "details"], rows: [
+      { item: "Supplier payables", details: "Not shown: the application does not store a supplier credit ledger." },
+      { item: "Cost per litre", details: "Not shown: there is no documented allocation of farm expenses to milk production." },
+    ] },
+  ];
+}
+
+export function flattenFinancialExport(sections: PdfSection[]) {
+  const columns = ["section", ...new Set(sections.flatMap((section) => section.columns))];
+  const rows = sections.flatMap((section) => section.rows.map((row) => ({ section: section.title, ...row })));
+  return { columns, rows };
+}

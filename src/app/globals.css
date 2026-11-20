@@ -59,6 +59,13 @@ body {
   .print-report tr { break-inside: avoid; }
 }
 
+@page animal-profile { size: A4 portrait; margin: 12mm; }
+@media print {
+  body:has(.animal-profile-print) { font-size: 10px; }
+  body:has(.animal-profile-print) main { padding: 0 !important; }
+  body:has(.animal-profile-print) .animal-profile-print { page: animal-profile; max-width: none; padding: 0; }
+}
+
 /* Bahi-khata page: blue rules + red margin line, like a real register */
 .ledger-page {
   background-color: #fff;

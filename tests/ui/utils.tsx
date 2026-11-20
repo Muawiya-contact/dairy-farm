@@ -45,7 +45,7 @@ export function makeFarmData(overrides: Record<string, unknown> = {}) {
     customers: [fixtures.customer],
     shifts: [], animalMilk: [], deliveries: [], dispositions: [], rates: [], settings: {},
     milkShiftConfig: [{ effective_from: fixtures.today, noon_enabled: true }],
-    health: [], inseminations: [], calvings: [], calvingOffspring: [], categories: [],
+    health: [], inseminations: [], calvings: [], calvingOffspring: [], categories: [], alerts: [],
     ...overrides,
   };
 }

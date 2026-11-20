@@ -35,3 +35,52 @@ test("a new cow is sold only after confirmation, leaves active list, and credits
   await go(page, "Galla");
   await expect.poll(() => accountBalance(page, "Test bank")).toBe(bankBefore + 12345);
 });
+
+test("animal profile keeps statuses independent, manages private photos, and exports a print-ready dossier", async ({ page }, info) => {
+  const tag = testId(info, "PROFILE");
+  await signIn(page);
+  await go(page, "Janwar");
+  await page.getByRole("button", { name: "Naya" }).click();
+  const create = section(page, "Naya janwar");
+  await create.getByRole("textbox", { name: "Tag number" }).fill(tag);
+  await create.getByLabel("Farm mein aane ki tareekh").fill(todayPK());
+  await create.getByRole("textbox", { name: "Bechne wala" }).fill("E2E seller");
+  await create.getByRole("textbox", { name: "Mandi / khareed ki jagah" }).fill("E2E market");
+  await create.getByRole("button", { name: "Janwar save karein" }).click();
+  const animalLink = page.getByRole("link").filter({ hasText: tag });
+  await expect(animalLink).toBeVisible();
+  await animalLink.click();
+
+  const profile = section(page, "Janwar ki maloomat");
+  await expect(profile).toContainText("Farm mein haisiyat");
+  await expect(profile).toContainText("Doodh ki haisiyat");
+  await expect(profile).toContainText("Nasl kashi ki haisiyat");
+  await expect(profile).toContainText("Sehat ka agla kaam");
+  await expect(profile).toContainText("E2E seller");
+  await expect(profile).toContainText("E2E market");
+
+  const photo = section(page, "Janwar ki tasveer");
+  const tinyPng = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC", "base64");
+  const picker = photo.getByLabel("Tasveer upload karein");
+  await picker.setInputFiles({ name: "cow.png", mimeType: "image/png", buffer: tinyPng });
+  await expect(photo.getByRole("img", { name: `${tag} ki tasveer` })).toBeVisible();
+  await picker.setInputFiles({ name: "cow-replacement.png", mimeType: "image/png", buffer: tinyPng });
+  await expect(photo.getByText("Photo save ho gayi.")).toBeVisible();
+
+  const pdfDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "PDF download karein" }).click();
+  expect((await pdfDownload).suggestedFilename()).toBe(`animal-${tag}.pdf`);
+  const excelDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Excel download karein" }).click();
+  expect((await excelDownload).suggestedFilename()).toBe(`animal-${tag}.xlsx`);
+
+  page.once("dialog", (dialog) => dialog.accept());
+  await photo.getByRole("button", { name: "Tasveer hata dein" }).click();
+  await expect(photo.getByText("Tasveer nahi")).toBeVisible();
+
+  await page.emulateMedia({ media: "print" });
+  await expect(page.getByRole("heading", { name: "Record ki tafseel" })).toBeVisible();
+  await expect(photo.getByLabel("Tasveer upload karein")).toBeHidden();
+  await expect(page.getByRole("button", { name: "PDF download karein" })).toBeHidden();
+  await page.emulateMedia({ media: "screen" });
+});

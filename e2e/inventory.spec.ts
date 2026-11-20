@@ -76,7 +76,7 @@ test("Farm Inventory creates a unit-aware item, posts stock movements, and filte
   await expect(history.getByText("Purchase", { exact: true })).toBeVisible();
   await expect(history.getByText("Usage / issue", { exact: true })).toBeVisible();
   await expect(history.getByText("Adjustment", { exact: true })).toBeVisible();
-  await expect(history.getByText("E2E-BATCH-1", { exact: true })).toBeVisible();
+  await expect(history.getByText(/Batch: E2E-BATCH-1/)).toBeVisible();
   await expect(history.getByText(/linked to Kharcha/)).toBeVisible();
   await history.getByLabel("From").fill(today);
   await history.getByLabel("Through").fill(today);

@@ -4,10 +4,9 @@ import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { BellIcon } from "./icons";
-import { getSupabase } from "@/lib/supabase";
 import { todayPK } from "@/lib/dates";
 import { alertId, bannerCounts, readDismissed, sortedAlerts, writeDismissed } from "@/lib/reminders";
-import type { HerdAlert } from "@/lib/farm-data";
+import { loadHerdAlerts } from "@/lib/farm-data";
 
 const severityLabel = { overdue: "Late", today: "Aaj", soon: "Jald", upcoming: "Aane wala" };
 const severityClass = { overdue: "text-udhaar", today: "text-[#8a5b00]", soon: "text-berseem", upcoming: "text-muted" };
@@ -20,11 +19,7 @@ export function HerdReminders() {
   const [open, setOpen] = useState(false);
   const ready = useSyncExternalStore(subscribeHydration, clientSnapshot, serverSnapshot);
   const [localDismissal, setLocalDismissal] = useState<{ date: string; ids: string[] } | null>(null);
-  const query = useQuery({ queryKey: ["herd-alerts", date], queryFn: async () => {
-    const { data, error } = await getSupabase().rpc("herd_alerts", { p_today: date });
-    if (error) throw error;
-    return (data ?? []) as HerdAlert[];
-  }, staleTime: 15_000 });
+  const query = useQuery({ queryKey: ["herd-alerts", date], queryFn: () => loadHerdAlerts(date), staleTime: 15_000 });
   let savedIds: string[] = [];
   if (ready) {
     try { savedIds = readDismissed(date, window.localStorage); }

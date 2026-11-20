@@ -58,8 +58,8 @@ it("shows reconciled daily and customer results and exports the selected period"
     "Milk Report — 2026-10-16 se 2026-10-16",
     expect.arrayContaining([
       expect.objectContaining({ title: "Grand summary" }),
-      expect.objectContaining({ title: "Daily milk distribution and collections" }),
-      expect.objectContaining({ title: "Shift distribution and collections" }),
+      expect.objectContaining({ title: "Daily milk distribution and collections", repeatColumns: ["report_date"] }),
+      expect.objectContaining({ title: "Shift distribution and collections", repeatColumns: ["report_date", "milk_shift"] }),
       expect.objectContaining({ title: "Customer sales and outstanding" }),
     ]),
     "Saim Dairy Farm",

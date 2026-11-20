@@ -203,6 +203,7 @@ export type PdfSection = {
   title: string;
   columns: string[];
   rows: Record<string, unknown>[];
+  repeatColumns?: string[];
 };
 
 export async function buildXlsx(title: string, columns: string[], rows: Record<string, unknown>[]): Promise<Uint8Array<ArrayBuffer>> {
@@ -257,7 +258,10 @@ export async function buildPdfReport(title: string, sections: PdfSection[], farm
       body: section.rows.map((row) => section.columns.map((column) => displayCell(row[column]))),
       styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak" },
       headStyles: { fillColor: [45, 106, 57] },
-      horizontalPageBreak: true, horizontalPageBreakRepeat: 0,
+      horizontalPageBreak: true,
+      horizontalPageBreakRepeat: (section.repeatColumns ?? section.columns.slice(0, 1))
+        .map((column) => section.columns.indexOf(column))
+        .filter((index) => index >= 0),
       margin: { top: 10, right: 10, bottom: 16, left: 10 },
     });
     cursorY = ((pdf as typeof pdf & { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? cursorY) + 10;

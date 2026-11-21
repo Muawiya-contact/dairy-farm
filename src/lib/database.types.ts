@@ -665,6 +665,8 @@ export type Database = {
           quantity: number
           request_id: string
           request_payload: Json
+          stock_quantity: number
+          stock_unit: string
           stock_movement_id: string
           supersedes_id: string | null
           unit: string
@@ -679,6 +681,8 @@ export type Database = {
           quantity: number
           request_id: string
           request_payload: Json
+          stock_quantity: number
+          stock_unit: string
           stock_movement_id: string
           supersedes_id?: string | null
           unit: string
@@ -693,6 +697,8 @@ export type Database = {
           quantity?: number
           request_id?: string
           request_payload?: Json
+          stock_quantity?: number
+          stock_unit?: string
           stock_movement_id?: string
           supersedes_id?: string | null
           unit?: string

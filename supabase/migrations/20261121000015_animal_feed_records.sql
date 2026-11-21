@@ -7,6 +7,8 @@ create table public.animal_feed_entries (
   feed_date date not null,
   quantity numeric(14,6) not null check (quantity > 0),
   unit text not null check (unit in ('kg', 'g', 'litre', 'ml', 'bag', 'bori', 'piece', 'bottle', 'ton')),
+  stock_quantity numeric(14,6) not null check (stock_quantity > 0),
+  stock_unit text not null check (stock_unit in ('kg', 'g', 'litre', 'ml', 'bag', 'bori', 'piece', 'bottle', 'ton')),
   note text check (note is null or char_length(note) <= 1000),
   stock_movement_id uuid not null unique references public.inventory_movements(id) on delete restrict,
   request_id uuid not null unique,
@@ -57,6 +59,8 @@ declare
   v_saved jsonb;
   v_entry_id uuid;
   v_movement_id uuid;
+  v_stock_quantity numeric(14,6);
+  v_stock_unit text;
   v_note text := nullif(btrim(p_note), '');
 begin
   if not (private.is_app_owner() or private.demo_access_enabled()) then
@@ -93,11 +97,14 @@ begin
     raise exception 'ANIMAL_FEED_ITEM_UNAVAILABLE' using errcode = 'P0001';
   end if;
 
+  select i.base_unit into v_stock_unit from public.inventory_items i where i.id = p_item_id;
+  v_stock_quantity := public.inventory_convert_quantity(p_quantity, p_unit, v_stock_unit);
+
   v_movement_id := public.record_inventory_usage(p_request_id, p_item_id, p_quantity, p_unit,
     p_feed_date, 'Animal feed for ' || v_animal.tag, null, v_note);
-  insert into public.animal_feed_entries(animal_id, inventory_item_id, feed_date, quantity, unit,
+  insert into public.animal_feed_entries(animal_id, inventory_item_id, feed_date, quantity, unit, stock_quantity, stock_unit,
     note, stock_movement_id, request_id, request_payload)
-  values (p_animal_id, p_item_id, p_feed_date, p_quantity, p_unit, v_note,
+  values (p_animal_id, p_item_id, p_feed_date, p_quantity, p_unit, v_stock_quantity, v_stock_unit, v_note,
     v_movement_id, p_request_id, v_payload)
   returning id into v_entry_id;
   return v_entry_id;
@@ -119,6 +126,8 @@ declare
   v_restore_movement uuid;
   v_usage_request uuid;
   v_usage_movement uuid;
+  v_stock_quantity numeric(14,6);
+  v_stock_unit text;
   v_seq bigint;
   v_before numeric(14,6);
   v_delta numeric(14,6);
@@ -156,6 +165,8 @@ begin
         and c.active and lower(btrim(c.name)) = 'animal feed & fodder') then
     raise exception 'ANIMAL_FEED_ITEM_UNAVAILABLE' using errcode = 'P0001';
   end if;
+  select i.base_unit into v_stock_unit from public.inventory_items i where i.id = p_item_id;
+  v_stock_quantity := public.inventory_convert_quantity(p_quantity, p_unit, v_stock_unit);
   select * into v_old_item from public.inventory_items where id = v_old.inventory_item_id for update;
   perform 1 from public.inventory_items where id = p_item_id for update;
 
@@ -195,9 +206,9 @@ begin
 
   v_usage_movement := public.record_inventory_usage(v_usage_request, p_item_id, p_quantity, p_unit,
     v_today, 'Corrected animal feed for ' || v_animal.tag, null, 'Correction to feed entry ' || v_old.id);
-  insert into public.animal_feed_entries(animal_id, inventory_item_id, feed_date, quantity, unit,
+  insert into public.animal_feed_entries(animal_id, inventory_item_id, feed_date, quantity, unit, stock_quantity, stock_unit,
     note, stock_movement_id, request_id, request_payload, supersedes_id)
-  values (v_old.animal_id, p_item_id, v_old.feed_date, p_quantity, p_unit, v_note,
+  values (v_old.animal_id, p_item_id, v_old.feed_date, p_quantity, p_unit, v_stock_quantity, v_stock_unit, v_note,
     v_usage_movement, p_request_id, v_payload, v_old.id)
   returning id into v_entry_id;
   return v_entry_id;

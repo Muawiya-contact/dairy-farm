@@ -59,7 +59,10 @@ export default function FarmAnimals() {
   if (selected) {
     const status = d.animalStatus.find((x) => x.id === selected.id);
     const history = d.animalMilk.filter((x) => x.animal_id === selected.id).map((x) => ({ ...x, shift: d.shifts.find((s) => s.id === x.shift_id) })).sort((a,b) => (b.shift?.milk_date ?? "").localeCompare(a.shift?.milk_date ?? ""));
-    const health = d.health.filter((x) => x.animal_id === selected.id).sort((a,b) => b.event_date.localeCompare(a.event_date));
+    const health = d.health.filter((x) => x.animal_id === selected.id).sort((a, b) =>
+      b.event_date.localeCompare(a.event_date)
+      || b.created_at.localeCompare(a.created_at)
+      || b.id.localeCompare(a.id));
     const breeding = d.inseminations.filter((x) => x.animal_id === selected.id).sort((a,b) => b.service_date.localeCompare(a.service_date));
     const breedingStatus = d.animalStatus.find((x) => x.id === selected.id)?.breeding_status;
     const profileStatuses = animalProfileStatuses(selected, breedingStatus, health, d.today);

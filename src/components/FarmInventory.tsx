@@ -82,6 +82,9 @@ export default function FarmInventory() {
   const stockRows = useMemo(() => stock.data ?? [], [stock.data]);
   const categories = setup.data?.categories ?? [];
   const activeCategories = categories.filter((item) => item.active);
+  const editCategories = editingItem && !activeCategories.some((item) => item.id === editingItem.category_id)
+    ? [...activeCategories, ...categories.filter((item) => item.id === editingItem.category_id)]
+    : activeCategories;
   const activeItems = (items.data ?? []).filter((item) => item.active);
   const accounts = setup.data?.accounts ?? [];
   const activeAccounts = accounts.filter((item) => item.active);
@@ -279,7 +282,7 @@ export default function FarmInventory() {
           <h3 className="mb-3 font-semibold">{editingItem ? "Samaan badlein" : "Naya saman add karein"}</h3>
           {editingItem ? <form key={`edit-${editingItem.id}`} onSubmit={onUpdateItem} className="grid gap-3 sm:grid-cols-2">
             <label className="text-sm">Samaan ka naam<input name="name" required maxLength={120} defaultValue={editingItem.name} className={field} /></label>
-            <label className="text-sm">Qism<select name="category" required defaultValue={editingItem.category_id} className={field}><option value="" disabled>Qism chunein</option>{activeCategories.map((item) => <option key={item.id} value={item.id}>{categoryLabel(item.name)}</option>)}</select></label>
+            <label className="text-sm">Qism<select name="category" required defaultValue={editingItem.category_id} className={field}><option value="" disabled>Qism chunein</option>{editCategories.map((item) => <option key={item.id} value={item.id}>{categoryLabel(item.name)}{item.active ? "" : " (band hai)"}</option>)}</select></label>
             <label className="text-sm">Stock ki unit<select name="unit" defaultValue={editingItem.base_unit} className={field}>{INVENTORY_UNITS.map((unit) => <option key={unit} value={unit}>{unitLabel(unit)}</option>)}</select></label>
             <label className="text-sm">Saman ki qism<select name="type" defaultValue={editingItem.item_type} className={field}><option value="consumable">Istemaali saman</option><option value="durable">Dairpa auzaar</option></select></label>
             <label className="text-sm">Kam stock ki had (stock ki unit)<input name="minimum" type="number" min="0" step="0.000001" required defaultValue={editingItem.minimum_stock} className={field} /></label>

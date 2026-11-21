@@ -29,6 +29,11 @@ import { sharePdfFile } from "@/lib/pdf-share";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 const animalLabel = (a: Animal) => `${a.tag}${a.name ? ` · ${a.name}` : ""}`;
+const printedBreedingStatus: Record<string, string> = { pending: "Nateeja baqi", pregnant: "Gaabhan", empty: "Khali", aborted: "Hamla zaya", calved: "Bacha paida" };
+const printedCalvingOutcome: Record<string, string> = { alive: "Zinda", dead: "Wafat", twins: "Joray", normal: "Mamool ke mutabiq", stillborn: "Paidaish par wafat" };
+const printedSex: Record<string, string> = { female: "Mada", male: "Nar" };
+const printedHealthKind: Record<string, string> = { vaccine: "Vaccine", treatment: "Ilaj", deworming: "Deworming", checkup: "Vet check-up", other: "Doosra" };
+const printedSeverity: Record<string, string> = { mild: "Halki", moderate: "Darmiyani", severe: "Zyada" };
 
 export default function FarmAnimals() {
   const id = useSearchParams().get("id") ?? "";
@@ -133,11 +138,11 @@ export default function FarmAnimals() {
       <Panel title="Janwar ka mukammal record" className="print:hidden">
         <p className="mb-3 text-sm text-muted">Is file mein sirf {selected.tag} aur is se jure khandani record hain. Jo maloomat darj nahi, woh wazeh rahegi.</p>
         <div className="flex flex-wrap gap-2">
-          <button type="button" disabled={dossierBusy} onClick={() => void exportDossier("pdf")} className="min-h-10 rounded-xl border border-berseem px-3 text-sm font-semibold text-berseem disabled:opacity-50">PDF download karein</button>
-          <button type="button" disabled={dossierBusy} onClick={() => void exportDossier("excel")} className="min-h-10 rounded-xl border border-line px-3 text-sm font-semibold disabled:opacity-50">Excel download karein</button>
-          <button type="button" disabled={dossierBusy} onClick={() => void exportDossier("share")} className="min-h-10 rounded-xl border border-line px-3 text-sm font-semibold disabled:opacity-50">PDF share karein</button>
-          <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center rounded-xl border border-line px-3 text-sm font-semibold">WhatsApp kholein</a>
-          <button type="button" onClick={() => window.print()} className="min-h-10 rounded-xl border border-line px-3 text-sm font-semibold">Print karein</button>
+          <button type="button" disabled={dossierBusy} onClick={() => void exportDossier("pdf")} className="min-h-11 rounded-xl border border-berseem px-3 text-sm font-semibold text-berseem disabled:opacity-50">PDF download karein</button>
+          <button type="button" disabled={dossierBusy} onClick={() => void exportDossier("excel")} className="min-h-11 rounded-xl border border-line px-3 text-sm font-semibold disabled:opacity-50">Excel download karein</button>
+          <button type="button" disabled={dossierBusy} onClick={() => void exportDossier("share")} className="min-h-11 rounded-xl border border-line px-3 text-sm font-semibold disabled:opacity-50">PDF share karein</button>
+          <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center rounded-xl border border-line px-3 text-sm font-semibold">WhatsApp kholein</a>
+          <button type="button" onClick={() => window.print()} className="min-h-11 rounded-xl border border-line px-3 text-sm font-semibold">Print karein</button>
         </div>
         <p className="mt-2 text-xs text-muted">Jahan device share support karta hai, wahan share menu khulega. Warna file download karke WhatsApp par khud attach karein.</p>
         {dossierMessage && <p role={dossierMessage.includes("export nahi hua") ? "alert" : "status"} className="mt-3 text-sm text-muted">{dossierMessage}</p>}
@@ -174,29 +179,29 @@ export default function FarmAnimals() {
         <h3 className="font-semibold">Tareekh aur shift ke mutabiq doodh</h3><ul className="divide-y divide-line text-sm">{dossierInput.milk.length ? dossierInput.milk.map((row, index) => <li key={`${row.date}-${row.shift}-${index}`} className="flex justify-between py-1"><span>{longDate(row.date)} · {row.shift}</span><strong>{row.litres} L</strong></li>) : <li className="py-1">Doodh ka record nahi.</li>}</ul>
         <h3 className="mt-4 font-semibold">Nasl kashi ka record</h3><ul className="divide-y divide-line text-sm">{breeding.length ? breeding.map((row) => {
           const calvingDue = breedingDueDate(row, "calving").date;
-          return <li key={row.id} className="py-1">{longDate(row.service_date)} · {row.status} · {row.technician || "Technician darj nahi"}{calvingDue ? ` · Mutawaqqa paidaish ${longDate(calvingDue)}` : ""}</li>;
+          return <li key={row.id} className="py-1">{longDate(row.service_date)} · {printedBreedingStatus[row.status] ?? "Darj nahi"} · {row.technician || "Technician darj nahi"}{calvingDue ? ` · Mutawaqqa paidaish ${longDate(calvingDue)}` : ""}</li>;
         }) : <li className="py-1">Nasl kashi ka record nahi.</li>}</ul>
         <h3 className="mt-4 font-semibold">Paidaish aur bachon ka record</h3><ul className="divide-y divide-line text-sm">{dossierInput.calvings.length ? dossierInput.calvings.map((calving) => {
           const children = dossierInput.offspring.filter((child) => child.calving_id === calving.id);
           const calves = children.map((child) => {
             const tag = child.animal_id ? d.animals.find((item) => item.id === child.animal_id)?.tag : child.tag_at_birth;
-            return [tag, child.sex, child.birth_weight_kg == null ? null : `${child.birth_weight_kg} kg`].filter(Boolean).join(" · ");
+            return [tag, child.sex ? printedSex[child.sex] ?? "Darj nahi" : null, child.birth_weight_kg == null ? null : `${child.birth_weight_kg} kg`].filter(Boolean).join(" · ");
           }).filter(Boolean);
           if (!calves.length && calving.calf_id) calves.push(d.animals.find((item) => item.id === calving.calf_id)?.tag ?? "Bacha darj hai");
-          return <li key={calving.id} className="py-1">{longDate(calving.calving_date)} · {calving.outcome}{calves.length ? ` · ${calves.join("; ")}` : ""}{calving.notes ? ` · ${calving.notes}` : ""}</li>;
+          return <li key={calving.id} className="py-1">{longDate(calving.calving_date)} · {printedCalvingOutcome[calving.outcome] ?? "Darj nahi"}{calves.length ? ` · ${calves.join("; ")}` : ""}{calving.notes ? ` · ${calving.notes}` : ""}</li>;
         }) : <li className="py-1">Paidaish ka record nahi.</li>}</ul>
         <h3 className="mt-4 font-semibold">Sehat ka record</h3><ul className="divide-y divide-line text-sm">{health.length ? health.map((row) => {
           const attachmentNames = d.healthAttachments.filter((attachment) => attachment.health_event_id === row.id).map((attachment) => attachment.file_name);
           const details = [
             row.symptoms ? `Nishaniyan: ${row.symptoms}` : "", row.diagnosis ? `Vet ki tashkhees: ${row.diagnosis}` : "",
-            row.severity ? `Shiddat: ${row.severity}` : "", row.current_condition ? `Maujooda haalat: ${row.current_condition}` : "",
+            row.severity ? `Shiddat: ${printedSeverity[row.severity] ?? "Darj nahi"}` : "", row.current_condition ? `Maujooda haalat: ${row.current_condition}` : "",
             row.medicine, row.medicine_type ? `Qisam: ${row.medicine_type}` : "", row.dosage ? `Dose: ${row.dosage}` : "",
             row.route ? `Tareeqa: ${row.route}` : "", row.treatment_start_date ? `Shuru: ${longDate(row.treatment_start_date)}` : "",
             row.treatment_end_date ? `Khatam: ${longDate(row.treatment_end_date)}` : "", row.vet ? `Vet: ${row.vet}` : "",
             row.next_due_date ? `Agli due: ${longDate(row.next_due_date)}` : "", Number(row.cost) ? money(row.cost) : "",
             row.notes, attachmentNames.length ? `Files: ${attachmentNames.join(", ")}` : "",
           ].filter(Boolean);
-          return <li key={row.id} className="py-1">{longDate(row.event_date)} · {row.kind} · {row.title}{details.length ? ` · ${details.join(" · ")}` : ""}</li>;
+          return <li key={row.id} className="py-1">{longDate(row.event_date)} · {printedHealthKind[row.kind] ?? "Doosra"} · {row.title}{details.length ? ` · ${details.join(" · ")}` : ""}</li>;
         }) : <li className="py-1">Sehat ka record nahi.</li>}</ul>
       </Panel>
       {error && <p role="alert" className="text-udhaar lg:col-span-2">Save nahi hua: {error}</p>}</Body></>;

@@ -114,7 +114,7 @@ export default function FinalReport() {
 
   return <>
     <PageHeader title="Final Report" sub="Chuni hui muddat ka doodh, Khata, kharcha aur Galla" back="/reports/" />
-    <Body className="print-report space-y-4 pb-8">
+    <Body className="print-report final-report space-y-4 pb-8">
       <Panel title="Report ki muddat" className="no-print">
         <div className="flex flex-wrap gap-2">
           {presets.map(({ id, label }) => <button key={id} type="button" aria-pressed={preset === id} onClick={() => choosePreset(id)}

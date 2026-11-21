@@ -23,7 +23,7 @@ const defaultCategoryLabels: Record<string, string> = {
   "Other consumables": "Doosra rozmarra ka saman",
 };
 const categoryLabel = (name: string) => defaultCategoryLabels[name] ?? name;
-const quantity = (value: number | string | null | undefined) => (Number(value) || 0).toLocaleString(undefined, { maximumFractionDigits: 3 });
+const quantity = (value: number | string | null | undefined) => (Number(value) || 0).toLocaleString(undefined, { maximumFractionDigits: 6 });
 const stockTone = (item: InventoryStock) => item.out_of_stock ? "text-udhaar" : item.low_stock ? "text-haldi-ink" : "text-berseem-deep";
 const monthStart = (today: string) => `${today.slice(0, 7)}-01`;
 

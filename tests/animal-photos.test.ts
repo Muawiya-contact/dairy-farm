@@ -37,16 +37,33 @@ describe("private animal photo lifecycle", () => {
     mocks.upload.mockResolvedValue({ error: null });
     mocks.query.maybeSingle.mockResolvedValue({ data: { id: animal.id }, error: null });
     mocks.remove.mockResolvedValue({ error: { message: "delete failed" } });
-    await expect(replaceAnimalPhoto(animal, validPhoto())).resolves.toEqual({ cleanupWarning: true });
+    await expect(replaceAnimalPhoto(animal, validPhoto())).resolves.toEqual({
+      cleanupWarning: true,
+      photoPath: expect.stringMatching(/^11111111-1111-4111-8111-111111111111\/.+\.png$/),
+    });
     expect(mocks.remove).toHaveBeenCalledWith([animal.photo_path]);
   });
 
   it("clears the profile path before removing the private file", async () => {
     mocks.query.maybeSingle.mockResolvedValue({ data: { id: animal.id }, error: null });
     mocks.remove.mockResolvedValue({ error: null });
-    await expect(removeAnimalPhoto(animal)).resolves.toEqual({ cleanupWarning: false });
+    await expect(removeAnimalPhoto(animal)).resolves.toEqual({ cleanupWarning: false, photoPath: null });
     expect(mocks.query.update).toHaveBeenCalledWith({ photo_path: null });
     expect(mocks.remove).toHaveBeenCalledWith([animal.photo_path]);
+  });
+
+  it("keeps a successful replacement successful when deleting the old file throws", async () => {
+    mocks.upload.mockResolvedValue({ error: null });
+    mocks.query.maybeSingle.mockResolvedValue({ data: { id: animal.id }, error: null });
+    mocks.remove.mockRejectedValue(new Error("temporary storage failure"));
+    await expect(replaceAnimalPhoto(animal, validPhoto())).resolves.toMatchObject({ cleanupWarning: true });
+  });
+
+  it("keeps a successful removal successful when deleting the file throws", async () => {
+    mocks.query.maybeSingle.mockResolvedValue({ data: { id: animal.id }, error: null });
+    mocks.remove.mockRejectedValue(new Error("temporary storage failure"));
+    await expect(removeAnimalPhoto(animal)).resolves.toEqual({ cleanupWarning: true, photoPath: null });
+    expect(mocks.query.update).toHaveBeenCalledWith({ photo_path: null });
   });
 
   it("keeps the current photo when storage upload fails", async () => {

@@ -32,18 +32,27 @@ describe("animal profile storage", () => {
     const db = await database({ demoAccess: true });
     const animal = (await db.query<{ id: string }>("insert into animals(tag, arrival_date) values ('DEMO-1', farm_today()) returning id")).rows[0];
     const name = photoName(animal.id);
+    expect((await db.query<{ can_call: boolean }>("select has_function_privilege('anon', 'private.can_access_animal_photo(text)', 'execute') as can_call")).rows[0].can_call).toBe(true);
     await db.query("insert into storage.objects(bucket_id, name) values ('animal-photos', $1)", [name]);
     await db.exec("set role anon");
     expect((await db.query("select name from storage.objects where bucket_id = 'animal-photos'")).rows).toEqual([{ name }]);
+    const additionalName = `${animal.id}/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.jpg`;
+    await db.query("insert into storage.objects(bucket_id, name) values ('animal-photos', $1)", [additionalName]);
+    await db.query("update storage.objects set metadata = '{\"demo\":true}'::jsonb where bucket_id = 'animal-photos' and name = $1", [additionalName]);
+    await db.query("delete from storage.objects where bucket_id = 'animal-photos' and name = $1", [additionalName]);
     await expect(db.query("insert into storage.objects(bucket_id, name) values ('animal-photos', '00000000-0000-4000-8000-000000000000/8f20b206-00d2-4c31-bcec-f9490a634c95.webp')"))
       .rejects.toThrow(/row-level security/i);
   });
 
-  it("denies anonymous photo access when demo sharing is disabled", async () => {
+  it("keeps production photos private if demo sharing is enabled after migration", async () => {
     const db = await database();
     const animal = (await db.query<{ id: string }>("insert into animals(tag, arrival_date) values ('PRIVATE-1', farm_today()) returning id")).rows[0];
     const name = photoName(animal.id);
     await db.query("insert into storage.objects(bucket_id, name) values ('animal-photos', $1)", [name]);
+    // Production applies migrations with demo access off. A later accidental
+    // toggle must not create the anonymous storage policies retroactively.
+    expect((await db.query<{ can_call: boolean }>("select has_function_privilege('anon', 'private.can_access_animal_photo(text)', 'execute') as can_call")).rows[0].can_call).toBe(false);
+    await db.query("update private.demo_access set enabled = true where id = 1");
     await db.exec("set role anon");
     expect((await db.query("select name from storage.objects where bucket_id = 'animal-photos'")).rows).toEqual([]);
     await expect(db.query("insert into storage.objects(bucket_id, name) values ('animal-photos', $1)", [photoName(animal.id)]))

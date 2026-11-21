@@ -150,8 +150,11 @@ export async function loadFarmData(scope: FarmScope, id = "", date = farmToday()
     only(detail, () => allRows<Calving>("calvings", "id", eq("animal_id", id))),
     only(scope === "milk" || scope === "customers", () => allRows<Customer>("customers")),
     only(scope === "milk" || customerDetail, () => allRows<CustomerRate>("customer_rates", "id", customerDetail ? eq("customer_id", id) : [])),
-    only(scope === "dashboard" || scope === "milk", () => allRows<MilkShift>("milk_shifts", "id",
-      scope === "dashboard" ? since("milk_date", addDays(today, -1)) : eq("milk_date", date))),
+    only(scope === "dashboard" || scope === "milk" || detail, () => allRows<MilkShift>("milk_shifts", "id",
+      detail ? [
+        { column: "milk_date", op: "gte", value: addDays(today, -6) },
+        { column: "milk_date", op: "lt", value: addDays(today, 1) },
+      ] : scope === "dashboard" ? since("milk_date", addDays(today, -1)) : eq("milk_date", date))),
     only(scope === "dashboard" || scope === "milk" || customerDetail, () => allRows<MilkDelivery>("milk_deliveries", "id",
       scope === "dashboard" ? monthRows("delivery_date", month) : scope === "milk" ? eq("delivery_date", date) : eq("customer_id", id))),
     only(scope === "milk", () => allRows<MilkDisposition>("milk_dispositions", "id", eq("milk_date", date))),
@@ -181,7 +184,10 @@ export async function loadFarmData(scope: FarmScope, id = "", date = farmToday()
     ? await rowsForIds<Calving>("calvings", "id", calvingOffspring.map((row) => row.calving_id))
     : [];
   const animalCalvings = [...new Map([...calvings, ...linkedBirthCalvings].map((row) => [row.id, row])).values()];
-  const relevantShifts = detail && animalMilk.length ? await rowsForIds<MilkShift>("milk_shifts", "id", animalMilk.map((r) => r.shift_id)) : shifts;
+  const animalHistoryShifts = detail && animalMilk.length ? await rowsForIds<MilkShift>("milk_shifts", "id", animalMilk.map((r) => r.shift_id)) : [];
+  const relevantShifts = detail
+    ? [...new Map([...shifts, ...animalHistoryShifts].map((shift) => [shift.id, shift])).values()]
+    : shifts;
   return { today, settings, animals, animalStatus, health, inseminations, calvings: animalCalvings, calvingOffspring, animalMilk,
     customers, rates, shifts: relevantShifts, deliveries, dispositions, milkShiftConfig, payments, categories, expenses, accounts,
     companyBills, otherIncome, reports, balances, alerts, monthlyPnl: pnl };

@@ -72,8 +72,8 @@ describe("financial report calculations and exports", () => {
       report.otherIncome[0],
       { ...report.otherIncome[0], income_id: "income-2", kind: "manure", amount: 60, animal_tag: null },
     ])).toEqual([
-      { kind: "animal_sale", label: "Animal sale", amount: 200 },
-      { kind: "manure", label: "Manure", amount: 60 },
+      { kind: "manure", label: "Gobar ki farokht", amount: 60 },
+      { kind: "animal_sale", label: "Janwar ki farokht", amount: 200 },
     ]);
   });
 
@@ -85,16 +85,21 @@ describe("financial report calculations and exports", () => {
   it("exports report metadata, P&L formulas, and filtered supporting detail", () => {
     expect(salaryPayableTotal(report.salaryPayables)).toBe(750);
     const sections = financialReportExportSections(report, [], "2026-11-01", "2026-11-20", "2026-11-20");
+    expect(sections.map((section) => section.title)).toContain("Maali khulasa");
+    expect(sections.map((section) => section.title)).toContain("Hisaab ki hudood");
     expect(sections[0].rows[0]).toEqual({
-      farm_name: "Test Farm", report_period: "2026-11-01 to 2026-11-20", generated_at: "2026-11-20",
+      farm_name: "Test Farm", report_period: "2026-11-01 se 2026-11-20 tak", generated_at: "2026-11-20",
     });
-    expect(sections.find((section) => section.title === "Profit and loss")?.rows).toContainEqual({
-      line: "Net farm profit / loss", amount_rs: 900,
-      treatment: "Matches report_period_summary; home/personal expenses excluded",
+    expect(sections.find((section) => section.title === "Aamdani aur kharcha")?.rows).toContainEqual({
+      line: "Farm ka net munafa / nuqsan", amount_rs: 900,
+      treatment: "Report ke aamdani aur kharchay ke hisaab se; ghar / zaati kharchay shamil nahi",
     });
-    expect(sections.find((section) => section.title === "Selected account ledger")?.rows).toEqual([]);
+    expect(sections.find((section) => section.title === "Chunay huay account ka ledger")?.rows).toEqual([]);
+    expect(sections.find((section) => section.title === "Darj qism ke mutabiq kharchay")?.rows).toContainEqual(
+      expect.objectContaining({ category: "Home", classification: "Ghar / zaati" }),
+    );
     const flat = flattenFinancialExport(sections);
     expect(flat.columns).toContain("section");
-    expect(flat.rows.some((row) => row.section === "Customer receivables" && "closing_balance" in row && row.closing_balance === 600)).toBe(true);
+    expect(flat.rows.some((row) => row.section === "Customer ka baqaya" && "closing_balance" in row && row.closing_balance === 600)).toBe(true);
   });
 });

@@ -18,11 +18,17 @@ import { sharePdfFile } from "@/lib/pdf-share";
 type Preset = "today" | "yesterday" | "week" | "month" | "year" | "custom";
 type ExportAction = "pdf" | "excel" | "csv" | "print" | "share";
 const input = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
-const labelByIncome: Record<string, string> = { animal_sale: "Animal sale", manure: "Manure", other: "Other recorded income" };
+const labelByIncome: Record<string, string> = { animal_sale: "Janwar ki farokht", manure: "Gobar ki farokht", other: "Doosri darj aamdani" };
 const presetLabels: Record<Preset, string> = {
-  today: "Today", yesterday: "Yesterday", week: "This week", month: "This month", year: "This year", custom: "Custom range",
+  today: "Aaj", yesterday: "Kal", week: "Yeh hafta", month: "Yeh maheena", year: "Yeh saal", custom: "Apni muddat",
 };
-const expenseType = (farm: boolean) => farm ? "Farm" : "Home / personal";
+const expenseType = (farm: boolean) => farm ? "Farm" : "Ghar / zaati";
+const classificationLabel = (classification: string) => classification === "Farm" ? "Farm" : "Ghar / zaati";
+const accountKindLabel = (kind: string) => ({ cash: "Cash", bank: "Bank", person: "Zaati account" }[kind] ?? kind);
+const entryKindLabel = (kind: string) => ({
+  opening_balance: "Shuru ka balance", payment: "Wusooli", other_income: "Doosri aamdani",
+  transfer_in: "Account mein transfer", transfer_out: "Account se transfer", expense: "Kharcha",
+}[kind] ?? kind.replaceAll("_", " "));
 const periodText = (from: string, to: string) => `${formatDay(from)} – ${formatDay(to)}`;
 
 function mondayStart(day: string) {
@@ -48,18 +54,18 @@ function TrendBars({ rows, from, to, cash = false }: {
   const daily = daysBetween(from, to) < 90;
   const first = cash ? "cash_received" : "total_income";
   const second = cash ? "cash_paid" : "farm_expenses";
-  return <div className="overflow-x-auto rounded-xl border border-line p-3" aria-label={cash ? "Cash movement trend" : "Income and expense trend"}>
-    <div className="flex min-w-max items-end gap-2" role="img" aria-label={cash ? "Bar chart of cash received and paid" : "Bar chart of income and farm expenses"}>
+  return <div className="overflow-x-auto rounded-xl border border-line p-3" aria-label={cash ? "Cash ki aamad aur adaigi ka rujhan" : "Aamdani aur kharchay ka rujhan"}>
+    <div className="flex min-w-max items-end gap-2" role="img" aria-label={cash ? "Wasool aur ada ki gayi raqam ka chart" : "Aamdani aur farm kharchay ka chart"}>
       {rows.map((row) => <div key={row.bucket_start} className="flex w-14 flex-col items-center gap-1">
-        <div className="flex h-36 items-end gap-1" title={`${daily ? formatDay(row.bucket_start) : formatMonth(row.bucket_start)} · ${cash ? "In " + rs(row.cash_received) + ", out " + rs(row.cash_paid) : "Income " + rs(row.total_income) + ", farm expense " + rs(row.farm_expenses)}`}>
+        <div className="flex h-36 items-end gap-1" title={`${daily ? formatDay(row.bucket_start) : formatMonth(row.bucket_start)} · ${cash ? "Wasool " + rs(row.cash_received) + ", ada " + rs(row.cash_paid) : "Aamdani " + rs(row.total_income) + ", farm kharcha " + rs(row.farm_expenses)}`}>
           <span className="w-4 rounded-t bg-berseem" style={{ height: `${Math.max(1, (row[first] / max) * 100)}%` }} />
           <span className="w-4 rounded-t bg-udhaar" style={{ height: `${Math.max(1, (row[second] / max) * 100)}%` }} />
         </div>
         <span className="max-w-14 truncate text-[10px] text-muted">{daily ? row.bucket_start.slice(5) : row.bucket_start.slice(0, 7)}</span>
       </div>)}
-      {!rows.length && <p className="p-3 text-sm text-muted">No activity to chart for this period.</p>}
+      {!rows.length && <p className="p-3 text-sm text-muted">Is muddat mein chart ke liye koi entry nahi.</p>}
     </div>
-    <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted"><span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-berseem" />{cash ? "Received" : "Farm income"}</span><span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-udhaar" />{cash ? "Paid" : "Farm expenses"}</span></p>
+    <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted"><span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-berseem" />{cash ? "Wasool" : "Farm aamdani"}</span><span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-udhaar" />{cash ? "Ada" : "Farm kharchay"}</span></p>
   </div>;
 }
 
@@ -94,28 +100,28 @@ export default function FinancialReport() {
     if (action !== "print" && ledger.isPending) return;
     setBusy(action); setStatus("");
     try {
-      if (action === "print") { window.print(); setStatus("Print dialog opened."); return; }
+      if (action === "print") { window.print(); setStatus("Print khul gaya hai."); return; }
       const sections = financialReportExportSections(data, ledger.data ?? [], from, to, today);
-      const title = `Financial Report — ${periodText(from, to)}`;
-      const filename = `financial-report-${from}-to-${to}`;
+      const title = `Maali Report — ${periodText(from, to)}`;
+      const filename = `maali-report-${from}-to-${to}`;
       if (action === "csv" || action === "excel") {
         const flat = flattenFinancialExport(sections);
-        if (action === "csv") downloadFile(`${filename}.csv`, toCsv(flat.columns, flat.rows, "Financial Report"), "text/csv;charset=utf-8");
-        else downloadBlob(`${filename}.xlsx`, new Blob([await buildXlsx("Financial Report", flat.columns, flat.rows)], {
+        if (action === "csv") downloadFile(`${filename}.csv`, toCsv(flat.columns, flat.rows, "Maali Report"), "text/csv;charset=utf-8");
+        else downloadBlob(`${filename}.xlsx`, new Blob([await buildXlsx("Maali Report", flat.columns, flat.rows)], {
           type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         }));
-        setStatus(action === "csv" ? "CSV report downloaded." : "Excel report downloaded.");
+        setStatus(action === "csv" ? "CSV file download ho gayi." : "Excel file download ho gayi.");
         return;
       }
       const bytes = await buildPdfReport(title, sections, data.period.farmName);
       if (action === "pdf") {
         downloadBlob(`${filename}.pdf`, new Blob([bytes], { type: "application/pdf" }));
-        setStatus("PDF report downloaded.");
+        setStatus("PDF download ho gayi.");
       } else {
         const outcome = await sharePdfFile(`${filename}.pdf`, bytes, title, `${data.period.farmName} · ${periodText(from, to)}`);
-        setStatus(outcome === "shared" ? "Share sheet opened; check the file and recipient before sending." : outcome === "cancelled" ? "Sharing cancelled." : "File sharing is unavailable here; the PDF was downloaded.");
+        setStatus(outcome === "shared" ? "Share menu khul gaya hai. Bhejne se pehle file aur shakhs check kar lein." : outcome === "cancelled" ? "Share cancel ho gaya." : "Yahan file share nahi ho sakti; PDF download kar di hai.");
       }
-    } catch (error) { setStatus(`Report export failed: ${friendlyError(error)}`); }
+    } catch (error) { setStatus(`Maali report export nahi ho saki: ${friendlyError(error)}`); }
     finally { setBusy(null); }
   };
 
@@ -138,135 +144,135 @@ export default function FinancialReport() {
   const exportReady = Boolean(data && (ledger.isSuccess || !selectedAccount));
 
   return <>
-    <PageHeader title="Financial Report" sub="Farm income, expenses, cash movement, and outstanding balances" back="/reports/" />
+    <PageHeader title="Maali Report" sub="Farm ki aamdani, kharchay, raqam ki aamad o raft aur baqaya" back="/reports/" />
     <Body className="print-report space-y-4 pb-8">
-      <Panel title="Report period" className="no-print">
+      <Panel title="Report ki muddat" className="no-print">
         <div className="flex flex-wrap gap-2">{(Object.keys(presetLabels) as Preset[]).map((value) => <button
           type="button" key={value} aria-pressed={preset === value} onClick={() => choosePreset(value)}
           className={`min-h-11 rounded-xl border px-3 font-semibold ${preset === value ? "border-ink bg-ink text-white" : "border-line"}`}
         >{presetLabels[value]}</button>)}</div>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <label className="text-sm font-semibold">From date<input aria-label="Financial report start date" type="date" value={from} max={to || today} onChange={(event) => { setPreset("custom"); setFrom(event.target.value); setStatus(""); }} className={`${input} mt-1`} /></label>
-          <label className="text-sm font-semibold">To date<input aria-label="Financial report end date" type="date" value={to} min={from || undefined} max={today} onChange={(event) => { setPreset("custom"); setTo(event.target.value); setStatus(""); }} className={`${input} mt-1`} /></label>
+          <label className="text-sm font-semibold">Tareekh se<input aria-label="Maali report ki shuru ki tareekh" type="date" value={from} max={to || today} onChange={(event) => { setPreset("custom"); setFrom(event.target.value); setStatus(""); }} className={`${input} mt-1`} /></label>
+          <label className="text-sm font-semibold">Tareekh tak<input aria-label="Maali report ki aakhri tareekh" type="date" value={to} min={from || undefined} max={today} onChange={(event) => { setPreset("custom"); setTo(event.target.value); setStatus(""); }} className={`${input} mt-1`} /></label>
         </div>
         {!valid && <p role="alert" className="mt-3 text-sm text-udhaar">Tareekh ki muddat durust rakhein: aaj ya us se pehle khatam ho aur 10 saal se lambi na ho.</p>}
-        {valid && <p className="mt-3 text-sm text-muted">Showing both dates: <strong>{periodText(from, to)}</strong></p>}
+        {valid && <p className="mt-3 text-sm text-muted">Report ki muddat: <strong>{periodText(from, to)}</strong></p>}
       </Panel>
 
-      {valid && report.isPending && <p role="status">Financial report is loading…</p>}
-      {valid && report.isError && <p role="alert" className="text-udhaar">Report could not load: {friendlyError(report.error)} <button type="button" onClick={() => void report.refetch()} className="underline">Retry</button></p>}
+      {valid && report.isPending && <p role="status">Maali report load ho rahi hai…</p>}
+      {valid && report.isError && <p role="alert" className="text-udhaar">Maali report nahi khuli: {friendlyError(report.error)} <button type="button" onClick={() => void report.refetch()} className="underline">Dobara koshish</button></p>}
       {data && summary && <>
-        <Panel title="Overview">
-          <p className="mb-3 text-sm text-muted">Income and Farm Munafa follow the saved report rules. Receipts come from recorded customer payments and other income; account transfers are excluded.</p>
+        <Panel title="Khulasa">
+          <p className="mb-3 text-sm text-muted">Aamdani aur farm munafa darj hisaab ke mutabiq hain. Customer ki net wasooli aur doosri aamdani shamil hai; accounts ke darmiyan transfer shamil nahi.</p>
           <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {[
-              ["Total farm income", rs(summary.milk_income + summary.other_income), "Milk and other recorded income"],
-              ["Cash received", rs(receivedTotal), "Customer payments + other income; no transfers"],
-              ["Total expenses", rs(summary.farm_expenses + summary.home_expenses), "Farm and home/personal shown separately"],
-              ["Farm profit / loss", rs(summary.profit), "Home/personal costs are excluded from Farm Munafa"],
-              ["Customer receivables", rs(receivables.due), `At ${formatDay(to)}; customer credits ${rs(receivables.customerCredits)}`],
-              ["Unpaid salaries", rs(pendingSalaries), `Salary records as of ${formatDay(to)}`],
+              ["Farm ki kul aamdani", rs(summary.milk_income + summary.other_income), "Doodh aur doosri darj aamdani"],
+              ["Kul wasooli", rs(receivedTotal), "Customer se wapsi minus karke wasooli aur doosri aamdani; transfer shamil nahi"],
+              ["Kul kharchay", rs(summary.farm_expenses + summary.home_expenses), "Farm aur ghar / zaati kharcha alag dikhaya gaya hai"],
+              ["Farm ka munafa / nuqsan", rs(summary.profit), "Ghar / zaati kharchay farm munafay mein shamil nahi"],
+              ["Customer ka baqaya", rs(receivables.due), `${formatDay(to)} tak; customer advance ${rs(receivables.customerCredits)}`],
+              ["Baaki tankhwah", rs(pendingSalaries), `${formatDay(to)} tak ka tankhwah record`],
             ].map(([label, value, detail]) => <div key={label} className="rounded-xl bg-ground p-3"><dt className="text-sm text-muted">{label}</dt><dd className="mt-1 font-display text-xl font-bold">{value}</dd><dd className="mt-1 text-xs text-muted">{detail}</dd></div>)}
           </dl>
-          <p className="mt-3 text-sm text-muted">Supplier payables are unavailable because no supplier credit ledger is stored. Cost per litre is omitted because the app has no documented rule for allocating farm costs to milk.</p>
+          <p className="mt-3 text-sm text-muted">Supplier ka baqaya yahan nahi dikhaya kyun ke supplier ka alag udhaar ledger darj nahi. Har litre ka kharcha bhi nahi nikala: farm kharchay ko doodh ke litres mein baantne ka muqarrar tareeqa maujood nahi.</p>
           <div className="no-print mt-4 flex flex-wrap gap-2">
             {(["pdf", "excel", "csv", "print", "share"] as ExportAction[]).map((action) => <button key={action} type="button" disabled={busy !== null || !exportReady}
               onClick={() => void exportAction(action)} className={`min-h-11 rounded-xl border px-4 font-semibold disabled:opacity-50 ${action === "share" ? "bg-berseem text-white" : "border-line"}`}>
-              {action === "pdf" ? "PDF download" : action === "excel" ? "Excel export" : action === "csv" ? "CSV export" : action === "print" ? "Print" : "Share PDF"}
+              {action === "pdf" ? "PDF download" : action === "excel" ? "Excel download" : action === "csv" ? "CSV download" : action === "print" ? "Print karein" : "PDF share karein"}
             </button>)}
           </div>
-          {status && <p role={status.includes("failed") ? "alert" : "status"} className="mt-2 text-sm text-berseem-deep">{status}</p>}
+          {status && <p role={status.startsWith("Maali report export nahi ho saki") ? "alert" : "status"} className="mt-2 text-sm text-berseem-deep">{status}</p>}
         </Panel>
 
         <div className="grid min-w-0 gap-4 lg:grid-cols-2 [&>*]:min-w-0">
-          <Panel title="Income by source">
-            <p className="mb-3 text-sm text-muted">Billed sales and other recorded income are revenue. Customer payments are displayed separately and do not reduce billed income.</p>
+          <Panel title="Aamdani ke zariye">
+            <p className="mb-3 text-sm text-muted">Bill shuda farokht aur doosri darj aamdani kul aamdani hai. Customer ki wasooli alag dikhai jati hai aur bill shuda aamdani ko kam nahi karti.</p>
             <dl className="divide-y divide-line">
-              <div className="flex justify-between gap-3 py-2"><dt>Milk deliveries and company bills (billed)</dt><dd className="font-semibold">{rs(summary.milk_income)}</dd></div>
+              <div className="flex justify-between gap-3 py-2"><dt>Doodh ki delivery aur company bill (bill shuda)</dt><dd className="font-semibold">{rs(summary.milk_income)}</dd></div>
               {incomeGroups.map((row) => <div key={row.kind} className="flex justify-between gap-3 py-2"><dt>{row.label}</dt><dd className="font-semibold">{rs(row.amount)}</dd></div>)}
-              <div className="flex justify-between gap-3 border-t border-line py-2 font-bold"><dt>Total farm income</dt><dd>{rs(summary.milk_income + summary.other_income)}</dd></div>
+              <div className="flex justify-between gap-3 border-t border-line py-2 font-bold"><dt>Farm ki kul aamdani</dt><dd>{rs(summary.milk_income + summary.other_income)}</dd></div>
             </dl>
-            <h3 className="mt-4 font-semibold">Customer charges and payments</h3>
-            <div className="mt-2 overflow-x-auto"><table className="w-full min-w-[600px] text-sm"><thead><tr>{["Customer", "Billed", "Payments", "Discounts", "Refunds"].map((item) => <th key={item} className="border-b border-line px-2 py-2 text-left last:text-right">{item}</th>)}</tr></thead><tbody>
+            <h3 className="mt-4 font-semibold">Customer ke bill aur wasooli</h3>
+            <div className="mt-2 overflow-x-auto"><table className="w-full min-w-[600px] text-sm"><thead><tr>{["Customer", "Bill", "Wasooli", "Riayat", "Wapsi"].map((item) => <th key={item} className="border-b border-line px-2 py-2 text-left last:text-right">{item}</th>)}</tr></thead><tbody>
               {data.period.customers.map((row) => <tr key={row.customer_id}><td className="border-b border-line px-2 py-2">{row.name}</td><td className="border-b border-line px-2 py-2">{rs(row.charged)}</td><td className="border-b border-line px-2 py-2">{rs(row.paid)}</td><td className="border-b border-line px-2 py-2">{rs(row.discount)}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.refund)}</td></tr>)}
             </tbody></table></div>
-            {!data.period.customers.length && <p className="mt-2 text-sm text-muted">No customer charges or payments in this period.</p>}
-            <h3 className="mt-4 font-semibold">Other income records</h3>
-            <div className="mt-2 overflow-x-auto"><table className="w-full min-w-[500px] text-sm"><thead><tr>{["Date", "Source", "Animal", "Note", "Amount"].map((item) => <th key={item} className="border-b border-line px-2 py-2 text-left last:text-right">{item}</th>)}</tr></thead><tbody>
-              {data.otherIncome.map((row) => <tr key={row.income_id}><td className="border-b border-line px-2 py-2">{row.income_date}</td><td className="border-b border-line px-2 py-2">{labelByIncome[row.kind] ?? row.kind}</td><td className="border-b border-line px-2 py-2">{row.animal_tag ?? "—"}</td><td className="border-b border-line px-2 py-2">{row.note ?? "—"}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.amount)}</td></tr>)}
+            {!data.period.customers.length && <p className="mt-2 text-sm text-muted">Is muddat mein customer ka koi bill ya wasooli nahi.</p>}
+            <h3 className="mt-4 font-semibold">Doosri aamdani ki entries</h3>
+            <div className="mt-2 overflow-x-auto"><table className="w-full min-w-[500px] text-sm"><thead><tr>{["Tareekh", "Zariya", "Janwar", "Note", "Raqam"].map((item) => <th key={item} className="border-b border-line px-2 py-2 text-left last:text-right">{item}</th>)}</tr></thead><tbody>
+            {data.otherIncome.map((row) => <tr key={row.income_id}><td className="border-b border-line px-2 py-2">{row.income_date}</td><td className="border-b border-line px-2 py-2">{labelByIncome[row.kind] ?? "Darj aamdani"}</td><td className="border-b border-line px-2 py-2">{row.animal_tag ?? "—"}</td><td className="border-b border-line px-2 py-2">{row.note ?? "—"}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.amount)}</td></tr>)}
             </tbody></table></div>
-            {!data.otherIncome.length && <p className="mt-2 text-sm text-muted">No other income was recorded in this period.</p>}
+            {!data.otherIncome.length && <p className="mt-2 text-sm text-muted">Is muddat mein doosri aamdani darj nahi hui.</p>}
           </Panel>
 
-          <Panel title="Profit and loss">
-            <p className="mb-3 text-sm text-muted">This statement follows `report_period_summary`: billed milk and company sales + other recorded income − farm costs. Home/personal costs do not reduce Farm Munafa.</p>
+          <Panel title="Aamdani aur kharcha">
+            <p className="mb-3 text-sm text-muted">Farm ki aamdani mein doodh aur company ke bill, aur doosri darj aamdani shamil hai. Is mein se farm ke kharchay minus hote hain. Ghar / zaati kharcha farm munafay mein shamil nahi.</p>
             <dl className="divide-y divide-line">
-              <div className="flex justify-between gap-3 py-2"><dt>Milk deliveries and company bills</dt><dd>{rs(summary.milk_income)}</dd></div>
-              <div className="flex justify-between gap-3 py-2"><dt>Other recorded income</dt><dd>{rs(summary.other_income)}</dd></div>
-              <div className="flex justify-between gap-3 py-2"><dt>Farm operating expenses</dt><dd>− {rs(summary.farm_expenses)}</dd></div>
-              <div className="flex justify-between gap-3 border-t border-line py-2 text-lg font-bold"><dt>Net farm profit / loss</dt><dd>{rs(summary.profit)}</dd></div>
-              <div className="flex justify-between gap-3 py-2"><dt>Home / personal expenses (separate)</dt><dd>{rs(summary.home_expenses)}</dd></div>
+              <div className="flex justify-between gap-3 py-2"><dt>Doodh ki delivery aur company bill</dt><dd>{rs(summary.milk_income)}</dd></div>
+              <div className="flex justify-between gap-3 py-2"><dt>Doosri darj aamdani</dt><dd>{rs(summary.other_income)}</dd></div>
+              <div className="flex justify-between gap-3 py-2"><dt>Farm ke rozmarra kharchay</dt><dd>− {rs(summary.farm_expenses)}</dd></div>
+              <div className="flex justify-between gap-3 border-t border-line py-2 text-lg font-bold"><dt>Farm ka net munafa / nuqsan</dt><dd>{rs(summary.profit)}</dd></div>
+              <div className="flex justify-between gap-3 py-2"><dt>Ghar / zaati kharchay (alag)</dt><dd>{rs(summary.home_expenses)}</dd></div>
             </dl>
-            <p className="mt-3 text-xs text-muted">Salary is counted once when paid through the expense ledger. Pending salary below is a payable balance, not another P&amp;L expense. Expense rows include any inventory-linked Kharcha once; this report does not add separate inventory purchase totals.</p>
+            <p className="mt-3 text-xs text-muted">Ada ki gayi tankhwah kharchay ke ledger mein sirf aik martaba gini jati hai. Neeche ki baqi tankhwah ada talab raqam hai, mazeed kharcha nahi. Inventory se jura kharcha bhi aik martaba hi shamil hai.</p>
           </Panel>
         </div>
 
         <div className="grid min-w-0 gap-4 lg:grid-cols-2 [&>*]:min-w-0">
-          <Panel title="Expenses by recorded category">
-            <p className="mb-3 text-sm text-muted">Farm categories stay in Farm Munafa. Home and personal categories are listed separately.</p>
+          <Panel title="Darj qism ke mutabiq kharchay">
+            <p className="mb-3 text-sm text-muted">Farm ke kharchay farm munafay mein shamil hain. Ghar / zaati kharchay alag dikhaye gaye hain.</p>
             <div className="space-y-3">{expenseGroups.map((row) => <div key={`${row.classification}-${row.category}`}>
-              <div className="mb-1 flex justify-between gap-2 text-sm"><span>{row.category} <span className="text-muted">· {row.classification} · {row.entries}</span></span><strong>{rs(row.amount)}</strong></div>
+              <div className="mb-1 flex justify-between gap-2 text-sm"><span>{row.category} <span className="text-muted">· {classificationLabel(row.classification)} · {row.entries} dafaa</span></span><strong>{rs(row.amount)}</strong></div>
               <div className="h-2 rounded-full bg-ground"><div className={`h-2 rounded-full ${row.classification === "Farm" ? "bg-berseem" : "bg-udhaar"}`} style={{ width: `${Math.max(1, row.amount / maxExpense * 100)}%` }} /></div>
             </div>)}</div>
-            {!expenseGroups.length && <p className="text-sm text-muted">No expenses were recorded in this period.</p>}
-            <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[600px] text-sm"><thead><tr>{["Date", "Category / note", "Class", "Account", "Amount"].map((item) => <th key={item} className="border-b border-line px-2 py-2 text-left last:text-right">{item}</th>)}</tr></thead><tbody>
+            {!expenseGroups.length && <p className="text-sm text-muted">Is muddat mein koi kharcha darj nahi hua.</p>}
+            <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[600px] text-sm"><thead><tr>{["Tareekh", "Qism / tafseel", "Farm ya ghar", "Account", "Raqam"].map((item) => <th key={item} className="border-b border-line px-2 py-2 text-left last:text-right">{item}</th>)}</tr></thead><tbody>
               {data.period.expenses.map((row, index) => <tr key={`${row.expense_date}-${row.category}-${index}`}><td className="border-b border-line px-2 py-2">{row.expense_date}</td><td className="border-b border-line px-2 py-2">{row.category}{row.note ? ` · ${row.note}` : ""}</td><td className="border-b border-line px-2 py-2">{expenseType(row.is_farm_cost)}</td><td className="border-b border-line px-2 py-2">{row.account}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.amount)}</td></tr>)}
             </tbody></table></div>
           </Panel>
 
-          <Panel title="Customer receivables">
-            <p className="mb-3 text-sm text-muted">Closing balances come from the Khata ledger at {formatDay(to)}. Positive balances are dues; negative balances are customer credits.</p>
-            <div className="mb-3 flex flex-wrap gap-4 text-sm"><strong>Receivable: {rs(receivables.due)}</strong><span>Customer credits: {rs(receivables.customerCredits)}</span></div>
-            <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-sm"><thead><tr>{["Customer", "Opening", "New opening", "Charges", "Payments", "Discounts", "Refunds", "Closing"].map((item) => <th key={item} className="border-b border-line px-2 py-2 text-left last:text-right">{item}</th>)}</tr></thead><tbody>
+          <Panel title="Customer ka baqaya">
+            <p className="mb-3 text-sm text-muted">Aakhri balance Khata ke hisaab se {formatDay(to)} ka hai. Musbat raqam customer se leni hai; manfi raqam customer ka advance hai.</p>
+            <div className="mb-3 flex flex-wrap gap-4 text-sm"><strong>Lena baqi: {rs(receivables.due)}</strong><span>Customer ka advance: {rs(receivables.customerCredits)}</span></div>
+            <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-sm"><thead><tr>{["Customer", "Shuru ka baqaya", "Naya baqaya", "Bill", "Wasooli", "Riayat", "Wapsi", "Aakhri baqaya"].map((item) => <th key={item} className="border-b border-line px-2 py-2 text-left last:text-right">{item}</th>)}</tr></thead><tbody>
               {data.customers.map((row) => <tr key={row.customer_id}><td className="border-b border-line px-2 py-2">{row.name}</td><td className="border-b border-line px-2 py-2">{rs(row.opening_balance)}</td><td className="border-b border-line px-2 py-2">{rs(row.opening_added)}</td><td className="border-b border-line px-2 py-2">{rs(row.charges)}</td><td className="border-b border-line px-2 py-2">{rs(row.payments)}</td><td className="border-b border-line px-2 py-2">{rs(row.discounts)}</td><td className="border-b border-line px-2 py-2">{rs(row.refunds)}</td><td className="border-b border-line px-2 py-2 text-right font-semibold">{rs(row.closing_balance)}</td></tr>)}
             </tbody></table></div>
-            {!data.customers.length && <p className="text-sm text-muted">No customer balances or activity in this period.</p>}
+            {!data.customers.length && <p className="text-sm text-muted">Is muddat mein customer ka baqaya ya koi entry nahi.</p>}
           </Panel>
         </div>
 
-        <Panel title="Galla and account cash flow">
-          <p className="mb-3 text-sm text-muted">Opening + received − paid + transfers in − transfers out = closing. Inflows/outflows include dated account openings in the selected period. Internal account transfers are separate and are not income or expenses.</p>
-          {!allAccountsReconcile && <p role="alert" className="mb-3 text-udhaar">At least one account does not reconcile. Review its saved ledger entries.</p>}
-          {allAccountsReconcile && <p role="status" className="mb-3 text-sm text-berseem-deep">All account closing balances reconcile with their ledger movements.</p>}
-          <div className="overflow-x-auto"><table className="w-full min-w-[940px] text-sm"><thead><tr>{["Account", "Opening", "Received", "Paid", "Transfers in", "Transfers out", "Closing"].map((item) => <th key={item} className="border-b border-line px-2 py-2 text-left last:text-right">{item}</th>)}</tr></thead><tbody>
-            {data.accounts.map((row) => <tr key={row.account_id}><td className="border-b border-line px-2 py-2">{row.account_name} <span className="text-muted">· {row.account_kind}</span></td><td className="border-b border-line px-2 py-2">{rs(row.opening_balance)}</td><td className="border-b border-line px-2 py-2">{rs(row.money_received)}</td><td className="border-b border-line px-2 py-2">{rs(row.money_paid)}</td><td className="border-b border-line px-2 py-2">{rs(row.transfers_in)}</td><td className="border-b border-line px-2 py-2">{rs(row.transfers_out)}</td><td className="border-b border-line px-2 py-2 text-right font-semibold">{rs(row.closing_balance)}</td></tr>)}
-          </tbody>{accountTotals && <tfoot><tr className="font-bold"><td className="px-2 py-2">All accounts</td><td className="px-2 py-2">{rs(accountTotals.opening)}</td><td className="px-2 py-2">{rs(accountTotals.received)}</td><td className="px-2 py-2">{rs(accountTotals.paid)}</td><td className="px-2 py-2">{rs(accountTotals.transferIn)}</td><td className="px-2 py-2">{rs(accountTotals.transferOut)}</td><td className="px-2 py-2 text-right">{rs(accountTotals.closing)}</td></tr></tfoot>}</table></div>
-          {!data.accounts.length && <p className="mt-2 text-sm text-muted">No account balances or movements in this period.</p>}
+        <Panel title="Galla aur account mein raqam ka hisaab">
+          <p className="mb-3 text-sm text-muted">Shuru ka baqaya + wasooli − adaigi + andar aane wala transfer − bahar jane wala transfer = aakhri baqaya. Muddat mein khulay accounts ki raqam bhi shamil hai. Accounts ke darmiyan transfer aamdani ya kharcha nahi hota.</p>
+          {!allAccountsReconcile && <p role="alert" className="mb-3 text-udhaar">Kam az kam aik account ka hisaab ledger se nahi milta. Darj entries check karein.</p>}
+          {allAccountsReconcile && <p role="status" className="mb-3 text-sm text-berseem-deep">Har account ka aakhri baqaya us ke ledger se milta hai.</p>}
+          <div className="overflow-x-auto"><table className="w-full min-w-[940px] text-sm"><thead><tr>{["Account", "Shuru ka baqaya", "Wasool", "Ada", "Andar transfer", "Bahar transfer", "Aakhri baqaya"].map((item) => <th key={item} className="border-b border-line px-2 py-2 text-left last:text-right">{item}</th>)}</tr></thead><tbody>
+            {data.accounts.map((row) => <tr key={row.account_id}><td className="border-b border-line px-2 py-2">{row.account_name} <span className="text-muted">· {accountKindLabel(row.account_kind)}</span></td><td className="border-b border-line px-2 py-2">{rs(row.opening_balance)}</td><td className="border-b border-line px-2 py-2">{rs(row.money_received)}</td><td className="border-b border-line px-2 py-2">{rs(row.money_paid)}</td><td className="border-b border-line px-2 py-2">{rs(row.transfers_in)}</td><td className="border-b border-line px-2 py-2">{rs(row.transfers_out)}</td><td className="border-b border-line px-2 py-2 text-right font-semibold">{rs(row.closing_balance)}</td></tr>)}
+          </tbody>{accountTotals && <tfoot><tr className="font-bold"><td className="px-2 py-2">Tamam accounts</td><td className="px-2 py-2">{rs(accountTotals.opening)}</td><td className="px-2 py-2">{rs(accountTotals.received)}</td><td className="px-2 py-2">{rs(accountTotals.paid)}</td><td className="px-2 py-2">{rs(accountTotals.transferIn)}</td><td className="px-2 py-2">{rs(accountTotals.transferOut)}</td><td className="px-2 py-2 text-right">{rs(accountTotals.closing)}</td></tr></tfoot>}</table></div>
+          {!data.accounts.length && <p className="mt-2 text-sm text-muted">Is muddat mein account ka koi baqaya ya harkat nahi.</p>}
           {selectedAccount && <div className="mt-4 border-t border-line pt-4">
-            <label className="block max-w-sm text-sm font-semibold">Ledger details<select aria-label="Account ledger details" value={selectedAccount.account_id} onChange={(event) => setSelectedAccountId(event.target.value)} className={`${input} mt-1`}>{data.accounts.map((account) => <option key={account.account_id} value={account.account_id}>{account.account_name}</option>)}</select></label>
-            {ledger.isPending && <p role="status" className="mt-3 text-sm">Account entries are loading…</p>}
-            {ledger.isError && <p role="alert" className="mt-3 text-sm text-udhaar">Account detail could not load: {friendlyError(ledger.error)} <button type="button" onClick={() => void ledger.refetch()} className="underline">Retry</button></p>}
-            {ledger.data && <div className="mt-3 overflow-x-auto"><table className="w-full min-w-[600px] text-sm"><thead><tr>{["Date", "Movement", "Description", "In", "Out"].map((item) => <th key={item} className="border-b border-line px-2 py-2 text-left last:text-right">{item}</th>)}</tr></thead><tbody>
-              {ledger.data.map((entry) => <tr key={entry.ref_id}><td className="border-b border-line px-2 py-2">{entry.entry_date}</td><td className="border-b border-line px-2 py-2">{entry.entry_kind.replaceAll("_", " ")}</td><td className="border-b border-line px-2 py-2">{entry.description}</td><td className="border-b border-line px-2 py-2">{entry.money_in ? rs(entry.money_in) : "—"}</td><td className="border-b border-line px-2 py-2 text-right">{entry.money_out ? rs(entry.money_out) : "—"}</td></tr>)}
-            </tbody></table>{!ledger.data.length && <p className="mt-2 text-sm text-muted">No ledger entries for this account and period.</p>}</div>}
+            <label className="block max-w-sm text-sm font-semibold">Ledger ki tafseel<select aria-label="Account ledger ki tafseel" value={selectedAccount.account_id} onChange={(event) => setSelectedAccountId(event.target.value)} className={`${input} mt-1`}>{data.accounts.map((account) => <option key={account.account_id} value={account.account_id}>{account.account_name}</option>)}</select></label>
+            {ledger.isPending && <p role="status" className="mt-3 text-sm">Account ki entries load ho rahi hain…</p>}
+            {ledger.isError && <p role="alert" className="mt-3 text-sm text-udhaar">Account ki tafseel nahi khuli: {friendlyError(ledger.error)} <button type="button" onClick={() => void ledger.refetch()} className="underline">Dobara koshish</button></p>}
+            {ledger.data && <div className="mt-3 overflow-x-auto"><table className="w-full min-w-[600px] text-sm"><thead><tr>{["Tareekh", "Harkat", "Tafseel", "Aamad", "Adaigi"].map((item) => <th key={item} className="border-b border-line px-2 py-2 text-left last:text-right">{item}</th>)}</tr></thead><tbody>
+              {ledger.data.map((entry) => <tr key={entry.ref_id}><td className="border-b border-line px-2 py-2">{entry.entry_date}</td><td className="border-b border-line px-2 py-2">{entryKindLabel(entry.entry_kind)}</td><td className="border-b border-line px-2 py-2">{entry.description}</td><td className="border-b border-line px-2 py-2">{entry.money_in ? rs(entry.money_in) : "—"}</td><td className="border-b border-line px-2 py-2 text-right">{entry.money_out ? rs(entry.money_out) : "—"}</td></tr>)}
+            </tbody></table>{!ledger.data.length && <p className="mt-2 text-sm text-muted">Is account aur muddat ki koi ledger entry nahi.</p>}</div>}
           </div>}
         </Panel>
 
-        <Panel title="Pending salary payables">
-          <p className="mb-3 text-sm text-muted">Agreed salary less linked expense payments recorded by {formatDay(to)}. Paid salary is already counted once in the expense ledger and Farm Munafa.</p>
-          <div className="overflow-x-auto"><table className="w-full min-w-[560px] text-sm"><thead><tr>{["Staff", "Salary month", "Agreed", "Paid", "Pending"].map((item) => <th key={item} className="border-b border-line px-2 py-2 text-left last:text-right">{item}</th>)}</tr></thead><tbody>
+        <Panel title="Baqi tankhwah">
+          <p className="mb-3 text-sm text-muted">{formatDay(to)} tak tay tankhwah mein se linked kharchay ki adaigi minus ki gayi hai. Ada ki hui tankhwah pehle hi ledger aur farm munafay mein aik martaba shamil hai.</p>
+          <div className="overflow-x-auto"><table className="w-full min-w-[560px] text-sm"><thead><tr>{["Mulazim", "Tankhwah ka maheena", "Tay shuda", "Ada shuda", "Baqi"].map((item) => <th key={item} className="border-b border-line px-2 py-2 text-left last:text-right">{item}</th>)}</tr></thead><tbody>
             {data.salaryPayables.filter((row) => row.outstanding_amount > 0).map((row) => <tr key={`${row.staff_id}-${row.salary_month}`}><td className="border-b border-line px-2 py-2">{row.staff_name}</td><td className="border-b border-line px-2 py-2">{formatMonth(row.salary_month)}</td><td className="border-b border-line px-2 py-2">{rs(row.agreed_amount)}</td><td className="border-b border-line px-2 py-2">{rs(row.paid_amount)}</td><td className="border-b border-line px-2 py-2 text-right font-semibold">{rs(row.outstanding_amount)}</td></tr>)}
           </tbody></table></div>
-          {!data.salaryPayables.some((row) => row.outstanding_amount > 0) && <p className="text-sm text-muted">No pending salary payable is recorded as of this date.</p>}
+          {!data.salaryPayables.some((row) => row.outstanding_amount > 0) && <p className="text-sm text-muted">Is tareekh tak koi baqi tankhwah darj nahi.</p>}
         </Panel>
 
-        <Panel title="Income, profit, and cash trends">
-          <p className="mb-3 text-sm text-muted">Periods up to 90 days use daily buckets; longer periods use monthly buckets. Transfers are excluded from the cash chart; dated account-opening balances are included in cash received or paid.</p>
+        <Panel title="Aamdani, munafa aur raqam ka rujhan">
+          <p className="mb-3 text-sm text-muted">90 din tak rozana aur is se lambi muddat mein maheena war hisaab dikhaya jata hai. Cash chart mein transfer shamil nahi; muddat ke andar darj account-opening balance wasooli ya adaigi mein shamil hai.</p>
           <div className="grid min-w-0 gap-4 xl:grid-cols-2 [&>*]:min-w-0">
-            <div><h3 className="mb-2 font-semibold">Farm income and operating expenses</h3><TrendBars rows={data.trends} from={from} to={to} /></div>
-            <div><h3 className="mb-2 font-semibold">Account cash received and paid</h3><TrendBars rows={data.trends} from={from} to={to} cash /></div>
+            <div><h3 className="mb-2 font-semibold">Farm ki aamdani aur rozmarra kharchay</h3><TrendBars rows={data.trends} from={from} to={to} /></div>
+            <div><h3 className="mb-2 font-semibold">Account mein wasooli aur adaigi</h3><TrendBars rows={data.trends} from={from} to={to} cash /></div>
           </div>
-          <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[760px] text-sm"><thead><tr>{["Bucket", "Farm income", "Farm expenses", "Home expenses", "Profit / loss", "Collections net refunds", "Cash in", "Cash out"].map((item) => <th key={item} className="border-b border-line px-2 py-2 text-left last:text-right">{item}</th>)}</tr></thead><tbody>
+          <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[760px] text-sm"><thead><tr>{["Muddat", "Farm aamdani", "Farm kharchay", "Ghar ke kharchay", "Munafa / nuqsan", "Wapsi ke baad net wasooli", "Raqam aayi", "Raqam gayi"].map((item) => <th key={item} className="border-b border-line px-2 py-2 text-left last:text-right">{item}</th>)}</tr></thead><tbody>
             {data.trends.map((row) => <tr key={row.bucket_start}><td className="border-b border-line px-2 py-2">{daysBetween(from, to) < 90 ? formatDay(row.bucket_start) : formatMonth(row.bucket_start)}</td><td className="border-b border-line px-2 py-2">{rs(row.total_income)}</td><td className="border-b border-line px-2 py-2">{rs(row.farm_expenses)}</td><td className="border-b border-line px-2 py-2">{rs(row.home_expenses)}</td><td className="border-b border-line px-2 py-2">{rs(row.net_profit)}</td><td className="border-b border-line px-2 py-2">{rs(row.customer_collections)}</td><td className="border-b border-line px-2 py-2">{rs(row.cash_received)}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.cash_paid)}</td></tr>)}
           </tbody></table></div>
         </Panel>

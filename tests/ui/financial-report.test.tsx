@@ -54,42 +54,42 @@ beforeEach(() => {
   mocks.downloadFile.mockClear();
 });
 
-it("shows the selected financial period and separate supported totals", async () => {
+it("shows the selected period, localized report copy, and collections net of refunds", async () => {
   renderWithQuery(<FinancialReport />);
-  expect(await screen.findByRole("heading", { name: "Financial Report" })).toBeInTheDocument();
-  await screen.findByRole("heading", { name: "Overview" });
+  expect(await screen.findByRole("heading", { name: "Maali Report" })).toBeInTheDocument();
+  await screen.findByRole("heading", { name: "Khulasa" });
   expect(document.querySelector(".print-report")).toBeInTheDocument();
   expect(screen.getAllByText("Rs 1,200").length).toBeGreaterThan(0);
-  expect(screen.getByText("Cash received")).toBeInTheDocument();
-  expect(screen.getByText("Cash received").closest("div")).toHaveTextContent("Rs 500");
-  expect(screen.getAllByText("Customer receivables").length).toBeGreaterThan(0);
+  expect(screen.getByText("Kul wasooli").closest("div")).toHaveTextContent("Rs 500");
+  expect(screen.getAllByText("Customer ka baqaya").length).toBeGreaterThan(0);
   expect(screen.getAllByText("Rs 750").length).toBeGreaterThan(0);
-  expect(screen.getByText(/Supplier payables are unavailable/)).toBeInTheDocument();
-  expect(screen.getByText(/Cost per litre is omitted/)).toBeInTheDocument();
+  expect(screen.getByText(/Supplier ka baqaya yahan nahi dikhaya/)).toBeInTheDocument();
+  expect(screen.getByText(/Har litre ka kharcha bhi nahi nikala/)).toBeInTheDocument();
 });
 
 it("loads the inclusive Yesterday period and exports the same filtered report", async () => {
   const user = userEvent.setup();
   renderWithQuery(<FinancialReport />);
-  await screen.findByRole("heading", { name: "Overview" });
+  await screen.findByRole("heading", { name: "Khulasa" });
   const yesterday = addDays(todayPK(), -1);
-  await user.click(screen.getByRole("button", { name: "Yesterday" }));
+  await user.click(screen.getByRole("button", { name: "Kal" }));
   await waitFor(() => expect(mocks.loadFinancialReport).toHaveBeenLastCalledWith(yesterday, yesterday));
-  await user.click(screen.getByRole("button", { name: "CSV export" }));
+  await user.click(screen.getByRole("button", { name: "CSV download" }));
   await waitFor(() => expect(mocks.downloadFile).toHaveBeenCalledTimes(1));
   const [filename, csv] = mocks.downloadFile.mock.calls[0] as [string, string, string];
   expect(filename).toContain(`${yesterday}-to-${yesterday}`);
   expect(csv).toContain("Test Farm");
-  expect(csv).toContain("Customer receivables");
-  expect(csv).toContain("Financial overview");
+  expect(csv).toContain("Report ka hissa");
+  expect(csv).toContain("Customer ka baqaya");
+  expect(csv).toContain("Maali khulasa");
 });
 
 it("rejects a future report date with the farm's usual date guidance", async () => {
   renderWithQuery(<FinancialReport />);
-  await screen.findByRole("heading", { name: "Overview" });
-  const endDate = screen.getByLabelText("Financial report end date");
+  await screen.findByRole("heading", { name: "Khulasa" });
+  const endDate = screen.getByLabelText("Maali report ki aakhri tareekh");
   fireEvent.change(endDate, { target: { value: addDays(todayPK(), 1) } });
   expect(await screen.findByRole("alert")).toHaveTextContent("Tareekh ki muddat durust rakhein");
-  expect(screen.queryByRole("heading", { name: "Overview" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("heading", { name: "Khulasa" })).not.toBeInTheDocument();
   expect(mocks.loadFinancialReport).toHaveBeenCalledTimes(1);
 });

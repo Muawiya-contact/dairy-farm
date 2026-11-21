@@ -20,6 +20,25 @@ const input: AnimalDossier = {
 };
 
 describe("animal dossier exports", () => {
+  it("uses the newest same-day health record in both profile summaries", async () => {
+    const events = [
+      { id: "older", animal_id: "animal-one", event_date: "2026-11-20", created_at: "2026-11-20T10:00:00Z", kind: "treatment", title: "Older entry" },
+      { id: "newer", animal_id: "animal-one", event_date: "2026-11-20", created_at: "2026-11-20T11:00:00Z", kind: "treatment", title: "Newer entry" },
+    ] as HealthEvent[];
+    const bytes = await buildAnimalDossierWorkbook({ ...input, health: events });
+    const ExcelJS = (await import("exceljs")).default;
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(Buffer.from(bytes) as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+    const profileValues = workbook.getWorksheet("Janwar ka record")!.getSheetValues().flat().map(String);
+    expect(profileValues).toContain("2026-11-20 · Newer entry");
+    expect(profileValues).not.toContain("2026-11-20 · Older entry");
+
+    const pdfText = new TextDecoder().decode(await buildAnimalDossierPdf({ ...input, health: events }));
+    const latestSummaryIndex = pdfText.indexOf("Newer entry");
+    expect(latestSummaryIndex).toBeGreaterThan(-1);
+    expect(latestSummaryIndex).toBeLessThan(pdfText.indexOf("Older entry"));
+  });
+
   it("creates a readable PDF for sparse animal history", async () => {
     const pdf = await buildAnimalDossierPdf(input);
     expect(new TextDecoder().decode(pdf.slice(0, 5))).toBe("%PDF-");

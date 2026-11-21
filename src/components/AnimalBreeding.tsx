@@ -152,18 +152,24 @@ export function AnimalBreeding({ animal, animals, records, calvings, offspring, 
     try {
       const rows = records.map((record) => {
         const calving = calvings.find((item) => item.insemination_id === record.id);
+        const ultrasoundDue = breedingDueDate(record, "ultrasound");
+        const checkupDue = breedingDueDate(record, "checkup");
+        const dryOffDue = breedingDueDate(record, "dry_off");
+        const calvingDue = breedingDueDate(record, "calving");
         return {
           service_date: record.service_date, semen_type: semenNames[record.semen_type] ?? record.semen_type,
           semen_name: record.semen_name ?? "", technician: record.technician ?? "",
           status: statusNames[record.status] ?? record.status, ultrasound_date: record.ultrasound_date ?? "",
-          ultrasound_due: breedingDueDate(record, "ultrasound").date,
-          checkup_date: record.checkup_date ?? "", checkup_due: breedingDueDate(record, "checkup").date,
-          dry_off_due: breedingDueDate(record, "dry_off").date, calving_due: breedingDueDate(record, "calving").date,
+          ultrasound_due: ultrasoundDue.date, ultrasound_due_type: ultrasoundDue.overridden ? "Khud darj" : "Hisab se",
+          checkup_date: record.checkup_date ?? "", checkup_due: checkupDue.date,
+          checkup_due_type: checkupDue.overridden ? "Khud darj" : "Hisab se",
+          dry_off_due: dryOffDue.date, dry_off_due_type: dryOffDue.overridden ? "Khud darj" : "Hisab se",
+          calving_due: calvingDue.date, calving_due_type: calvingDue.overridden ? "Khud darj" : "Hisab se",
           calving_date: calving?.calving_date ?? "", notes: record.notes ?? "",
         };
       });
       const settings = await getSettings();
-      const bytes = await buildPdf(`Nasl kashi record — ${animal.tag}`, ["service_date", "semen_type", "semen_name", "technician", "status", "ultrasound_due", "ultrasound_date", "checkup_due", "checkup_date", "dry_off_due", "calving_due", "calving_date", "notes"], rows, settings.farm_name);
+      const bytes = await buildPdf(`Nasl kashi record — ${animal.tag}`, ["service_date", "semen_type", "semen_name", "technician", "status", "ultrasound_due", "ultrasound_due_type", "ultrasound_date", "checkup_due", "checkup_due_type", "checkup_date", "dry_off_due", "dry_off_due_type", "calving_due", "calving_due_type", "calving_date", "notes"], rows, settings.farm_name);
       const filename = `nasl-kashi-${animal.tag}.pdf`;
       if (kind === "download") {
         downloadBlob(filename, new Blob([bytes], { type: "application/pdf" }));

@@ -56,6 +56,13 @@ describe("CSV exports", () => {
     expect(toCsv(["opening_stock", "movement_date"], [], "Inventory Report"))
       .toBe('\uFEFF"Shuru ka stock","Harkat ki tareekh"\r\n');
   });
+
+  it("labels breeding due-date provenance in Roman Urdu", () => {
+    expect(columnLabel("ultrasound_due_type")).toBe("Ultrasound tareekh ka zariya");
+    expect(columnLabel("checkup_due_type")).toBe("Checkup tareekh ka zariya");
+    expect(columnLabel("dry_off_due_type")).toBe("Doodh band tareekh ka zariya");
+    expect(columnLabel("calving_due_type")).toBe("Paidaish tareekh ka zariya");
+  });
 });
 
 it("creates readable Excel and PDF exports, including an empty-table header", async () => {

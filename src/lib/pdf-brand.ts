@@ -9,7 +9,7 @@ import {
 
 let logoData: Promise<Uint8Array<ArrayBuffer>> | null = null;
 let developerLogoData: Promise<Uint8Array<ArrayBuffer>> | null = null;
-let developerQrData: Promise<string> | null = null;
+const developerQrData = new Map<string, Promise<string>>();
 
 export { CODING_MOVES_URL, CODING_MOVES_DEVELOPER_CREDIT as PDF_DEVELOPER_CREDIT };
 
@@ -70,17 +70,22 @@ export function loadPdfDeveloperLogo(): Promise<Uint8Array<ArrayBuffer>> {
 }
 
 /** Generate locally: no farm data or document content is sent to a QR service. */
-export function loadPdfDeveloperQr(): Promise<string> {
-  if (!developerQrData) {
-    developerQrData = import("qrcode").then(({ toDataURL }) => toDataURL(CODING_MOVES_URL, {
+export function pdfTrackingUrl(reportSlug: string): string {
+  return `${CODING_MOVES_URL}?utm_source=dairy-app&utm_medium=pdf&utm_campaign=${encodeURIComponent(reportSlug)}`;
+}
+
+export function loadPdfDeveloperQr(url = CODING_MOVES_URL): Promise<string> {
+  const cached = developerQrData.get(url);
+  if (cached) return cached;
+  const created = import("qrcode").then(({ toDataURL }) => toDataURL(url, {
       errorCorrectionLevel: "M", margin: 1, width: 160,
       color: { dark: "#1d5633", light: "#ffffff" },
     })).catch((error) => {
-      developerQrData = null;
+      developerQrData.delete(url);
       throw error;
     });
-  }
-  return developerQrData;
+  developerQrData.set(url, created);
+  return created;
 }
 
 export function loadPdfLogo(): Promise<Uint8Array<ArrayBuffer>> {

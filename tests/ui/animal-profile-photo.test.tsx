@@ -48,6 +48,7 @@ it("keeps the removed state and reports a refresh warning when the removal refet
   client.setQueryData(queryKey, makeFarmData({ animals: [animalWithPhoto] }) as unknown as FarmData);
   Object.defineProperty(window, "confirm", { configurable: true, value: vi.fn(() => true) });
 
+  expect(screen.getByRole("button", { name: "Tasveer hata dein" })).toHaveClass("min-h-11");
   await user.click(screen.getByRole("button", { name: "Tasveer hata dein" }));
 
   expect(await screen.findByText(/Photo profile se hata di/)).toHaveTextContent("page reload karein");

@@ -129,22 +129,22 @@ const COLUMN_LABELS: Record<string, string> = {
 };
 
 const INVENTORY_REPORT_COLUMN_LABELS: Record<string, string> = {
-  detail: "Report detail", value: "Value", item_name: "Item", category_name: "Category", stock_unit: "Stock unit",
-  opening_stock: "Opening stock", opening_entries_in: "Initial stock added", purchases_in: "Purchased stock",
-  usage_out: "Stock used / issued", adjustment_in: "Positive adjustments", adjustment_out: "Negative adjustments",
-  wastage_out: "Wastage", closing_stock: "Closing stock", purchase_amount: "Purchase amount (Rs)",
-  current_stock: "Current stock", current_status: "Current status", total_quantity: "Quantity",
-  transaction_count: "Transactions", movement_date: "Movement date", movement_type: "Movement type",
-  entered_quantity: "Entered quantity", entered_unit: "Entered unit", quantity_delta: "Stock change",
-  running_balance_after: "Balance after movement", unit_rate: "Unit purchase rate (Rs)",
-  total_amount: "Purchase amount (Rs)", account_name: "Paid from Galla", expense_id: "Kharcha reference",
-  staff_name: "Employee / usage attribution", supplier: "Supplier", reference: "Invoice / reference",
-  batch_code: "Batch", expiry_date: "Expiry date", purpose: "Purpose", reason: "Reason", note: "Note",
-  actor_id: "Recorded by user ID",
+  detail: "Tafseel", value: "Jawab", item_name: "Samaan", category_name: "Qism", stock_unit: "Stock ka paimana",
+  opening_stock: "Shuru ka stock", opening_entries_in: "Ibtidai stock ka izafa", purchases_in: "Kharida hua stock",
+  usage_out: "Istemaal / diya hua stock", adjustment_in: "Stock mein izafa", adjustment_out: "Stock mein kami",
+  wastage_out: "Zaya stock", closing_stock: "Aakhir ka stock", purchase_amount: "Kharid ki raqam (Rs)",
+  current_stock: "Maujooda stock", current_status: "Maujooda haalat", total_quantity: "Miqdaar",
+  transaction_count: "Dafaon ki tadaad", movement_date: "Harkat ki tareekh", movement_type: "Harkat ki qism",
+  entered_quantity: "Darj miqdaar", entered_unit: "Darj unit", quantity_delta: "Stock mein farq",
+  running_balance_after: "Harkat ke baad baqaya", unit_rate: "Kharid rate (Rs)",
+  total_amount: "Kharid ki raqam (Rs)", account_name: "Galla account", expense_id: "Kharcha ka hawala",
+  staff_name: "Mulazim / istemal", supplier: "Dukandaar", reference: "Bill / hawala",
+  batch_code: "Batch", expiry_date: "Khatam hone ki tareekh", purpose: "Maqsad", reason: "Wajah", note: "Note",
+  actor_id: "Darj karne wala user ID",
 };
 const INVENTORY_REPORT_TITLES = new Set([
-  "Inventory Report", "Report details", "Item-wise stock balances", "Employee-wise usage", "Inventory movements",
-  "Item balances", "Usage by employee", "Movements",
+  "Inventory Report", "Stock ki Report", "Report ki tafseel", "Har samaan ka stock baqaya",
+  "Mulazim ke mutabiq istemal", "Stock ki harkat",
 ]);
 
 export function columnLabel(column: string, title = ""): string {

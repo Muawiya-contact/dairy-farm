@@ -72,7 +72,7 @@ export function AnimalCareTasks({ animalId, tasks, today, active, busy, run }: {
       <h3 className="font-semibold">Khulay tasks ({activeTasks.length})</h3>
       {activeTasks.length ? <ul className="mt-2 divide-y divide-line">{activeTasks.map((task) => <li key={task.id} className="py-3">
         <div className="flex flex-wrap items-start justify-between gap-2"><div><strong>{task.title}</strong><p className="text-sm text-muted">{categoryLabels[task.category]} · {longDate(task.due_date)}{task.notes ? ` · ${task.notes}` : ""}</p></div>
-          <button type="button" disabled={busy} onClick={() => setCompletingId(completingId === task.id ? null : task.id)} className="min-h-10 rounded-xl border border-berseem px-3 text-sm font-semibold text-berseem disabled:opacity-50">{completingId === task.id ? "Band karein" : "Mukammal karein"}</button>
+          <button type="button" disabled={busy} onClick={() => setCompletingId(completingId === task.id ? null : task.id)} className="min-h-11 rounded-xl border border-berseem px-3 text-sm font-semibold text-berseem disabled:opacity-50">{completingId === task.id ? "Band karein" : "Mukammal karein"}</button>
         </div>
         {completingId === task.id && <form onSubmit={(event) => completeTask(event, task)} className="mt-3 grid gap-2 rounded-lg bg-ground p-3 sm:grid-cols-2">
           <label className="text-sm font-semibold">Asal mukammal hone ki tareekh<input name="completed_date" type="date" required max={today} defaultValue={today} className={field} disabled={busy} /></label>

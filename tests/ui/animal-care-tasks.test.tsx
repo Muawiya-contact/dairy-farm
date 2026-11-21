@@ -31,7 +31,9 @@ it("adds a reminder and completes it with an actual date and note", async () => 
   await waitFor(() => expect(insert).toHaveBeenCalledWith({ animal_id: "animal-1", category: "vaccination", title: "FMD vaccine", due_date: "2026-10-18", notes: null }));
 
   rerender(<AnimalCareTasks animalId="animal-1" tasks={[task]} today="2026-10-20" active busy={false} run={run} />);
-  await user.click(screen.getByRole("button", { name: "Mukammal karein" }));
+  const completeButton = screen.getByRole("button", { name: "Mukammal karein" });
+  expect(completeButton).toHaveClass("min-h-11");
+  await user.click(completeButton);
   await user.type(screen.getByLabelText("Mukammal hone ka note"), "Vaccine given");
   await user.click(screen.getByRole("button", { name: "Task mukammal save karein" }));
   expect(update).toHaveBeenCalledWith({ completed_date: "2026-10-20", completion_notes: "Vaccine given" });

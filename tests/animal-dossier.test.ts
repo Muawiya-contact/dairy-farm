@@ -15,7 +15,7 @@ const input: AnimalDossier = {
   animal: cow("animal-one", "A-101"), animals: [cow("animal-one", "A-101"), cow("other", "B-202")],
   farm: { id: 1, farm_name: "Test Farm", owner_name: "Farm Owner", contact_phone: "+923001234567", go_live_date: "2026-01-01" } as LoadedFarmSettings,
   today: "2026-11-21", status: { life: "active", production: "milking", breeding: "open", health: "no-record", healthDueDate: null },
-  health: [], healthAttachments: [], activeAlerts: [], inseminations: [], calvings: [], offspring: [], dueTasks: [], careTasks: [],
+  health: [], healthAttachments: [], activeAlerts: [], inseminations: [], calvings: [], offspring: [], dueTasks: [], milkShifts: [], careTasks: [],
   milk: [{ date: "2026-11-20", shift: "Morning", litres: 6.5 }],
 };
 
@@ -100,5 +100,40 @@ describe("animal dossier exports", () => {
     ]));
     expect(workbook.getWorksheet("Health")!.getSheetValues().flat().map(String)).not.toContain("other-animal.pdf");
     expect(workbook.getWorksheet("Vaccinations")!.getRow(2).values).toEqual(expect.arrayContaining(["FMD shot", "Vet product"]));
+  });
+
+  it("sums fractional health costs in paise for both dossier exports", async () => {
+    const health = [0.1, 0.2].map((cost, index) => ({
+      id: `health-${index + 1}`, animal_id: "animal-one", event_date: `2026-11-${19 + index}`,
+      kind: "treatment", title: `Treatment ${index + 1}`, medicine: null, vet: null, notes: null,
+      cost, next_due_date: null, expense_id: null, created_at: `2026-11-${19 + index}T00:00:00Z`,
+    } satisfies HealthEvent));
+    const dossier = { ...input, health };
+    const bytes = await buildAnimalDossierWorkbook(dossier);
+    const ExcelJS = (await import("exceljs")).default;
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(Buffer.from(bytes) as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+    expect(workbook.getWorksheet("Financial summary")!.getRow(2).values).toContain(0.3);
+
+    const pdfText = new TextDecoder().decode(await buildAnimalDossierPdf(dossier));
+    expect(pdfText).not.toContain("0.30000000000000004");
+  });
+
+  it("sums daily milk in cents and marks total-only weeks as incomplete", async () => {
+    const dossier = {
+      ...input,
+      milk: [
+        { date: "2026-11-20", shift: "Morning", litres: 0.1 },
+        { date: "2026-11-20", shift: "Evening", litres: 0.2 },
+      ],
+      milkShifts: [{ milk_date: "2026-11-20", mode: "total" as const }],
+    };
+    const bytes = await buildAnimalDossierWorkbook(dossier);
+    const ExcelJS = (await import("exceljs")).default;
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(Buffer.from(bytes) as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+    const profile = workbook.getWorksheet("Profile")!.getSheetValues().flat().map(String);
+    expect(profile).toContain("2026-11-20 · 0.30 L");
+    expect(profile).toContain("Incomplete: total-only shift in last seven days");
   });
 });

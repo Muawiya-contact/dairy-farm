@@ -110,6 +110,31 @@ describe("farm inventory ledger", () => {
       .rejects.toThrow(/INVENTORY_REQUEST_CHANGED/);
   });
 
+  it("keeps a linked purchase expense aligned with its immutable stock movement", async () => {
+    const itemId = await createItem({ name: "Inventory correction guard" });
+    const movementId = await recordPurchase({
+      requestId: randomUUID(), itemId, quantity: 2, unit: "kg", rate: 50, total: 100,
+    });
+    const movement = (await db.query<{ expense_id: string; account_id: string }>(
+      "select expense_id,account_id from inventory_movements where id=$1", [movementId],
+    )).rows[0];
+    const before = (await db.query<{ expense_date: Date; category_id: string; account_id: string; amount: string; revision: number }>(
+      "select expense_date,category_id,account_id,amount,revision from expenses where id=$1", [movement.expense_id],
+    )).rows[0];
+
+    await expect(db.query(
+      "select correct_expense_with_recipient($1,$2,$3,'2026-11-19',$4,$5,80,'Corrected total',null,'Inventory purchase correction test')",
+      [randomUUID(), movement.expense_id, before.revision, farmExpenseCategory, farmCash],
+    )).rejects.toThrow(/EXPENSE_LINK_IMMUTABLE/);
+    expect((await db.query(
+      "select expense_date,category_id,account_id,amount,revision from expenses where id=$1", [movement.expense_id],
+    )).rows[0]).toEqual(before);
+    expect((await db.query<{ total_amount: string }>(
+      "select total_amount from inventory_movements where id=$1", [movementId],
+    )).rows[0].total_amount).toBe("100.00");
+    expect(movement.account_id).toBe(farmCash);
+  });
+
   it("converts compatible mass units and rejects incompatible stock units without side effects", async () => {
     const itemId = await createItem({ name: "Inventory conversion test", unit: "kg" });
     const requestId = randomUUID();

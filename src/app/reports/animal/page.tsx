@@ -1,3 +1,3 @@
-import AnimalMilkReport from "@/components/AnimalMilkReport";
+import AnimalReport from "@/components/AnimalReport";
 
-export default function AnimalReportPage() { return <AnimalMilkReport />; }
+export default function AnimalReportPage() { return <AnimalReport />; }

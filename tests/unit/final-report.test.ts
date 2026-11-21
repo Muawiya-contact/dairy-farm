@@ -82,6 +82,9 @@ it("ranks saved customers, animal production, and expenses and combines producti
 
   const sections = finalReportExportSections(data, "2026-11-01", "2027-02-01", "2027-02-01");
   expect(sections.find((section) => section.title === "Maahwar farm trend")?.rows).toContainEqual(expect.objectContaining({ bucket_start: "2026-12-01", produced_litres: 20, total_income: 2000 }));
+  expect(sections.find((section) => section.title === "Rozana doodh aur sales")?.repeatColumns).toEqual(["report_date"]);
+  expect(sections.find((section) => section.title === "Shift-wise doodh aur distribution")?.repeatColumns).toEqual(["report_date", "milk_shift"]);
+  expect(sections.find((section) => section.title === "Customer-wise Khata")?.repeatColumns).toEqual(["customer"]);
   expect(sections.find((section) => section.title === "Sab se zyada doodh dene walay janwar")?.rows[0]).toMatchObject({ tag: "A-2", litres: 30 });
   expect(sections.find((section) => section.title === "Sab se zyada billed customers")?.rows[0]).toMatchObject({ customer: "Babar", charges: 500 });
 });

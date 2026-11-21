@@ -220,8 +220,8 @@ export function finalReportExportSections(data: FinalReportData, from: string, t
         wasted_litres: milk.wasted_litres, remaining_litres: milk.closing_litres,
       }) },
     ] },
-    { title: "Rozana doodh aur sales", columns: milkDailyColumns, rows: dailyRows },
-    { title: "Shift-wise doodh aur distribution", columns: ["report_date", "milk_shift", "produced_litres", "khata_litres", "cash_litres", "free_litres", "farm_use_litres", "wasted_litres", "allocated_litres", "remaining_litres", "khata_amount", "cash_sale_amount", "cash_received", "galla_cash_received"], rows: shiftRows },
+    { title: "Rozana doodh aur sales", columns: milkDailyColumns, rows: dailyRows, repeatColumns: ["report_date"] },
+    { title: "Shift-wise doodh aur distribution", columns: ["report_date", "milk_shift", "produced_litres", "khata_litres", "cash_litres", "free_litres", "farm_use_litres", "wasted_litres", "allocated_litres", "remaining_litres", "khata_amount", "cash_sale_amount", "cash_received", "galla_cash_received"], rows: shiftRows, repeatColumns: ["report_date", "milk_shift"] },
     { title: "Local / cash sale ki rozana tafseel", columns: ["report_date", "cash_litres", "cash_sale_amount", "cash_received", "galla_cash_received"], rows: cashSales.map((row) => ({
       report_date: row.report_date, cash_litres: row.cash_litres, cash_sale_amount: row.cash_sale_amount,
       cash_received: row.cash_received, galla_cash_received: row.galla_cash_received,
@@ -232,7 +232,7 @@ export function finalReportExportSections(data: FinalReportData, from: string, t
       discounts: customerTotals.discounts, refunds: customerTotals.refunds, closing_balance: customerTotals.closing_balance,
       receivables_due: customerTotals.receivables_due, customer_credits: customerTotals.customer_credits,
     }] : [] },
-    { title: "Customer-wise Khata", columns: ["customer", "litres", "opening_balance", "opening_added", "charges", "total_payable", "payments", "discounts", "refunds", "closing_balance"], rows: customerRows.map((row) => ({
+    { title: "Customer-wise Khata", columns: ["customer", "litres", "opening_balance", "opening_added", "charges", "total_payable", "payments", "discounts", "refunds", "closing_balance"], repeatColumns: ["customer"], rows: customerRows.map((row) => ({
       customer: row.name, litres: row.litres, opening_balance: row.opening_balance, opening_added: row.opening_added,
       charges: row.charges, total_payable: row.total_payable, payments: row.payments, discounts: row.discounts,
       refunds: row.refunds, closing_balance: row.closing_balance,

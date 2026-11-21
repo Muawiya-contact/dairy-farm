@@ -12,8 +12,8 @@ export type InventoryStaff = Pick<Tables<"staff">, "id" | "name" | "active">;
 export const INVENTORY_UNITS = ["kg", "g", "litre", "ml", "bag", "bori", "piece", "bottle", "ton"] as const;
 export type InventoryUnit = typeof INVENTORY_UNITS[number];
 export const INVENTORY_UNIT_LABEL: Record<InventoryUnit, string> = {
-  kg: "kg", g: "gram", litre: "litre", ml: "ml", bag: "bag", bori: "bori",
-  piece: "piece", bottle: "bottle", ton: "ton",
+  kg: "kg", g: "gram", litre: "liter", ml: "ml", bag: "thaila", bori: "bori",
+  piece: "adad", bottle: "botal", ton: "ton",
 };
 
 export async function getInventoryStock(asOf: string) {

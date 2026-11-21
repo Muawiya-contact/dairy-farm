@@ -25,6 +25,14 @@ describe("friendly database errors", () => {
     expect(friendlyError({ code: "email_address_not_authorized" })).toContain("email bhejne ki setting");
   });
 
+  it("explains inventory restrictions in Roman Urdu", () => {
+    expect(friendlyError({ message: "INVENTORY_NOT_ALLOWED" })).toContain("Sirf farm ka maalik");
+    expect(friendlyError({ message: "INVENTORY_UNIT_MISMATCH" })).toContain("tabdeel nahi ho sakti");
+    expect(friendlyError({ message: "INVENTORY_INSUFFICIENT_STOCK" })).toContain("stock zero se kam");
+    expect(friendlyError({ message: "INVENTORY_MOVEMENT_IMMUTABLE" })).toContain("nayi durustgi darj karein");
+    expect(friendlyError({ message: "EXPENSE_LINK_IMMUTABLE" })).toContain("stock ki khareed se jura kharcha");
+  });
+
   it("hides unknown database details and logs once", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     const error = new Error("private database details");

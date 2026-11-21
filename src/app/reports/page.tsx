@@ -9,7 +9,7 @@ const REPORTS = [
   { label: "Kharcha Report", href: "/reports/kharcha/", Icon: WalletIcon },
   { label: "Inventory Report", href: "/reports/inventory/", Icon: BoxesIcon },
   { label: "Animal Report", href: "/reports/animal/", Icon: CowIcon },
-  { label: "Financial Report", href: "/reports/financial/", Icon: ChartIcon },
+  { label: "Maali Report", href: "/reports/financial/", Icon: ChartIcon },
   { label: "Accounts Report", href: "/reports/accounts/", Icon: BankIcon },
   { label: "Final Report", href: "/reports/final/", Icon: ReportIcon },
 ];

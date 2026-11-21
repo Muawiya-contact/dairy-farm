@@ -1,6 +1,7 @@
 import { getSupabase } from "./supabase";
 import { getSettings } from "./settings";
 import { daysBetween, formatDay } from "./dates";
+import { loadPagedRows } from "./paged-rows";
 
 export type PeriodSummary = {
   produced: number; delivered: number; sold_litres: number; free_litres: number;
@@ -46,6 +47,9 @@ export type KhataYearMonth = {
 
 type ReportRpc = <T>(name: string, args: { p_from: string; p_to: string }) => Promise<{ data: T[] | null; error: Error | null }>;
 type MilkReportRpc<T> = (name: string, args: Record<string, unknown>) => Promise<{ data: T[] | null; error: Error | null }>;
+type PagedReportRpc<T> = (name: string, args: Record<string, unknown>) => {
+  range: (from: number, to: number) => Promise<{ data: T[] | null; error: Error | null }>;
+};
 
 export type MilkReportBounds = { first_date: string; last_date: string };
 export type MilkReportDailyRow = {
@@ -97,21 +101,13 @@ const milkRpc = <T>(name: string, args: Record<string, unknown>) => {
   return (supabase.rpc.bind(supabase) as unknown as MilkReportRpc<T>)(name, args);
 };
 
-async function loadPagedMilkRows<T>(name: string, args: Record<string, unknown>): Promise<T[]> {
+export async function loadPagedReportRows<T>(name: string, args: Record<string, unknown>): Promise<T[]> {
   const supabase = getSupabase();
-  const rpc = supabase.rpc.bind(supabase) as unknown as <Row>(rpcName: string, values: Record<string, unknown>) => {
-    range: (from: number, to: number) => Promise<{ data: Row[] | null; error: Error | null }>;
-  };
-  const rows: T[] = [];
-  const pageSize = 1000;
-  for (let offset = 0; ; offset += pageSize) {
-    const { data, error } = await rpc<T>(name, args).range(offset, offset + pageSize - 1);
-    if (error) throw error;
-    const page = data ?? [];
-    rows.push(...page);
-    if (page.length < pageSize) return rows;
-  }
+  const rpc = supabase.rpc.bind(supabase) as unknown as PagedReportRpc<T>;
+  return loadPagedRows((from, to) => rpc(name, args).range(from, to));
 }
+
+const loadPagedMilkRows = loadPagedReportRows;
 
 export function isReportDateRange(from: string, to: string, today: string): boolean {
   try {
@@ -206,15 +202,13 @@ export async function saveMilkDayWaste(date: string, wastedLitres: number, reaso
 export async function loadPeriodReport(from: string, to: string): Promise<PeriodReport> {
   // New migrations are deliberately usable before generated database types are refreshed.
   const rpc = getSupabase().rpc.bind(getSupabase()) as unknown as ReportRpc;
-  const [settings, summaryResult, customersResult, expensesResult] = await Promise.all([
+  const [settings, summaryResult, customers, expenses] = await Promise.all([
     getSettings(),
     rpc<PeriodSummary>("report_period_summary", { p_from: from, p_to: to }),
-    rpc<PeriodCustomer>("report_period_customers", { p_from: from, p_to: to }),
-    rpc<PeriodExpense>("report_period_expenses", { p_from: from, p_to: to }),
+    loadPagedReportRows<PeriodCustomer>("report_period_customers", { p_from: from, p_to: to }),
+    loadPagedReportRows<PeriodExpense>("report_period_expenses", { p_from: from, p_to: to }),
   ]);
   if (summaryResult.error) throw summaryResult.error;
-  if (customersResult.error) throw customersResult.error;
-  if (expensesResult.error) throw expensesResult.error;
   const summary = (summaryResult.data?.[0] ?? {}) as PeriodSummary;
   return {
     farmName: settings.farm_name,
@@ -225,8 +219,8 @@ export async function loadPeriodReport(from: string, to: string): Promise<Period
       other_income: Number(summary.other_income ?? 0), farm_expenses: Number(summary.farm_expenses ?? 0),
       home_expenses: Number(summary.home_expenses ?? 0), profit: Number(summary.profit ?? 0),
     },
-    customers: (customersResult.data ?? []).map((row) => ({ ...row, litres: Number(row.litres ?? 0), charged: Number(row.charged ?? 0), paid: Number(row.paid ?? 0), discount: Number(row.discount ?? 0), refund: Number(row.refund ?? 0), period_balance_change: Number(row.period_balance_change ?? 0) })) as PeriodCustomer[],
-    expenses: (expensesResult.data ?? []).map((row) => ({ ...row, amount: Number(row.amount ?? 0) })) as PeriodExpense[],
+    customers: customers.map((row) => ({ ...row, litres: Number(row.litres ?? 0), charged: Number(row.charged ?? 0), paid: Number(row.paid ?? 0), discount: Number(row.discount ?? 0), refund: Number(row.refund ?? 0), period_balance_change: Number(row.period_balance_change ?? 0) })) as PeriodCustomer[],
+    expenses: expenses.map((row) => ({ ...row, amount: Number(row.amount ?? 0) })) as PeriodExpense[],
   };
 }
 
@@ -248,10 +242,8 @@ export async function loadCustomerPeriodLedgerSummary(customerId: string, from: 
 }
 
 export async function loadKhataPeriodSummary(from: string, to: string): Promise<KhataPeriodCustomer[]> {
-  const rpc = getSupabase().rpc.bind(getSupabase()) as unknown as ReportRpc;
-  const { data, error } = await rpc<KhataPeriodCustomer>("khata_period_summary", { p_from: from, p_to: to });
-  if (error) throw error;
-  return (data ?? []).map((row) => ({ ...row, active: Boolean(row.active), sort_order: Number(row.sort_order ?? 0), litres: Number(row.litres ?? 0), charges: Number(row.charges ?? 0), payments: Number(row.payments ?? 0), discounts: Number(row.discounts ?? 0), refunds: Number(row.refunds ?? 0), opening_balance: Number(row.opening_balance ?? 0), opening_added: Number(row.opening_added ?? 0), closing_balance: Number(row.closing_balance ?? 0) }));
+  const data = await loadPagedReportRows<KhataPeriodCustomer>("khata_period_summary", { p_from: from, p_to: to });
+  return data.map((row) => ({ ...row, active: Boolean(row.active), sort_order: Number(row.sort_order ?? 0), litres: Number(row.litres ?? 0), charges: Number(row.charges ?? 0), payments: Number(row.payments ?? 0), discounts: Number(row.discounts ?? 0), refunds: Number(row.refunds ?? 0), opening_balance: Number(row.opening_balance ?? 0), opening_added: Number(row.opening_added ?? 0), closing_balance: Number(row.closing_balance ?? 0) }));
 }
 
 export async function loadKhataYearMonthSummary(year: number): Promise<KhataYearMonth[]> {

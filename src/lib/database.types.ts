@@ -1692,6 +1692,37 @@ export type Database = {
           staff_name: string
         }[]
       }
+      financial_report_cashflow: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          account_id: string; account_name: string; account_kind: string;
+          opening_balance: number; money_received: number; money_paid: number;
+          transfers_in: number; transfers_out: number; closing_balance: number;
+          opening_date: string; opening_amount: number
+        }[]
+      }
+      financial_report_income_rows: {
+        Args: { p_from: string; p_to: string; p_limit?: number; p_offset?: number }
+        Returns: {
+          income_id: string; income_date: string; kind: string; amount: number;
+          note: string | null; animal_tag: string | null
+        }[]
+      }
+      financial_report_salary_payables: {
+        Args: { p_as_of: string }
+        Returns: {
+          staff_id: string; staff_name: string; salary_month: string;
+          agreed_amount: number; paid_amount: number; outstanding_amount: number
+        }[]
+      }
+      financial_report_trends: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          bucket_start: string; milk_income: number; other_income: number;
+          customer_collections: number; farm_expenses: number; home_expenses: number;
+          total_income: number; net_profit: number; cash_received: number; cash_paid: number
+        }[]
+      }
       farm_today: { Args: never; Returns: string }
       noon_enabled_on: { Args: { p_date: string }; Returns: boolean }
       expected_shifts: { Args: { p_date: string }; Returns: string[] }

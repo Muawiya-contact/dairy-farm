@@ -15,7 +15,7 @@ it("shows all nine report categories on the Reports landing page", () => {
     "Kharcha Report",
     "Inventory Report",
     "Animal Report",
-    "Financial Report",
+    "Maali Report",
     "Accounts Report",
     "Final Report",
   ]);

@@ -87,43 +87,43 @@ it("uses Pakistan date periods and rejects invalid ranges", () => {
 it("keeps each item unit separate, labels unassigned usage, and exports filtered movements", async () => {
   const user = userEvent.setup();
   renderWithQuery(<InventoryReport />);
-  await screen.findByRole("heading", { name: "Item-wise stock balances" });
+  await screen.findByRole("heading", { name: "Har samaan ka stock baqaya" });
   expect(screen.getByText("13 kg")).toBeInTheDocument();
   const medicineRow = screen.getAllByRole("row").find((row) => row.textContent?.includes("Medicine"));
   expect(medicineRow).toBeDefined();
   expect(medicineRow).toHaveTextContent("2");
   expect(medicineRow).toHaveTextContent("litre");
-  expect(screen.getByText("Out of stock")).toBeInTheDocument();
-  expect(screen.getAllByText("General farm use (unassigned)")).not.toHaveLength(0);
-  expect(screen.getByText(/Usage value is unavailable/)).toBeInTheDocument();
+  expect(screen.getByText("Stock khatam")).toBeInTheDocument();
+  expect(screen.getAllByText("Farm ka aam istemal (mulazim ke baghair)")).not.toHaveLength(0);
+  expect(screen.getByText(/Istemaal ki qeemat dastiyab nahin/)).toBeInTheDocument();
 
-  await user.click(screen.getByRole("button", { name: "This week" }));
+  await user.click(screen.getByRole("button", { name: "Yeh hafta" }));
   await waitFor(() => expect(mocks.getInventoryReportSummary).toHaveBeenLastCalledWith("2026-11-14", "2026-11-20", null, null));
-  await user.selectOptions(screen.getByRole("combobox", { name: "Issued to" }), "general");
+  await user.selectOptions(screen.getByRole("combobox", { name: "Kis ko diya" }), "general");
   await waitFor(() => expect(mocks.getInventoryReportUsage).toHaveBeenLastCalledWith("2026-11-14", "2026-11-20", null, null, null, true));
 
-  await user.type(screen.getByRole("textbox", { name: "Search movement details" }), "General farm use");
+  await user.type(screen.getByRole("textbox", { name: "Stock ki harkat ki tafseel talash karein" }), "Farm ka aam istemal");
   await waitFor(() => expect(mocks.getInventoryReportTransactions).toHaveBeenLastCalledWith(expect.objectContaining({
-    search: "General farm use", unassigned: true, limit: 50, offset: 0,
+    search: "Farm ka aam istemal", unassigned: true, limit: 50, offset: 0,
   })));
   expect(screen.getAllByRole("row").some((row) => row.textContent?.includes("Medicine"))).toBe(true);
-  expect(screen.getAllByText("General farm use (unassigned)").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("Farm ka aam istemal (mulazim ke baghair)").length).toBeGreaterThan(0);
 
-  await user.click(screen.getByRole("button", { name: "PDF download" }));
+  await user.click(screen.getByRole("button", { name: "PDF hasil karein" }));
   await waitFor(() => expect(mocks.buildPdfReport).toHaveBeenCalledOnce());
   expect(mocks.buildPdfReport).toHaveBeenCalledWith(
-    "Inventory Report — 2026-11-14 to 2026-11-20",
+    "Stock ki Report — 2026-11-14 se 2026-11-20 tak",
     expect.arrayContaining([
-      expect.objectContaining({ title: "Report details", rows: expect.arrayContaining([
-        expect.objectContaining({ detail: "Period (inclusive)", value: "2026-11-14 through 2026-11-20" }),
-        expect.objectContaining({ detail: "Filters", value: "Search: General farm use · Usage: General farm use (unassigned)" }),
-        expect.objectContaining({ detail: "Balance scope", value: expect.stringContaining("farm-wide") }),
+      expect.objectContaining({ title: "Report ki tafseel", rows: expect.arrayContaining([
+        expect.objectContaining({ detail: "Report ki muddat", value: "2026-11-14 se 2026-11-20 tak, dono tareekhein shamil" }),
+        expect.objectContaining({ detail: "Chhantne ke options", value: "Talash: Farm ka aam istemal · Istemaal: Farm ka aam istemal (mulazim ke baghair)" }),
+        expect.objectContaining({ detail: "Stock ka daaira", value: expect.stringContaining("poore farm") }),
       ]) }),
-      expect.objectContaining({ title: "Item-wise stock balances", rows: expect.arrayContaining([expect.objectContaining({ stock_unit: "kg" }), expect.objectContaining({ stock_unit: "litre" })]) }),
-      expect.objectContaining({ title: "Employee-wise usage" }),
-      expect.objectContaining({ title: "Inventory movements" }),
+      expect.objectContaining({ title: "Har samaan ka stock baqaya", rows: expect.arrayContaining([expect.objectContaining({ stock_unit: "kg" }), expect.objectContaining({ stock_unit: "litre" })]) }),
+      expect.objectContaining({ title: "Mulazim ke mutabiq istemal" }),
+      expect.objectContaining({ title: "Stock ki harkat" }),
     ]),
     "Saim Dairy Farm",
   );
-  expect(mocks.downloadBlob).toHaveBeenCalledWith("inventory-report-20261114-20261120.pdf", expect.any(Blob));
+  expect(mocks.downloadBlob).toHaveBeenCalledWith("stock-report-20261114-20261120.pdf", expect.any(Blob));
 });

@@ -81,6 +81,17 @@ test("compares morning and evening with seven completed days and recalculates af
   expect((await dropAlerts()).some((alert) => alert.alert_kind === "milk_drop_morning")).toBe(true);
 });
 
+test("detects an explicitly recorded drop to zero", async () => {
+  const animal = await addAnimal("ZERO-TODAY");
+  for (let ago = 1; ago <= 7; ago++) await addMilk(animal, dayOffset(ago), "morning", 10);
+  await addMilk(animal, today, "morning", 0);
+
+  const alerts = await dropAlerts();
+  expect(alerts).toHaveLength(1);
+  expect(alerts[0]).toMatchObject({ animal_id: animal, tag: "ZERO-TODAY", alert_kind: "milk_drop_morning" });
+  expect(alerts[0].message).toContain("aaj 0.00 L; 10.00 L (100.0%) kam");
+});
+
 test("compares an optional noon session only with prior noon sessions and labels it correctly", async () => {
   const animal = await addAnimal("THREE-SHIFT");
   for (let ago = 1; ago <= 7; ago++) {

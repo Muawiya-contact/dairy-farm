@@ -65,12 +65,12 @@ export function fillCompanyMilk(produced: number, quantities: Record<string, str
   return { ...quantities, [companyId]: String(sumMilkLitres([Number(quantities[companyId]) || 0, available])) };
 }
 
-/** Blank and zero rows are omitted; a newly arrived animal on an old date must not get a zero record. */
+/** Blank entries are omitted; an explicit zero is recorded so milk-drop alerts can detect a drop to zero. */
 export function animalMilkRows(animals: readonly { id: string }[], values: Record<string, string>) {
   return animals.flatMap((animal) => {
     const raw = values[animal.id]?.trim();
     if (!raw) return [];
     const litres = milkLitres(raw, 60);
-    return litres > 0 ? [{ animal_id: animal.id, litres }] : [];
+    return [{ animal_id: animal.id, litres }];
   });
 }

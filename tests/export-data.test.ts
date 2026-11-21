@@ -49,6 +49,13 @@ describe("CSV exports", () => {
     expect(displayCell({ amount: 10, method: "cash" })).toBe('{"amount":10,"method":"cash"}');
     expect(toCsv(["before_row"], [{ before_row: { amount: 10 } }])).toContain('{""amount"":10}');
   });
+
+  it("exports Inventory Report headings in Roman Urdu", () => {
+    expect(columnLabel("opening_stock", "Har samaan ka stock baqaya")).toBe("Shuru ka stock");
+    expect(columnLabel("movement_date", "Stock ki harkat")).toBe("Harkat ki tareekh");
+    expect(toCsv(["opening_stock", "movement_date"], [], "Inventory Report"))
+      .toBe('\uFEFF"Shuru ka stock","Harkat ki tareekh"\r\n');
+  });
 });
 
 it("creates readable Excel and PDF exports, including an empty-table header", async () => {

@@ -141,7 +141,7 @@ function ShiftForm({ data, date, shift }: { data: FarmData; date: string; shift:
   const step = (id: string, change: number, animal = false) => {
     if (animal) setPerAnimal((current) => {
       const next = Math.min(60, Math.max(0, Math.round(((Number(current[id]) || 0) + change) * 100) / 100));
-      return { ...current, [id]: next ? String(next) : "" };
+      return { ...current, [id]: next ? String(next) : current[id]?.trim() ? "0" : "" };
     });
     else setQty((current) => {
       const next = Math.min(3000, Math.max(0, Math.round(((Number(current[id]) || 0) + change) * 100) / 100));

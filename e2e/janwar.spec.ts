@@ -19,8 +19,8 @@ test("a new cow is sold only after confirmation, leaves active list, and credits
 
   await page.getByRole("button", { name: "Farokht / wafat / doosra" }).click();
   const exit = section(page, "Janwar ka record");
-  await exit.getByRole("spinbutton", { name: "Mili hui raqam" }).fill("12345");
-  await exit.getByRole("combobox", { name: "Raqam kis account mein aayi" }).selectOption({ label: "Test bank" });
+  await exit.getByRole("spinbutton", { name: /Mili hui raqam/ }).fill("12345");
+  await exit.getByRole("combobox", { name: /Raqam kis account mein aayi/ }).selectOption({ label: "Test bank" });
   await exit.getByRole("button", { name: "Farokht darj karein" }).click();
   const dialog = page.getByRole("dialog", { name: "Farokht ki tasdeeq" });
   await expect(dialog).toContainText(tag);

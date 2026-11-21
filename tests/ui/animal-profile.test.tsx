@@ -7,13 +7,18 @@ import { longDate } from "@/lib/farm-data";
 
 const route = vi.hoisted(() => ({ id: "animal-1" }));
 const documentMocks = vi.hoisted(() => ({ sharePdfFile: vi.fn(), downloadBlob: vi.fn() }));
+const feedMocks = vi.hoisted(() => ({ loadAnimalFeedOptions: vi.fn() }));
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(route.id ? `id=${route.id}` : "") }));
 vi.mock("@/lib/pdf-share", () => ({ sharePdfFile: documentMocks.sharePdfFile }));
 vi.mock("@/lib/export-data", async (original) => ({
   ...(await original<typeof import("@/lib/export-data")>()), downloadBlob: documentMocks.downloadBlob,
 }));
+vi.mock("@/lib/animal-feeding", async (original) => ({
+  ...(await original<typeof import("@/lib/animal-feeding")>()), loadAnimalFeedOptions: feedMocks.loadAnimalFeedOptions,
+}));
 
 beforeEach(() => {
+  feedMocks.loadAnimalFeedOptions.mockResolvedValue([]);
   supabaseMocks.getSupabase.mockReturnValue({
     rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
   } as never);
@@ -106,6 +111,7 @@ it("keeps sparse legacy profiles readable and shows no-record states", () => {
   route.id = "old";
   renderWithQuery(<FarmAnimals />);
   expect(screen.getByText("Doodh ka record nahi")).toBeInTheDocument();
+  expect(screen.getByText("Kharchay ka koi record nahi")).toBeInTheDocument();
   expect(screen.getAllByText("Sehat ka record nahi").length).toBeGreaterThan(0);
   expect(screen.getAllByText("Darj nahi").length).toBeGreaterThan(0);
   expect(screen.getByText("Saat din ka per-janwar doodh record mukammal nahi")).toBeInTheDocument();

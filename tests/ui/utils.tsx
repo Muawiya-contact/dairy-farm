@@ -24,6 +24,7 @@ const farmMocks = vi.hoisted(() => ({
   customerMonthReport: vi.fn(),
   closeAnimal: vi.fn(),
   updateAnimal: vi.fn(),
+  recordHealthEvent: vi.fn(),
 }));
 const supabaseMocks = vi.hoisted(() => ({ getSupabase: vi.fn() }));
 export { fixtures, farmMocks, supabaseMocks };
@@ -45,7 +46,7 @@ export function makeFarmData(overrides: Record<string, unknown> = {}) {
     customers: [fixtures.customer],
     shifts: [], animalMilk: [], deliveries: [], dispositions: [], rates: [], settings: {},
     milkShiftConfig: [{ effective_from: fixtures.today, noon_enabled: true }],
-    health: [], inseminations: [], calvings: [], calvingOffspring: [], animalCareTasks: [], categories: [], alerts: [],
+    health: [], healthAttachments: [], inseminations: [], calvings: [], calvingOffspring: [], animalCareTasks: [], categories: [], alerts: [],
     ...overrides,
   };
 }

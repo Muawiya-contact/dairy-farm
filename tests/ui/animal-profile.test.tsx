@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { expect, it, vi } from "vitest";
-import { fixtures, farmMocks, makeFarmData, renderWithQuery } from "./utils";
+import { beforeEach, expect, it, vi } from "vitest";
+import { fixtures, farmMocks, makeFarmData, renderWithQuery, supabaseMocks } from "./utils";
 import FarmAnimals from "@/components/FarmAnimals";
 import { longDate } from "@/lib/farm-data";
 
@@ -12,6 +12,12 @@ vi.mock("@/lib/pdf-share", () => ({ sharePdfFile: documentMocks.sharePdfFile }))
 vi.mock("@/lib/export-data", async (original) => ({
   ...(await original<typeof import("@/lib/export-data")>()), downloadBlob: documentMocks.downloadBlob,
 }));
+
+beforeEach(() => {
+  supabaseMocks.getSupabase.mockReturnValue({
+    rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
+  } as never);
+});
 
 it("shows life, production, breeding, and health as separate dimensions", () => {
   farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({
@@ -119,7 +125,7 @@ it("prints the profile from its explicit print action", async () => {
     calvings: [{ id: "calving-print", animal_id: fixtures.cow.id, calving_date: "2026-10-10", outcome: "twins", calf_id: null }],
     calvingOffspring: [{ id: "offspring-print", calving_id: "calving-print", animal_id: null, tag_at_birth: "CALF-A",
       sex: "female", birth_weight_kg: 30.5, outcome: "alive", birth_order: 1 }],
-    health: [{ id: "health-print", animal_id: fixtures.cow.id, event_date: "2026-10-12", kind: "vaccine", title: "FMD shot",
+    health: [{ id: "health-print", animal_id: fixtures.cow.id, event_date: "2026-10-12", kind: "vaccine", title: "FMD shot", severity: "moderate",
       medicine: null, vet: null, notes: null, cost: 0, next_due_date: null, expense_id: null }],
   }), error: null });
   renderWithQuery(<FarmAnimals />);
@@ -131,10 +137,12 @@ it("prints the profile from its explicit print action", async () => {
   expect(printDetails).toHaveTextContent("Joray");
   expect(printDetails).toHaveTextContent("Mada");
   expect(printDetails).toHaveTextContent("Teeka");
+  expect(printDetails).toHaveTextContent("Darmiyani");
   expect(printDetails).not.toHaveTextContent("pregnant");
   expect(printDetails).not.toHaveTextContent("twins");
   expect(printDetails).not.toHaveTextContent("female");
   expect(printDetails).not.toHaveTextContent("vaccine");
+  expect(printDetails).not.toHaveTextContent("moderate");
   await user.click(screen.getByRole("button", { name: "Print karein" }));
   expect(print).toHaveBeenCalledOnce();
   Object.defineProperty(window, "print", { configurable: true, value: undefined });

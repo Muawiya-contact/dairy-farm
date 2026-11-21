@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildAnimalDossierPdf, buildAnimalDossierWorkbook, type AnimalDossier } from "@/lib/animal-dossier";
-import type { Animal, AnimalCareTask, Calving, CalvingOffspring, HealthEvent } from "@/lib/farm-data";
+import type { Animal, AnimalCareTask, Calving, CalvingOffspring, HealthEvent, HealthEventAttachment } from "@/lib/farm-data";
 import type { LoadedFarmSettings } from "@/lib/settings";
 
 const cow = (id: string, tag: string): Animal => ({
@@ -15,7 +15,7 @@ const input: AnimalDossier = {
   animal: cow("animal-one", "A-101"), animals: [cow("animal-one", "A-101"), cow("other", "B-202")],
   farm: { id: 1, farm_name: "Test Farm", owner_name: "Farm Owner", contact_phone: "+923001234567", go_live_date: "2026-01-01" } as LoadedFarmSettings,
   today: "2026-11-21", status: { life: "active", production: "milking", breeding: "open", health: "no-record", healthDueDate: null },
-  health: [], activeAlerts: [], inseminations: [], calvings: [], offspring: [], dueTasks: [], milkShifts: [], careTasks: [],
+  health: [], healthAttachments: [], activeAlerts: [], inseminations: [], calvings: [], offspring: [], dueTasks: [], milkShifts: [], careTasks: [],
   milk: [{ date: "2026-11-20", shift: "Morning", litres: 6.5 }],
 };
 
@@ -104,12 +104,37 @@ describe("animal dossier exports", () => {
     expect(workbook.getWorksheet("Janwar ke follow-up")!.getSheetValues().flat().map(String)).toEqual(expect.arrayContaining(["FMD vaccine", "Mukammal", "Given by vet"]));
   });
 
+  it("exports complete veterinary details and only the selected event's private attachment name", async () => {
+    const healthEvent = {
+      id: "health-one", animal_id: "animal-one", event_date: "2026-11-20", kind: "treatment", title: "Hoof check",
+      medicine: "Vet product", vet: "Dr. Farm", notes: "Owner note", cost: 175, next_due_date: "2026-11-27", expense_id: "expense-one",
+      created_at: "2026-11-20T00:00:00Z", symptoms: "Limping", diagnosis: "Vet-entered hoof injury", severity: "moderate",
+      current_condition: "Recovering", medicine_type: "Topical", dosage: "Recorded from vet note", route: "Topical",
+      treatment_start_date: "2026-11-20", treatment_end_date: "2026-11-22",
+    } as HealthEvent;
+    const vaccine = { ...healthEvent, id: "health-vaccine", kind: "vaccine", title: "FMD shot" } as HealthEvent;
+    const attachments = [
+      { id: "file-one", health_event_id: healthEvent.id, file_name: "prescription.pdf", storage_path: "private/event/file.pdf", content_type: "application/pdf", size_bytes: 800, created_at: "2026-11-20T00:00:00Z" },
+      { id: "file-other", health_event_id: "other-event", file_name: "other-animal.pdf", storage_path: "private/other/file.pdf", content_type: "application/pdf", size_bytes: 800, created_at: "2026-11-20T00:00:00Z" },
+    ] as HealthEventAttachment[];
+    const bytes = await buildAnimalDossierWorkbook({ ...input, health: [healthEvent, vaccine], healthAttachments: attachments });
+    const ExcelJS = (await import("exceljs")).default;
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(Buffer.from(bytes) as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+    const healthValues = workbook.getWorksheet("Sehat ka record")!.getRow(2).values;
+    expect(healthValues).toEqual(expect.arrayContaining([
+      "Limping", "Vet-entered hoof injury", "Darmiyani", "Recovering", "Topical", "Recorded from vet note",
+      "2026-11-20", "2026-11-22", "prescription.pdf",
+    ]));
+    expect(workbook.getWorksheet("Sehat ka record")!.getSheetValues().flat().map(String)).not.toContain("other-animal.pdf");
+    expect(workbook.getWorksheet("Teekay aur deworming")!.getRow(2).values).toEqual(expect.arrayContaining(["FMD shot", "Vet product"]));
+  });
+
   it("sums fractional health costs in paise for both dossier exports", async () => {
     const health = [0.1, 0.2].map((cost, index) => ({
       id: `health-${index + 1}`, animal_id: "animal-one", event_date: `2026-11-${19 + index}`,
-      created_at: `2026-11-${19 + index}T00:00:00Z`,
       kind: "treatment", title: `Treatment ${index + 1}`, medicine: null, vet: null, notes: null,
-      cost, next_due_date: null, expense_id: null,
+      cost, next_due_date: null, expense_id: null, created_at: `2026-11-${19 + index}T00:00:00Z`,
     } satisfies HealthEvent));
     const dossier = { ...input, health };
     const bytes = await buildAnimalDossierWorkbook(dossier);

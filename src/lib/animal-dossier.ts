@@ -1,4 +1,4 @@
-import type { Animal, AnimalCareTask, Calving, CalvingOffspring, HealthEvent, HerdAlert, Insemination, MilkShift } from "./farm-data";
+import type { Animal, AnimalCareTask, Calving, CalvingOffspring, HealthEvent, HealthEventAttachment, HerdAlert, Insemination, MilkShift } from "./farm-data";
 import type { LoadedFarmSettings } from "./settings";
 import { formatDay } from "./dates";
 import { animalAge } from "./animal-life";
@@ -13,6 +13,7 @@ export type AnimalDossier = {
   today: string;
   status: AnimalProfileStatuses;
   health: HealthEvent[];
+  healthAttachments: HealthEventAttachment[];
   activeAlerts: HerdAlert[];
   inseminations: Insemination[];
   calvings: Calving[];
@@ -168,16 +169,18 @@ function dossierSheets(input: AnimalDossier) {
     calving_due_type: breedingDueDate(record, "calving").overridden ? "Manual" : "Calculated",
     abortion_date: record.abortion_date || "", notes: record.notes || "",
   }));
-  const health = [...input.health].filter((event) => event.kind !== "vaccine" && event.kind !== "deworming")
-    .sort((a, b) => a.event_date.localeCompare(b.event_date)).map((event) => ({
+  const healthRow = (event: HealthEvent) => ({
       date: event.event_date, kind: event.kind, title: event.title, medicine: event.medicine || "", veterinarian: event.vet || "",
+      symptoms: event.symptoms || "", diagnosis: event.diagnosis || "", severity: event.severity || "",
+      current_condition: event.current_condition || "", medicine_type: event.medicine_type || "", dosage: event.dosage || "",
+      route: event.route || "", treatment_start_date: event.treatment_start_date || "", treatment_end_date: event.treatment_end_date || "",
       cost_rs: num(event.cost), next_due_date: event.next_due_date || "", notes: event.notes || "",
-    }));
+      attachments: input.healthAttachments.filter((attachment) => attachment.health_event_id === event.id).map((attachment) => attachment.file_name).join("; "),
+    });
+  const health = [...input.health].filter((event) => event.kind !== "vaccine" && event.kind !== "deworming")
+    .sort((a, b) => a.event_date.localeCompare(b.event_date)).map(healthRow);
   const vaccines = [...input.health].filter((event) => event.kind === "vaccine" || event.kind === "deworming")
-    .sort((a, b) => a.event_date.localeCompare(b.event_date)).map((event) => ({
-      date: event.event_date, kind: event.kind, title: event.title, medicine: event.medicine || "", veterinarian: event.vet || "",
-      next_due_date: event.next_due_date || "", cost_rs: num(event.cost), notes: event.notes || "",
-    }));
+    .sort((a, b) => a.event_date.localeCompare(b.event_date)).map(healthRow);
   const calvingRows: Record<string, unknown>[] = [];
   if (birthCalving && relatedBirth) calvingRows.push({ date: birthCalving.calving_date, role: "Birth record", outcome: relatedBirth.outcome,
     birth_order: relatedBirth.birth_order, calf: animalName(animal), sex: relatedBirth.sex || "", weight_kg: num(relatedBirth.birth_weight_kg), notes: relatedBirth.notes || "" });
@@ -208,8 +211,8 @@ function dossierSheets(input: AnimalDossier) {
     sheet("Milk", ["date", "shift", "litres"], milk, "No milk records for this animal."),
     sheet("Breeding", ["service_date", "semen_type", "semen_name", "semen_batch", "technician", "status", "ultrasound_due", "ultrasound_due_type", "ultrasound_date", "ultrasound_result", "checkup_due", "checkup_due_type", "checkup_date", "checkup_result", "dry_off_due", "dry_off_due_type", "dry_off_date", "calving_due", "calving_due_type", "abortion_date", "notes"], breeding, "No breeding records for this animal."),
     sheet("Care reminders", ["title", "category", "due_date", "status", "completed_date", "notes", "completion_notes"], careTasks, "No care reminders for this animal."),
-    sheet("Health", ["date", "kind", "title", "medicine", "veterinarian", "cost_rs", "next_due_date", "notes"], health, "No treatment or checkup records for this animal."),
-    sheet("Vaccinations", ["date", "kind", "title", "medicine", "veterinarian", "next_due_date", "cost_rs", "notes"], vaccines, "No vaccination or deworming records for this animal."),
+    sheet("Health", ["date", "kind", "title", "symptoms", "diagnosis", "severity", "current_condition", "medicine", "medicine_type", "dosage", "route", "treatment_start_date", "treatment_end_date", "veterinarian", "cost_rs", "next_due_date", "attachments", "notes"], health, "No treatment or checkup records for this animal."),
+    sheet("Vaccinations", ["date", "kind", "title", "symptoms", "diagnosis", "severity", "current_condition", "medicine", "medicine_type", "dosage", "route", "treatment_start_date", "treatment_end_date", "veterinarian", "next_due_date", "cost_rs", "attachments", "notes"], vaccines, "No vaccination or deworming records for this animal."),
     sheet("Calving & offspring", ["date", "role", "outcome", "birth_order", "calf", "sex", "weight_kg", "notes"], calvingRows, "No calving or offspring records for this animal."),
     sheet("Weight", ["date", "event", "weight_kg", "source"], weights, "No weight history recorded for this animal."),
     sheet("Feed", ["date", "feed", "quantity", "unit", "notes"], [], "No feed history is recorded in the app."),
@@ -322,8 +325,8 @@ export async function buildAnimalDossierPdf(input: AnimalDossier): Promise<Uint8
     Milk: ["date", "shift", "litres"],
     Breeding: ["service_date", "semen_name", "technician", "status", "ultrasound_due", "ultrasound_due_type", "ultrasound_date", "checkup_due", "checkup_due_type", "checkup_date", "dry_off_due", "dry_off_due_type", "dry_off_date", "calving_due", "calving_due_type", "notes"],
     "Care reminders": ["title", "category", "due_date", "status", "completed_date", "notes", "completion_notes"],
-    Health: ["date", "kind", "title", "medicine", "veterinarian", "cost_rs", "next_due_date", "notes"],
-    Vaccinations: ["date", "kind", "title", "medicine", "veterinarian", "next_due_date", "cost_rs", "notes"],
+    Health: ["date", "kind", "title", "symptoms", "diagnosis", "severity", "current_condition", "medicine", "medicine_type", "dosage", "route", "treatment_start_date", "treatment_end_date", "veterinarian", "next_due_date", "attachments", "cost_rs", "notes"],
+    Vaccinations: ["date", "kind", "title", "symptoms", "diagnosis", "severity", "current_condition", "medicine", "medicine_type", "dosage", "route", "treatment_start_date", "treatment_end_date", "veterinarian", "next_due_date", "attachments", "cost_rs", "notes"],
     "Calving & offspring": ["date", "role", "outcome", "calf", "sex", "weight_kg", "notes"],
     Weight: ["date", "event", "weight_kg", "source"],
     Feed: ["date", "feed", "quantity", "unit", "notes"],

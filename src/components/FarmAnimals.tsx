@@ -5,7 +5,7 @@ import Link from "next/link";
 import { SHIFT_LABELS } from "@/lib/milk-shifts";
 import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { amount, insertRow, longDate, money, recordHealthEvent, shortDate, useFarmData, type Animal } from "@/lib/farm-data";
+import { amount, insertRow, longDate, money, shortDate, useFarmData, type Animal } from "@/lib/farm-data";
 import { friendlyError } from "@/lib/errors";
 import { litres, parseAmount } from "@/lib/format";
 import { sumMilkLitres } from "@/lib/milk-entry";
@@ -17,6 +17,7 @@ import { PlusIcon, SearchIcon } from "./icons";
 import { AnimalManagement } from "./AnimalManagement";
 import { AnimalBreeding } from "./AnimalBreeding";
 import { AnimalCareTasks } from "./AnimalCareTasks";
+import { AnimalHealthHistory } from "./AnimalHealthHistory";
 import { breedingDueDate } from "@/lib/breeding-register";
 import { UI_TEXT } from "@/lib/text";
 import { AnimalProfilePhoto } from "./AnimalProfilePhoto";
@@ -32,6 +33,7 @@ const printedBreedingStatus: Record<string, string> = { pending: "Nateeja baqi",
 const printedCalvingOutcome: Record<string, string> = { alive: "Zinda", dead: "Wafat", twins: "Joray", normal: "Mamool ke mutabiq", stillborn: "Paidaish par wafat" };
 const printedSex: Record<string, string> = { female: "Mada", male: "Nar" };
 const printedHealthKind: Record<string, string> = { vaccine: "Teeka", treatment: "Ilaj", deworming: "Deworming", checkup: "Vet check-up", other: "Doosra" };
+const printedSeverity: Record<string, string> = { mild: "Halki", moderate: "Darmiyani", severe: "Zyada" };
 
 export default function FarmAnimals() {
   const id = useSearchParams().get("id") ?? "";
@@ -43,7 +45,6 @@ export default function FarmAnimals() {
   const [milkLimit, setMilkLimit] = useState(20);
   const [term, setTerm] = useState("");
   const [filter, setFilter] = useState("active");
-  const [healthCost, setHealthCost] = useState(0);
   const [dossierBusy, setDossierBusy] = useState(false);
   const [dossierMessage, setDossierMessage] = useState("");
   const [error, setError] = useState("");
@@ -85,7 +86,7 @@ export default function FarmAnimals() {
     const latestHealth = health[0];
     const dossierInput: AnimalDossier = {
       animal: selected, animals: d.animals, farm: d.settings, today: d.today, status: profileStatuses,
-      dueTasks, careTasks, health, activeAlerts: d.alerts.filter((alert) => alert.animal_id === selected.id),
+      dueTasks, careTasks, health, healthAttachments: d.healthAttachments, activeAlerts: d.alerts.filter((alert) => alert.animal_id === selected.id),
       inseminations: breeding, calvings: d.calvings, offspring: d.calvingOffspring,
       milkShifts: d.shifts,
       milk: history.filter((row) => row.shift).map((row) => ({
@@ -169,12 +170,7 @@ export default function FarmAnimals() {
       <div className="print:hidden"><AnimalManagement key={selected.id} animal={selected} animals={d.animals} accounts={d.accounts} today={d.today} linkedBirth={d.calvingOffspring.some((child) => child.animal_id === selected.id)} /></div>
       <Panel title="Farm mein zindagi ka record" className="lg:col-span-2">{!selected.arrival_date && <p className="mb-2 text-sm text-muted">Is purane janwar ki aane ki tareekh darj nahi. Maloom ho to record mein likhein.</p>}{lifeEvents.length ? <ol className="divide-y divide-line">{lifeEvents.map((event) => <li key={event.id} className="grid gap-1 py-2 text-sm sm:grid-cols-[8rem_9rem_1fr]"><time className="text-muted">{longDate(event.date)}</time><strong>{event.title}</strong><span>{event.detail}</span></li>)}</ol> : <p className="text-sm text-muted">Abhi zindagi ka koi tareekhwar record nahi.</p>}</Panel>
       <Panel title={`Doodh ka record (${history.length})`}>{history.length ? <><ul className="divide-y divide-line">{history.slice(0, milkLimit).map((x) => <li key={x.id} className="flex justify-between py-2 text-sm"><span>{x.shift ? shortDate(x.shift.milk_date) : ""} · {x.shift ? SHIFT_LABELS[x.shift.shift] : ""}</span><strong>{amount(x.litres)} L</strong></li>)}</ul>{history.length > milkLimit && <button type="button" onClick={() => setMilkLimit((count) => count + 50)} className="mt-2 min-h-10 rounded-xl border border-line px-3 text-sm font-semibold">Mazeed {Math.min(50, history.length - milkLimit)} entries dekhein</button>}</> : <p className="text-sm text-muted">Abhi per-janwar doodh entry nahi.</p>}</Panel>
-      <Panel title="Sehat">{selected.life_status === "active" && <form onSubmit={(e: FormEvent<HTMLFormElement>) => { e.preventDefault(); const f = new FormData(e.currentTarget); const form = e.currentTarget; void run(async () => { const cost = String(f.get("cost") ?? "").trim() ? parseAmount(String(f.get("cost"))) : 0; await recordHealthEvent({ animalId: selected.id, date: String(f.get("date")), kind: String(f.get("kind")), title: String(f.get("title")), cost, nextDueDate: String(f.get("next")) || null, categoryId: cost > 0 ? String(f.get("category")) : null, accountId: cost > 0 ? String(f.get("account")) : null }); form.reset(); setHealthCost(0); }); }} className="print:hidden grid gap-2 sm:grid-cols-2">
-        <input name="title" required placeholder="Ilaj ya vaccine" aria-label="Ilaj ya vaccine" className={field} /><label className="text-sm text-muted">Sehat entry ki tareekh<input name="date" type="date" required defaultValue={d.today} className={field} /></label>
-        <select name="kind" aria-label="Qism" className={field}><option value="treatment">Ilaj</option><option value="vaccine">Vaccine</option><option value="deworming">Deworming</option><option value="checkup">Checkup</option><option value="other">Doosra</option></select><input name="cost" type="number" min="0" step="0.01" placeholder="Kharcha Rs" aria-label="Kharcha" className={field} onChange={(e) => setHealthCost(Number(e.target.value) || 0)} />
-        {healthCost > 0 && <><select name="category" required aria-label="Kharcha category" defaultValue={d.categories.find((c) => c.name === "Dawai / vet" && c.active)?.id} className={field}>{d.categories.filter((c) => c.active && c.is_farm_cost).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select><select name="account" required aria-label="Kharcha account" className={field}>{d.accounts.filter((a) => a.active).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></>}
-        <label className="text-sm text-muted">Agli tareekh<input name="next" type="date" className={field} /></label><button disabled={busy || (healthCost > 0 && (!d.categories.some((c) => c.active && c.is_farm_cost) || !d.accounts.some((a) => a.active)))} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50">Sehat entry save</button>
-      </form>}<ul className="mt-4 divide-y divide-line">{health.map((x) => <li key={x.id} className="py-2 text-sm"><strong>{x.title}</strong> · {shortDate(x.event_date)}{amount(x.cost) > 0 ? ` · ${money(x.cost)}` : ""}{x.next_due_date ? ` · Agla: ${shortDate(x.next_due_date)}` : ""}</li>)}</ul></Panel>
+      <AnimalHealthHistory animalId={selected.id} events={health} attachments={d.healthAttachments} categories={d.categories} accounts={d.accounts} today={d.today} active={selected.life_status === "active"} busy={busy} run={run} />
       <div className="print:hidden"><AnimalBreeding animal={selected} animals={d.animals} records={breeding} calvings={d.calvings.filter((x) => x.animal_id === selected.id)} offspring={d.calvingOffspring} today={d.today} busy={busy} run={run} /></div>
       <Panel title="Record ki tafseel" className="hidden print:block lg:col-span-2">
         <h3 className="font-semibold">Tareekh aur shift ke mutabiq doodh</h3><ul className="divide-y divide-line text-sm">{dossierInput.milk.length ? dossierInput.milk.map((row, index) => <li key={`${row.date}-${row.shift}-${index}`} className="flex justify-between py-1"><span>{longDate(row.date)} · {row.shift}</span><strong>{row.litres} L</strong></li>) : <li className="py-1">Doodh ka record nahi.</li>}</ul>
@@ -191,7 +187,19 @@ export default function FarmAnimals() {
           if (!calves.length && calving.calf_id) calves.push(d.animals.find((item) => item.id === calving.calf_id)?.tag ?? "Bacha darj hai");
           return <li key={calving.id} className="py-1">{longDate(calving.calving_date)} · {printedCalvingOutcome[calving.outcome] ?? "Darj nahi"}{calves.length ? ` · ${calves.join("; ")}` : ""}{calving.notes ? ` · ${calving.notes}` : ""}</li>;
         }) : <li className="py-1">Paidaish ka record nahi.</li>}</ul>
-        <h3 className="mt-4 font-semibold">Sehat ka record</h3><ul className="divide-y divide-line text-sm">{health.length ? health.map((row) => <li key={row.id} className="py-1">{longDate(row.event_date)} · {printedHealthKind[row.kind] ?? "Doosra"} · {row.title}{row.medicine ? ` · ${row.medicine}` : ""}{row.vet ? ` · Vet: ${row.vet}` : ""}{row.notes ? ` · ${row.notes}` : ""}</li>) : <li className="py-1">Sehat ka record nahi.</li>}</ul>
+        <h3 className="mt-4 font-semibold">Sehat ka record</h3><ul className="divide-y divide-line text-sm">{health.length ? health.map((row) => {
+          const attachmentNames = d.healthAttachments.filter((attachment) => attachment.health_event_id === row.id).map((attachment) => attachment.file_name);
+          const details = [
+            row.symptoms ? `Nishaniyan: ${row.symptoms}` : "", row.diagnosis ? `Vet ki tashkhees: ${row.diagnosis}` : "",
+            row.severity ? `Shiddat: ${printedSeverity[row.severity] ?? "Darj nahi"}` : "", row.current_condition ? `Maujooda haalat: ${row.current_condition}` : "",
+            row.medicine, row.medicine_type ? `Qisam: ${row.medicine_type}` : "", row.dosage ? `Dose: ${row.dosage}` : "",
+            row.route ? `Tareeqa: ${row.route}` : "", row.treatment_start_date ? `Shuru: ${longDate(row.treatment_start_date)}` : "",
+            row.treatment_end_date ? `Khatam: ${longDate(row.treatment_end_date)}` : "", row.vet ? `Vet: ${row.vet}` : "",
+            row.next_due_date ? `Agli due: ${longDate(row.next_due_date)}` : "", Number(row.cost) ? money(row.cost) : "",
+            row.notes, attachmentNames.length ? `Files: ${attachmentNames.join(", ")}` : "",
+          ].filter(Boolean);
+          return <li key={row.id} className="py-1">{longDate(row.event_date)} · {printedHealthKind[row.kind] ?? "Doosra"} · {row.title}{details.length ? ` · ${details.join(" · ")}` : ""}</li>;
+        }) : <li className="py-1">Sehat ka record nahi.</li>}</ul>
       </Panel>
       {error && <p role="alert" className="text-udhaar lg:col-span-2">Save nahi hua: {error}</p>}</Body></>;
   }

@@ -15,6 +15,7 @@ vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams()
 vi.mock("@/components/FarmObservances", () => ({ FarmObservances: () => null }));
 
 beforeEach(() => {
+  supabaseMocks.getSupabase.mockReturnValue({ rpc: vi.fn().mockResolvedValue({ data: true, error: null }) });
   farmMocks.useFarmData.mockReturnValue({ data: makeFarmData(), error: null });
   farmMocks.saveMilkEntry.mockResolvedValue("2026-10-16T12:00:00Z");
   farmMocks.correctMilkEntry.mockResolvedValue("2026-10-16T12:00:01Z");

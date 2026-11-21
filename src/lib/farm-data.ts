@@ -24,7 +24,10 @@ export type Animal = {
   updated_at: string;
 };
 export type AnimalStatus = { id: string; breeding_status: string; service_date: string | null; calving_due: string | null };
-export type HealthEvent = { id: string; animal_id: string; event_date: string; created_at: string; kind: string; title: string; medicine: string | null; vet: string | null; notes: string | null; cost: number; next_due_date: string | null; expense_id: string | null };
+type HealthEventDetailValues = Omit<Database["public"]["Tables"]["health_event_details"]["Row"], "health_event_id">;
+export type HealthEvent = Database["public"]["Tables"]["health_events"]["Row"] & Partial<HealthEventDetailValues>;
+type HealthEventDetails = Database["public"]["Tables"]["health_event_details"]["Row"];
+export type HealthEventAttachment = Database["public"]["Tables"]["health_event_attachments"]["Row"];
 export type Insemination = Database["public"]["Tables"]["inseminations"]["Row"];
 export type Calving = Database["public"]["Tables"]["calvings"]["Row"];
 export type CalvingOffspring = Database["public"]["Tables"]["calving_offspring"]["Row"];
@@ -60,7 +63,8 @@ export type Pnl = { milk_income: number; other_income: number; total_income: num
 
 export type FarmData = {
   today: string; settings: LoadedFarmSettings; animals: Animal[]; animalStatus: AnimalStatus[];
-  health: HealthEvent[]; inseminations: Insemination[]; calvings: Calving[]; calvingOffspring: CalvingOffspring[]; animalMilk: AnimalMilk[];
+  health: HealthEvent[]; healthAttachments: HealthEventAttachment[];
+  inseminations: Insemination[]; calvings: Calving[]; calvingOffspring: CalvingOffspring[]; animalMilk: AnimalMilk[];
   animalCareTasks: AnimalCareTask[];
   customers: Customer[]; rates: CustomerRate[]; shifts: MilkShift[]; deliveries: MilkDelivery[]; dispositions: MilkDisposition[]; milkShiftConfig: MilkShiftConfig[];
   payments: Payment[]; categories: ExpenseCategory[]; expenses: Expense[]; accounts: Account[];
@@ -93,11 +97,11 @@ export async function allRows<T>(table: Table, key = "id", filters: RowFilter[] 
 }
 
 /** Keep PostgREST URLs bounded when a long animal history has many related IDs. */
-async function rowsForIds<T>(table: Table, column: string, ids: string[]): Promise<T[]> {
+async function rowsForIds<T>(table: Table, column: string, ids: string[], key = "id"): Promise<T[]> {
   const unique = [...new Set(ids)];
   const chunks: Promise<T[]>[] = [];
   for (let from = 0; from < unique.length; from += 100) {
-    chunks.push(allRows<T>(table, "id", [{ column, op: "in", value: `(${unique.slice(from, from + 100).join(",")})` }]));
+    chunks.push(allRows<T>(table, key, [{ column, op: "in", value: `(${unique.slice(from, from + 100).join(",")})` }]));
   }
   return (await Promise.all(chunks)).flat();
 }
@@ -192,7 +196,7 @@ export async function loadFarmData(scope: FarmScope, id = "", date = farmToday()
     only(scope === "dashboard" || detail, () => loadHerdAlerts(today)),
     Promise.all(months.map(async (item) => ({ month: item, data: (await report<Pnl>("pnl_month", { p_month: item }))[0] }))),
   ]);
-  const [animalMilk, calvingOffspring, animalCareTasks] = await Promise.all([
+  const [animalMilk, calvingOffspring, animalCareTasks, healthAttachments, healthDetails] = await Promise.all([
     only(detail || scope === "milk", () => allRows<AnimalMilk>("animal_milk", "id",
       detail ? eq("animal_id", id) : shifts.length ? [{ column: "shift_id", op: "in", value: `(${shifts.map((s) => s.id).join(",")})` }] : eq("shift_id", "00000000-0000-0000-0000-000000000000"))),
     only(detail, async () => {
@@ -202,7 +206,11 @@ export async function loadFarmData(scope: FarmScope, id = "", date = farmToday()
       return [...new Map([...related, ...children].map((child) => [child.id, child])).values()];
     }),
     only(detail, () => allRows<AnimalCareTask>("animal_care_tasks", "due_date", eq("animal_id", id))),
+    only(detail && health.length > 0, () => rowsForIds<HealthEventAttachment>("health_event_attachments", "health_event_id", health.map((event) => event.id))),
+    only(detail && health.length > 0, () => rowsForIds<HealthEventDetails>("health_event_details", "health_event_id", health.map((event) => event.id), "health_event_id")),
   ]);
+  const detailsByEvent = new Map(healthDetails.map(({ health_event_id, ...details }) => [health_event_id, details]));
+  const detailedHealth: HealthEvent[] = health.map((event) => ({ ...event, ...detailsByEvent.get(event.id) }));
   const linkedBirthCalvings = detail && calvingOffspring.length
     ? await rowsForIds<Calving>("calvings", "id", calvingOffspring.map((row) => row.calving_id))
     : [];
@@ -211,7 +219,7 @@ export async function loadFarmData(scope: FarmScope, id = "", date = farmToday()
   const relevantShifts = detail
     ? [...new Map([...shifts, ...animalHistoryShifts].map((shift) => [shift.id, shift])).values()]
     : shifts;
-  return { today, settings, animals, animalStatus, health, inseminations, calvings: animalCalvings, calvingOffspring, animalMilk, animalCareTasks,
+  return { today, settings, animals, animalStatus, health: detailedHealth, healthAttachments, inseminations, calvings: animalCalvings, calvingOffspring, animalMilk, animalCareTasks,
     customers, rates, shifts: relevantShifts, deliveries, dispositions, milkShiftConfig, payments, categories, expenses, accounts,
     companyBills, otherIncome, reports, balances, alerts, monthlyPnl: pnl };
 }
@@ -412,13 +420,28 @@ export async function saveCustomerRate(customerId: string, rate: number, effecti
 export async function recordHealthEvent(input: {
   animalId: string; date: string; kind: string; title: string;
   cost: number; nextDueDate: string | null; categoryId: string | null; accountId: string | null;
+  medicine?: string | null; veterinarian?: string | null; notes?: string | null;
+  symptoms?: string | null; diagnosis?: string | null; severity?: string | null; currentCondition?: string | null;
+  medicineType?: string | null; dosage?: string | null; route?: string | null;
+  treatmentStartDate?: string | null; treatmentEndDate?: string | null;
 }) {
   const args = {
     p_animal_id: input.animalId, p_event_date: input.date, p_kind: input.kind,
     p_title: input.title, p_cost: input.cost, p_next_due_date: input.nextDueDate,
     p_category_id: input.categoryId, p_account_id: input.accountId,
+    p_medicine: input.medicine ?? null, p_vet: input.veterinarian ?? null, p_notes: input.notes ?? null,
+    p_symptoms: input.symptoms ?? null, p_diagnosis: input.diagnosis ?? null, p_severity: input.severity ?? null,
+    p_current_condition: input.currentCondition ?? null, p_medicine_type: input.medicineType ?? null,
+    p_dosage: input.dosage ?? null, p_route: input.route ?? null,
+    p_treatment_start_date: input.treatmentStartDate ?? null, p_treatment_end_date: input.treatmentEndDate ?? null,
   };
   // PostgreSQL accepts NULL for optional event details, although typegen marks RPC args as strings.
-  const { error } = await getSupabase().rpc("record_health_event", args as unknown as Database["public"]["Functions"]["record_health_event"]["Args"]);
+  const { error } = await getSupabase().rpc("record_detailed_health_event", args as unknown as Database["public"]["Functions"]["record_detailed_health_event"]["Args"]);
   if (error) throw error;
+}
+
+export async function canManageVeterinaryDetails(): Promise<boolean> {
+  const { data, error } = await getSupabase().rpc("can_manage_veterinary_details");
+  if (error) throw error;
+  return data;
 }

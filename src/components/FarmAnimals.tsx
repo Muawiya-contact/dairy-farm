@@ -17,6 +17,8 @@ import { PlusIcon, SearchIcon } from "./icons";
 import { AnimalManagement } from "./AnimalManagement";
 import { AnimalBreeding } from "./AnimalBreeding";
 import { AnimalCareTasks } from "./AnimalCareTasks";
+import { AnimalFeeding } from "./AnimalFeeding";
+import { AnimalFinancialSummary } from "./AnimalFinancialSummary";
 import AnimalWeightHistory from "./AnimalWeightHistory";
 import { AnimalHealthHistory } from "./AnimalHealthHistory";
 import { breedingDueDate } from "@/lib/breeding-register";
@@ -75,6 +77,8 @@ export default function FarmAnimals() {
     const currentCycle = breeding.find((record) => record.status === "pending" || record.status === "pregnant");
     const estimatedCalvingDate = currentCycle ? breedingDueDate(currentCycle, "calving").date : status?.calving_due;
     const careTasks = d.animalCareTasks.filter((task) => task.animal_id === selected.id);
+    const animalFeed = d.animalFeed.filter((entry) => entry.animal_id === selected.id);
+    const animalIncome = d.animalIncome.filter((entry) => entry.animal_id === selected.id);
     const animalWeights = d.animalWeights.filter((record) => record.animal_id === selected.id);
     const birthRecord = d.calvingOffspring.find((child) => child.animal_id === selected.id);
     const birthCalving = birthRecord ? d.calvings.find((calving) => calving.id === birthRecord.calving_id) : undefined;
@@ -94,7 +98,7 @@ export default function FarmAnimals() {
     const dossierInput: AnimalDossier = {
       animal: selected, animals: d.animals, farm: d.settings, today: d.today, status: profileStatuses,
       dueTasks, careTasks, health, healthAttachments: d.healthAttachments, activeAlerts: d.alerts.filter((alert) => alert.animal_id === selected.id),
-      inseminations: breeding, calvings: d.calvings, offspring: d.calvingOffspring, animalWeights,
+      inseminations: breeding, calvings: d.calvings, offspring: d.calvingOffspring, animalWeights, animalFeed, animalIncome,
       milkShifts: d.shifts,
       milk: history.filter((row) => row.shift).map((row) => ({
         date: row.shift!.milk_date, shift: SHIFT_LABELS[row.shift!.shift], litres: amount(row.litres),
@@ -175,6 +179,8 @@ export default function FarmAnimals() {
       </dl><div className="mt-3 border-t border-line pt-3"><h3 className="font-semibold">Agla due kaam</h3>{dueTasks.length ? <ul className="mt-1 divide-y divide-line text-sm">{dueTasks.map((task) => <li key={`${task.label}-${task.date}`} className="flex flex-wrap justify-between gap-1 py-1"><span>{task.label}{task.overdue ? " · Tareekh guzar gayi" : ""}</span><time>{longDate(task.date)}</time></li>)}</ul> : <p className="mt-1 text-sm text-muted">Koi due tareekh darj nahi.</p>}</div><div className="mt-3 border-t border-line pt-3"><h3 className="font-semibold">Qareebi aham reminders</h3>{dossierInput.activeAlerts.length ? <ul className="mt-1 divide-y divide-line text-sm">{dossierInput.activeAlerts.map((alert) => <li key={`${alert.alert_kind}-${alert.due_date}`} className="py-1">{alert.message}</li>)}</ul> : <p className="mt-1 text-sm text-muted">Is janwar ka koi qareebi reminder nahi.</p>}</div></Panel>
       <AnimalCareTasks animalId={selected.id} tasks={careTasks} today={d.today} active={selected.life_status === "active"} busy={busy} run={run} />
       <AnimalWeightHistory animal={selected} history={weightHistory} today={d.today} busy={busy} run={run} />
+      <AnimalFeeding animal={selected} records={animalFeed} today={d.today} busy={busy} run={run} />
+      <AnimalFinancialSummary animal={selected} health={health} income={animalIncome} milk={history} feed={animalFeed} currentMilkRate={d.settings.default_milk_rate} />
       <div className="print:hidden"><AnimalManagement key={selected.id} animal={selected} animals={d.animals} accounts={d.accounts} today={d.today} linkedBirth={d.calvingOffspring.some((child) => child.animal_id === selected.id)} /></div>
       <Panel title="Farm mein zindagi ka record" className="lg:col-span-2">{!selected.arrival_date && <p className="mb-2 text-sm text-muted">Is purane janwar ki aane ki tareekh darj nahi. Maloom ho to record mein likhein.</p>}{lifeEvents.length ? <ol className="divide-y divide-line">{lifeEvents.map((event) => <li key={event.id} className="grid gap-1 py-2 text-sm sm:grid-cols-[8rem_9rem_1fr]"><time className="text-muted">{longDate(event.date)}</time><strong>{event.title}</strong><span>{event.detail}</span></li>)}</ol> : <p className="text-sm text-muted">Abhi zindagi ka koi tareekhwar record nahi.</p>}</Panel>
       <Panel title={`Doodh ka record (${history.length})`}>{history.length ? <><ul className="divide-y divide-line">{history.slice(0, milkLimit).map((x) => <li key={x.id} className="flex justify-between py-2 text-sm"><span>{x.shift ? shortDate(x.shift.milk_date) : ""} · {x.shift ? SHIFT_LABELS[x.shift.shift] : ""}</span><strong>{amount(x.litres)} L</strong></li>)}</ul>{history.length > milkLimit && <button type="button" onClick={() => setMilkLimit((count) => count + 50)} className="mt-2 min-h-10 rounded-xl border border-line px-3 text-sm font-semibold">Mazeed {Math.min(50, history.length - milkLimit)} entries dekhein</button>}</> : <p className="text-sm text-muted">Abhi per-janwar doodh entry nahi.</p>}</Panel>

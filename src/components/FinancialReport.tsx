@@ -124,8 +124,7 @@ export default function FinancialReport() {
   const pendingSalaries = data ? salaryPayableTotal(data.salaryPayables) : 0;
   const expenseGroups = data ? groupFinancialExpenses(data.period.expenses) : [];
   const incomeGroups = data ? groupOtherIncome(data.otherIncome) : [];
-  const collectionGross = data?.period.customers.reduce((sum, customer) => sum + customer.paid, 0) ?? 0;
-  const receivedTotal = collectionGross + (summary?.other_income ?? 0);
+  const receivedTotal = (summary?.cash_collected ?? 0) + (summary?.other_income ?? 0);
   const maxExpense = Math.max(1, ...expenseGroups.map((row) => row.amount));
   const accountTotals = data?.accounts.reduce((totals, account) => ({
     opening: totals.opening + account.opening_balance,

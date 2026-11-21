@@ -332,6 +332,41 @@ export type Database = {
           },
         ]
       }
+      animal_weight_records: {
+        Row: {
+          animal_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          weight_date: string
+          weight_kg: number
+        }
+        Insert: {
+          animal_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          weight_date: string
+          weight_kg: number
+        }
+        Update: {
+          animal_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          weight_date?: string
+          weight_kg?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "animal_weight_records_animal_id_fkey"
+            columns: ["animal_id"]
+            isOneToOne: false
+            referencedRelation: "animals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calving_offspring: {
         Row: {
           animal_id: string | null
@@ -653,6 +688,62 @@ export type Database = {
           sort_order?: number
         }
         Relationships: []
+      }
+      animal_feed_entries: {
+        Row: {
+          animal_id: string
+          created_at: string
+          feed_date: string
+          id: string
+          inventory_item_id: string
+          note: string | null
+          quantity: number
+          request_id: string
+          request_payload: Json
+          stock_quantity: number
+          stock_unit: string
+          stock_movement_id: string
+          supersedes_id: string | null
+          unit: string
+        }
+        Insert: {
+          animal_id: string
+          created_at?: string
+          feed_date: string
+          id?: string
+          inventory_item_id: string
+          note?: string | null
+          quantity: number
+          request_id: string
+          request_payload: Json
+          stock_quantity: number
+          stock_unit: string
+          stock_movement_id: string
+          supersedes_id?: string | null
+          unit: string
+        }
+        Update: {
+          animal_id?: string
+          created_at?: string
+          feed_date?: string
+          id?: string
+          inventory_item_id?: string
+          note?: string | null
+          quantity?: number
+          request_id?: string
+          request_payload?: Json
+          stock_quantity?: number
+          stock_unit?: string
+          stock_movement_id?: string
+          supersedes_id?: string | null
+          unit?: string
+        }
+        Relationships: [
+          { foreignKeyName: "animal_feed_entries_animal_id_fkey"; columns: ["animal_id"]; isOneToOne: false; referencedRelation: "animals"; referencedColumns: ["id"] },
+          { foreignKeyName: "animal_feed_entries_inventory_item_id_fkey"; columns: ["inventory_item_id"]; isOneToOne: false; referencedRelation: "inventory_items"; referencedColumns: ["id"] },
+          { foreignKeyName: "animal_feed_entries_stock_movement_id_fkey"; columns: ["stock_movement_id"]; isOneToOne: true; referencedRelation: "inventory_movements"; referencedColumns: ["id"] },
+          { foreignKeyName: "animal_feed_entries_supersedes_id_fkey"; columns: ["supersedes_id"]; isOneToOne: false; referencedRelation: "animal_feed_entries"; referencedColumns: ["id"] },
+        ]
       }
       expense_categories: {
         Row: {
@@ -2232,6 +2323,8 @@ export type Database = {
       record_inventory_purchase: { Args: { p_request_id: string; p_item_id: string; p_quantity: number; p_unit: string; p_unit_rate: number; p_total_amount: number; p_movement_date: string; p_account_id: string; p_expense_category_id: string; p_supplier?: string | null; p_reference?: string | null; p_note?: string | null; p_batch_code?: string | null; p_expiry_date?: string | null }; Returns: string }
       record_inventory_usage: { Args: { p_request_id: string; p_item_id: string; p_quantity: number; p_unit: string; p_movement_date: string; p_purpose: string; p_staff_id?: string | null; p_note?: string | null }; Returns: string }
       record_inventory_adjustment: { Args: { p_request_id: string; p_item_id: string; p_quantity: number; p_unit: string; p_direction: number; p_movement_date: string; p_movement_type: string; p_reason: string; p_note?: string | null }; Returns: string }
+      record_animal_feed_once: { Args: { p_request_id: string; p_animal_id: string; p_item_id: string; p_quantity: number; p_unit: string; p_feed_date: string; p_note?: string | null }; Returns: string }
+      correct_animal_feed_once: { Args: { p_request_id: string; p_feed_entry_id: string; p_item_id: string; p_quantity: number; p_unit: string; p_note?: string | null }; Returns: string }
       inventory_stock_on: { Args: { p_as_of: string }; Returns: { item_id: string; item_name: string; category_id: string; category_name: string; base_unit: string; item_type: string; minimum_stock: number; active: boolean; current_stock: number; low_stock: boolean; out_of_stock: boolean; last_movement_date: string | null; revision: number }[] }
       inventory_item_history: { Args: { p_item_id: string; p_from: string; p_to: string }; Returns: { movement_id: string; movement_seq: number; item_id: string; movement_date: string; movement_type: string; quantity_delta: number; entered_quantity: number; entered_unit: string; stock_unit: string; recorded_stock_before: number; recorded_stock_after: number; running_balance_after: number; unit_rate: number | null; total_amount: number | null; account_id: string | null; account_name: string | null; expense_id: string | null; staff_id: string | null; staff_name: string | null; supplier: string | null; reference: string | null; batch_code: string | null; expiry_date: string | null; purpose: string | null; reason: string | null; note: string | null; actor_id: string | null }[] }
       inventory_report_summary: { Args: { p_from: string; p_to: string; p_item_id?: string | null; p_category_id?: string | null }; Returns: { item_id: string; item_name: string; category_id: string; category_name: string; stock_unit: string; active: boolean; minimum_stock: number; opening_stock: number; opening_entries_in: number; purchases_in: number; usage_out: number; adjustment_in: number; adjustment_out: number; wastage_out: number; closing_stock: number; purchase_amount: number; current_stock: number; current_low_stock: boolean; current_out_of_stock: boolean }[] }

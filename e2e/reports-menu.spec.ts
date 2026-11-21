@@ -16,7 +16,7 @@ test("Reports menu routes each category to its matching entry page", async ({ pa
     ["Animal Report", "Animal Report"],
     ["Maali Report", "Maali Report"],
     ["Accounts Report", "Accounts Report"],
-    ["Final Report", "Reports aur PDF"],
+    ["Final Report", "Final Report"],
   ] as const;
 
   for (const [label, heading] of destinations) {

@@ -33,7 +33,7 @@ The demo Netlify site and its previews connect to **staging**, which contains in
 
 Earlier unfinished work stays tracked in the roadmap and future step PRs.
 
-Step 8 behavior, failure cases, tests, and release checks are in [Step 8 launch](steps/step-8-launch.md).
+Step 8 month close, import preparation, and release checks are in [Step 8 launch](steps/step-8-launch.md). The consolidated read-only report, database sources, and validation rules are in [Step 8 Final Report](steps/step-8-final-report.md).
 
 ## Step 2: Animal lifecycle
 

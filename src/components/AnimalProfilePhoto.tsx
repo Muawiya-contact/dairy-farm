@@ -6,7 +6,7 @@ import { useState } from "react";
 import { friendlyError } from "@/lib/errors";
 import { refreshFarmViews } from "@/lib/query-refresh";
 import { removeAnimalPhoto, replaceAnimalPhoto, signedAnimalPhotoUrl } from "@/lib/animal-photos";
-import type { Animal } from "@/lib/farm-data";
+import type { Animal, FarmData } from "@/lib/farm-data";
 import { Panel } from "./ui";
 
 export function AnimalProfilePhoto({ animal }: { animal: Animal }) {
@@ -20,13 +20,34 @@ export function AnimalProfilePhoto({ animal }: { animal: Animal }) {
     staleTime: 50 * 60 * 1000,
   });
 
+  const updateCachedPhotoPath = (photoPath: string | null) => {
+    client.setQueriesData<FarmData>({ queryKey: ["farm-data"] }, (current) => current && ({
+      ...current,
+      animals: current.animals.map((row) => row.id === animal.id ? { ...row, photo_path: photoPath } : row),
+    }));
+  };
+
+  const refreshViews = async () => {
+    try {
+      await refreshFarmViews(client, "animal");
+      return false;
+    } catch {
+      return true;
+    }
+  };
+
   const upload = async (file: File | undefined) => {
     if (!file || busy) return;
     setBusy(true); setMessage("");
     try {
       const result = await replaceAnimalPhoto(animal, file);
-      await refreshFarmViews(client, "animal");
-      setMessage(result.cleanupWarning ? "Nayi photo save ho gayi; purani private file ki safai baad mein dobara koshish karein." : "Photo save ho gayi.");
+      updateCachedPhotoPath(result.photoPath);
+      const refreshWarning = await refreshViews();
+      const warnings = [
+        result.cleanupWarning && "Purani private file ki safai baad mein dobara koshish karein.",
+        refreshWarning && "Profile refresh nahi ho saka; naye data ke liye page reload karein.",
+      ].filter(Boolean).join(" ");
+      setMessage(`Photo save ho gayi.${warnings ? ` ${warnings}` : ""}`);
     } catch (error) { setMessage(`Photo save nahi hui: ${friendlyError(error)}`); }
     finally { setBusy(false); }
   };
@@ -36,8 +57,13 @@ export function AnimalProfilePhoto({ animal }: { animal: Animal }) {
     setBusy(true); setMessage("");
     try {
       const result = await removeAnimalPhoto(animal);
-      await refreshFarmViews(client, "animal");
-      setMessage(result.cleanupWarning ? "Photo profile se hata di; private file ki safai dobara koshish karein." : "Photo hata di gayi.");
+      updateCachedPhotoPath(result.photoPath);
+      const refreshWarning = await refreshViews();
+      const warnings = [
+        result.cleanupWarning && "Private file ki safai dobara koshish karein.",
+        refreshWarning && "Profile refresh nahi ho saka; naye data ke liye page reload karein.",
+      ].filter(Boolean).join(" ");
+      setMessage(`Photo profile se hata di.${warnings ? ` ${warnings}` : ""}`);
     } catch (error) { setMessage(`Photo nahi hati: ${friendlyError(error)}`); }
     finally { setBusy(false); }
   };

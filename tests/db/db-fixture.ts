@@ -19,7 +19,7 @@ export async function createStorageFixture(db: PGlite): Promise<void> {
   `);
 }
 
-export async function freshFarmDb(options: { farmDay?: string; demo?: boolean; demoAccess?: boolean } = {}): Promise<PGlite> {
+export async function freshFarmDb(options: { farmDay?: string; demo?: boolean; demoAccess?: boolean; stopAfterMigration?: string } = {}): Promise<PGlite> {
   const db = new PGlite();
   try {
     if (options.farmDay && !/^\d{4}-\d{2}-\d{2}$/.test(options.farmDay)) throw new RangeError("Use an ISO farm day");
@@ -34,7 +34,8 @@ export async function freshFarmDb(options: { farmDay?: string; demo?: boolean; d
     `);
     await createStorageFixture(db);
     const dir = resolve("supabase/migrations");
-    for (const name of readdirSync(dir).filter((file) => file.endsWith(".sql")).sort()) {
+    const migrationFiles = readdirSync(dir).filter((file) => file.endsWith(".sql")).sort();
+    for (const name of migrationFiles) {
       await db.exec(readFileSync(resolve(dir, name), "utf8"));
       if (options.demoAccess && name === "20261012000007_demo_settings.sql") {
         await db.exec("update private.demo_access set enabled = true where id = 1");
@@ -45,7 +46,10 @@ export async function freshFarmDb(options: { farmDay?: string; demo?: boolean; d
         await db.exec(`create or replace function public.farm_today() returns date language sql stable
           as $$ select date '${options.farmDay}' $$`);
       }
+      if (options.stopAfterMigration === name) break;
     }
+    if (options.stopAfterMigration && !migrationFiles.includes(options.stopAfterMigration))
+      throw new Error(`Unknown migration: ${options.stopAfterMigration}`);
     if (options.demo) await db.exec(readFileSync(resolve("supabase/seed/dev-demo.sql"), "utf8"));
     return db;
   } catch (error) {

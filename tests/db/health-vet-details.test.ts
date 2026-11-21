@@ -1,4 +1,6 @@
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import type { PGlite } from "@electric-sql/pglite";
 import { freshFarmDb } from "./db-fixture";
 
@@ -19,17 +21,40 @@ beforeAll(async () => {
 afterAll(async () => { await db?.close(); await demoDb?.close(); });
 beforeEach(async () => { await db.exec("reset role; reset request.jwt.claim.sub"); });
 
+test("owner-only migration preserves veterinary details already recorded", async () => {
+  const migrationDb = await freshFarmDb({ farmDay: "2026-10-20", stopAfterMigration: "20261121000009_health_attachment_demo_owner_guard.sql" });
+  try {
+    const legacyAnimal = (await migrationDb.query<{ id: string }>(
+      "insert into animals(tag,arrival_date) values('HEALTH-MIGRATION','2025-01-01') returning id",
+    )).rows[0].id;
+    const eventId = (await migrationDb.query<{ id: string }>(`select public.record_detailed_health_event(
+      $1,'2026-10-20','treatment','Existing clinical note',0,null,null,null,null,null,null,
+      'Recorded symptoms','Recorded diagnosis','moderate','Recovering','Medicine','Dose','Route','2026-10-18','2026-10-22') as id`,
+    [legacyAnimal])).rows[0].id;
+    await migrationDb.exec(readFileSync(resolve("supabase/migrations/20261121000010_owner_only_veterinary_details.sql"), "utf8"));
+    expect((await migrationDb.query(`select symptoms,diagnosis,severity,current_condition,medicine_type,dosage,route,
+      to_char(treatment_start_date,'YYYY-MM-DD') treatment_start_date,
+      to_char(treatment_end_date,'YYYY-MM-DD') treatment_end_date
+      from health_event_details where health_event_id=$1`, [eventId])).rows[0]).toEqual({
+      symptoms: "Recorded symptoms", diagnosis: "Recorded diagnosis", severity: "moderate", current_condition: "Recovering",
+      medicine_type: "Medicine", dosage: "Dose", route: "Route", treatment_start_date: "2026-10-18", treatment_end_date: "2026-10-22",
+    });
+    expect((await migrationDb.query("select column_name from information_schema.columns where table_schema='public' and table_name='health_events' and column_name='diagnosis'")).rows)
+      .toEqual([]);
+  } finally { await migrationDb.close(); }
+});
+
 test("detailed veterinary history links its cost once and keeps unknown details optional", async () => {
   const { rows } = await db.query<{ id: string }>(`select public.record_detailed_health_event(
     $1,$2,'treatment','Hoof check',175,$3,$4,$5,'Oxytetracycline','Dr. Farm','Keep dry',
     'Limping after the walk','Hoof injury','moderate','Under treatment','Antibiotic','As prescribed',
     'Topical','2026-10-18','2026-10-22') as id`,
   [animal, "2026-10-20", "2026-10-27", category, account]);
-  const event = await db.query(`select kind,title,medicine,vet,cost,to_char(next_due_date,'YYYY-MM-DD') next_due_date,expense_id,
-      symptoms,diagnosis,severity,current_condition,medicine_type,dosage,route,
-      to_char(treatment_start_date,'YYYY-MM-DD') treatment_start_date,
-      to_char(treatment_end_date,'YYYY-MM-DD') treatment_end_date
-    from health_events where id=$1`, [rows[0].id]);
+  const event = await db.query(`select h.kind,h.title,h.medicine,h.vet,h.cost,to_char(h.next_due_date,'YYYY-MM-DD') next_due_date,h.expense_id,
+      d.symptoms,d.diagnosis,d.severity,d.current_condition,d.medicine_type,d.dosage,d.route,
+      to_char(d.treatment_start_date,'YYYY-MM-DD') treatment_start_date,
+      to_char(d.treatment_end_date,'YYYY-MM-DD') treatment_end_date
+    from health_events h left join health_event_details d on d.health_event_id=h.id where h.id=$1`, [rows[0].id]);
   expect(event.rows[0]).toMatchObject({ kind: "treatment", title: "Hoof check", medicine: "Oxytetracycline",
     vet: "Dr. Farm", cost: "175.00", next_due_date: "2026-10-27", expense_id: expect.any(String),
     symptoms: "Limping after the walk", diagnosis: "Hoof injury", severity: "moderate",
@@ -40,7 +65,8 @@ test("detailed veterinary history links its cost once and keeps unknown details 
   await db.query(`select public.record_detailed_health_event(
     $1,$2,'checkup','Legacy style checkup',0,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)`,
   [animal, "2026-10-20"]);
-  expect((await db.query("select diagnosis,medicine,severity from health_events where title='Legacy style checkup'")).rows)
+  expect((await db.query(`select d.diagnosis,h.medicine,d.severity from health_events h
+    left join health_event_details d on d.health_event_id=h.id where h.title='Legacy style checkup'`)).rows)
     .toEqual([{ diagnosis: null, medicine: null, severity: null }]);
 });
 
@@ -55,8 +81,9 @@ test("a failed detailed health insert rolls back its expense as well", async () 
 });
 
 test("attachment records and private objects are visible only to the designated farm owner", async () => {
-  const { rows } = await db.query<{ id: string }>(
-    "select public.record_health_event($1,'2026-10-20','vaccine','FMD',0,null,null,null) as id", [animal]);
+  const { rows } = await db.query<{ id: string }>(`select public.record_detailed_health_event(
+    $1,'2026-10-20','vaccine','FMD',0,null,null,null,'Product','Vet',null,'Clinical symptoms','Vet diagnosis',
+    'mild',null,'Vaccine',null,null,null,null) as id`, [animal]);
   const eventId = rows[0].id;
   expect((await db.query<{ public: boolean; file_size_limit: number; allowed_mime_types: string[] }>(
     "select public,file_size_limit,allowed_mime_types from storage.buckets where id='health-records'",
@@ -75,8 +102,14 @@ test("attachment records and private objects are visible only to the designated 
   expect((await db.query("select id from public.health_event_attachments")).rows).toHaveLength(1);
   expect((await db.query("select name from storage.objects where bucket_id='health-records'")).rows)
     .toEqual([{ name: `${eventId}/${attachmentId}.pdf` }]);
+  expect((await db.query("select symptoms,diagnosis from public.health_event_details where health_event_id=$1", [eventId])).rows)
+    .toEqual([{ symptoms: "Clinical symptoms", diagnosis: "Vet diagnosis" }]);
 
   await db.exec(`reset role; set role authenticated; set request.jwt.claim.sub='${stranger}';`);
+  expect((await db.query("select id from public.health_events where id=$1", [eventId])).rows).toHaveLength(1);
+  expect((await db.query("select health_event_id from public.health_event_details where health_event_id=$1", [eventId])).rows).toEqual([]);
+  await expect(db.query(`insert into public.health_event_details(health_event_id,diagnosis)
+    values($1,'Private editor write')`, [eventId])).rejects.toThrow();
   expect((await db.query("select id from public.health_event_attachments")).rows).toEqual([]);
   expect((await db.query("select name from storage.objects where bucket_id='health-records'")).rows).toEqual([]);
   expect((await db.query("delete from storage.objects where bucket_id='health-records' returning name")).rows).toEqual([]);
@@ -85,6 +118,9 @@ test("attachment records and private objects are visible only to the designated 
   await expect(db.query(`insert into public.health_event_attachments(health_event_id,storage_path,file_name,content_type,size_bytes)
     values($1,$2,'private.pdf','application/pdf',900)`, [eventId, `${eventId}/44444444-4444-4444-8444-444444444444.pdf`]))
     .rejects.toThrow();
+  await db.exec(`reset role; set role authenticated; set request.jwt.claim.sub='${owner}';`);
+  expect((await db.query("select symptoms,diagnosis from public.health_event_details where health_event_id=$1", [eventId])).rows)
+    .toEqual([{ symptoms: "Clinical symptoms", diagnosis: "Vet diagnosis" }]);
 });
 
 test("attachment metadata rejects paths outside its event and files over the bucket limit", async () => {

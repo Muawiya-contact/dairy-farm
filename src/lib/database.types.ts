@@ -778,22 +778,13 @@ export type Database = {
           animal_id: string
           cost: number
           created_at: string
-          current_condition: string | null
-          diagnosis: string | null
-          dosage: string | null
           event_date: string
           expense_id: string | null
           id: string
           kind: string
           medicine: string | null
-          medicine_type: string | null
           next_due_date: string | null
           notes: string | null
-          route: string | null
-          severity: string | null
-          symptoms: string | null
-          treatment_end_date: string | null
-          treatment_start_date: string | null
           title: string
           vet: string | null
         }
@@ -801,22 +792,13 @@ export type Database = {
           animal_id: string
           cost?: number
           created_at?: string
-          current_condition?: string | null
-          diagnosis?: string | null
-          dosage?: string | null
           event_date: string
           expense_id?: string | null
           id?: string
           kind: string
           medicine?: string | null
-          medicine_type?: string | null
           next_due_date?: string | null
           notes?: string | null
-          route?: string | null
-          severity?: string | null
-          symptoms?: string | null
-          treatment_end_date?: string | null
-          treatment_start_date?: string | null
           title: string
           vet?: string | null
         }
@@ -824,22 +806,13 @@ export type Database = {
           animal_id?: string
           cost?: number
           created_at?: string
-          current_condition?: string | null
-          diagnosis?: string | null
-          dosage?: string | null
           event_date?: string
           expense_id?: string | null
           id?: string
           kind?: string
           medicine?: string | null
-          medicine_type?: string | null
           next_due_date?: string | null
           notes?: string | null
-          route?: string | null
-          severity?: string | null
-          symptoms?: string | null
-          treatment_end_date?: string | null
-          treatment_start_date?: string | null
           title?: string
           vet?: string | null
         }
@@ -863,6 +836,53 @@ export type Database = {
             columns: ["expense_id"]
             isOneToOne: false
             referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      health_event_details: {
+        Row: {
+          current_condition: string | null
+          diagnosis: string | null
+          dosage: string | null
+          health_event_id: string
+          medicine_type: string | null
+          route: string | null
+          severity: string | null
+          symptoms: string | null
+          treatment_end_date: string | null
+          treatment_start_date: string | null
+        }
+        Insert: {
+          current_condition?: string | null
+          diagnosis?: string | null
+          dosage?: string | null
+          health_event_id: string
+          medicine_type?: string | null
+          route?: string | null
+          severity?: string | null
+          symptoms?: string | null
+          treatment_end_date?: string | null
+          treatment_start_date?: string | null
+        }
+        Update: {
+          current_condition?: string | null
+          diagnosis?: string | null
+          dosage?: string | null
+          health_event_id?: string
+          medicine_type?: string | null
+          route?: string | null
+          severity?: string | null
+          symptoms?: string | null
+          treatment_end_date?: string | null
+          treatment_start_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_event_details_health_event_id_fkey"
+            columns: ["health_event_id"]
+            isOneToOne: true
+            referencedRelation: "health_events"
             referencedColumns: ["id"]
           },
         ]

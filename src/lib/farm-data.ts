@@ -24,7 +24,9 @@ export type Animal = {
   updated_at: string;
 };
 export type AnimalStatus = { id: string; breeding_status: string; service_date: string | null; calving_due: string | null };
-export type HealthEvent = Database["public"]["Tables"]["health_events"]["Row"];
+type HealthEventDetailValues = Omit<Database["public"]["Tables"]["health_event_details"]["Row"], "health_event_id">;
+export type HealthEvent = Database["public"]["Tables"]["health_events"]["Row"] & Partial<HealthEventDetailValues>;
+type HealthEventDetails = Database["public"]["Tables"]["health_event_details"]["Row"];
 export type HealthEventAttachment = Database["public"]["Tables"]["health_event_attachments"]["Row"];
 export type Insemination = Database["public"]["Tables"]["inseminations"]["Row"];
 export type Calving = Database["public"]["Tables"]["calvings"]["Row"];
@@ -95,11 +97,11 @@ export async function allRows<T>(table: Table, key = "id", filters: RowFilter[] 
 }
 
 /** Keep PostgREST URLs bounded when a long animal history has many related IDs. */
-async function rowsForIds<T>(table: Table, column: string, ids: string[]): Promise<T[]> {
+async function rowsForIds<T>(table: Table, column: string, ids: string[], key = "id"): Promise<T[]> {
   const unique = [...new Set(ids)];
   const chunks: Promise<T[]>[] = [];
   for (let from = 0; from < unique.length; from += 100) {
-    chunks.push(allRows<T>(table, "id", [{ column, op: "in", value: `(${unique.slice(from, from + 100).join(",")})` }]));
+    chunks.push(allRows<T>(table, key, [{ column, op: "in", value: `(${unique.slice(from, from + 100).join(",")})` }]));
   }
   return (await Promise.all(chunks)).flat();
 }
@@ -191,7 +193,7 @@ export async function loadFarmData(scope: FarmScope, id = "", date = farmToday()
     only(scope === "dashboard" || detail, () => loadHerdAlerts(today)),
     Promise.all(months.map(async (item) => ({ month: item, data: (await report<Pnl>("pnl_month", { p_month: item }))[0] }))),
   ]);
-  const [animalMilk, calvingOffspring, animalCareTasks, healthAttachments] = await Promise.all([
+  const [animalMilk, calvingOffspring, animalCareTasks, healthAttachments, healthDetails] = await Promise.all([
     only(detail || scope === "milk", () => allRows<AnimalMilk>("animal_milk", "id",
       detail ? eq("animal_id", id) : shifts.length ? [{ column: "shift_id", op: "in", value: `(${shifts.map((s) => s.id).join(",")})` }] : eq("shift_id", "00000000-0000-0000-0000-000000000000"))),
     only(detail, async () => {
@@ -202,13 +204,16 @@ export async function loadFarmData(scope: FarmScope, id = "", date = farmToday()
     }),
     only(detail, () => allRows<AnimalCareTask>("animal_care_tasks", "due_date", eq("animal_id", id))),
     only(detail && health.length > 0, () => rowsForIds<HealthEventAttachment>("health_event_attachments", "health_event_id", health.map((event) => event.id))),
+    only(detail && health.length > 0, () => rowsForIds<HealthEventDetails>("health_event_details", "health_event_id", health.map((event) => event.id), "health_event_id")),
   ]);
+  const detailsByEvent = new Map(healthDetails.map(({ health_event_id, ...details }) => [health_event_id, details]));
+  const detailedHealth: HealthEvent[] = health.map((event) => ({ ...event, ...detailsByEvent.get(event.id) }));
   const linkedBirthCalvings = detail && calvingOffspring.length
     ? await rowsForIds<Calving>("calvings", "id", calvingOffspring.map((row) => row.calving_id))
     : [];
   const animalCalvings = [...new Map([...calvings, ...linkedBirthCalvings].map((row) => [row.id, row])).values()];
   const relevantShifts = detail && animalMilk.length ? await rowsForIds<MilkShift>("milk_shifts", "id", animalMilk.map((r) => r.shift_id)) : shifts;
-  return { today, settings, animals, animalStatus, health, healthAttachments, inseminations, calvings: animalCalvings, calvingOffspring, animalMilk, animalCareTasks,
+  return { today, settings, animals, animalStatus, health: detailedHealth, healthAttachments, inseminations, calvings: animalCalvings, calvingOffspring, animalMilk, animalCareTasks,
     customers, rates, shifts: relevantShifts, deliveries, dispositions, milkShiftConfig, payments, categories, expenses, accounts,
     companyBills, otherIncome, reports, balances, alerts, monthlyPnl: pnl };
 }

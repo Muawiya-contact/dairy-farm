@@ -1,6 +1,6 @@
 import { getSupabase } from "./supabase";
 import {
-  loadKhataPeriodSummary, loadPeriodReport,
+  loadKhataPeriodSummary, loadPagedReportRows, loadPeriodReport,
   type KhataPeriodCustomer, type PeriodReport,
 } from "./reporting";
 import type { Database } from "./database.types";
@@ -56,26 +56,23 @@ async function loadOtherIncome(from: string, to: string): Promise<FinancialIncom
 }
 
 export async function loadFinancialReport(from: string, to: string): Promise<FinancialReportData> {
-  const [period, customers, accountsResult, salaryResult, otherIncome, trendsResult] = await Promise.all([
+  const [period, customers, accounts, salaryPayables, otherIncome, trends] = await Promise.all([
     loadPeriodReport(from, to),
     loadKhataPeriodSummary(from, to),
-    rpc<FinancialCashAccount>("financial_report_cashflow", { p_from: from, p_to: to }),
-    rpc<FinancialSalaryPayable>("financial_report_salary_payables", { p_as_of: to }),
+    loadPagedReportRows<FinancialCashAccount>("financial_report_cashflow", { p_from: from, p_to: to }),
+    loadPagedReportRows<FinancialSalaryPayable>("financial_report_salary_payables", { p_as_of: to }),
     loadOtherIncome(from, to),
-    rpc<FinancialTrend>("financial_report_trends", { p_from: from, p_to: to }),
+    loadPagedReportRows<FinancialTrend>("financial_report_trends", { p_from: from, p_to: to }),
   ]);
-  if (accountsResult.error) throw accountsResult.error;
-  if (salaryResult.error) throw salaryResult.error;
-  if (trendsResult.error) throw trendsResult.error;
   return {
     period,
     customers,
-    accounts: normalizeNumbers((accountsResult.data ?? []) as unknown as Record<string, unknown>[],
+    accounts: normalizeNumbers(accounts as unknown as Record<string, unknown>[],
       ["opening_balance", "money_received", "money_paid", "transfers_in", "transfers_out", "closing_balance", "opening_amount"] as (keyof Record<string, unknown>)[]) as unknown as FinancialCashAccount[],
-    salaryPayables: normalizeNumbers((salaryResult.data ?? []) as unknown as Record<string, unknown>[],
+    salaryPayables: normalizeNumbers(salaryPayables as unknown as Record<string, unknown>[],
       ["agreed_amount", "paid_amount", "outstanding_amount"] as (keyof Record<string, unknown>)[]) as unknown as FinancialSalaryPayable[],
     otherIncome,
-    trends: normalizeNumbers((trendsResult.data ?? []) as unknown as Record<string, unknown>[],
+    trends: normalizeNumbers(trends as unknown as Record<string, unknown>[],
       ["milk_income", "other_income", "customer_collections", "farm_expenses", "home_expenses", "total_income", "net_profit", "cash_received", "cash_paid"] as (keyof Record<string, unknown>)[]) as unknown as FinancialTrend[],
   };
 }

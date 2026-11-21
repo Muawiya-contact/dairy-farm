@@ -33,6 +33,7 @@ export type Calving = Database["public"]["Tables"]["calvings"]["Row"];
 export type CalvingOffspring = Database["public"]["Tables"]["calving_offspring"]["Row"];
 export type AnimalMilk = { id: string; shift_id: string; animal_id: string; litres: number };
 export type AnimalCareTask = Database["public"]["Tables"]["animal_care_tasks"]["Row"];
+export type AnimalWeightRecord = Database["public"]["Tables"]["animal_weight_records"]["Row"];
 export type Customer = { id: string; name: string; phone: string | null; kind: CustomerKind; free_reason: FreeReason | null; default_morning: number; default_noon: number; default_evening: number; opening_balance: number; opening_date: string; active: boolean; is_local: boolean; sort_order: number };
 export type CustomerRate = { id: string; customer_id: string; rate: number; effective_from: string };
 export type MilkShift = { id: string; milk_date: string; shift: MilkShiftName; total_litres: number; mode: "total" | "per_animal"; notes: string | null; updated_at: string };
@@ -66,6 +67,7 @@ export type FarmData = {
   health: HealthEvent[]; healthAttachments: HealthEventAttachment[];
   inseminations: Insemination[]; calvings: Calving[]; calvingOffspring: CalvingOffspring[]; animalMilk: AnimalMilk[];
   animalCareTasks: AnimalCareTask[];
+  animalWeights: AnimalWeightRecord[];
   customers: Customer[]; rates: CustomerRate[]; shifts: MilkShift[]; deliveries: MilkDelivery[]; dispositions: MilkDisposition[]; milkShiftConfig: MilkShiftConfig[];
   payments: Payment[]; categories: ExpenseCategory[]; expenses: Expense[]; accounts: Account[];
   companyBills: CompanyBill[]; otherIncome: OtherIncome[]; reports: CustomerReport[];
@@ -196,7 +198,7 @@ export async function loadFarmData(scope: FarmScope, id = "", date = farmToday()
     only(scope === "dashboard" || detail, () => loadHerdAlerts(today)),
     Promise.all(months.map(async (item) => ({ month: item, data: (await report<Pnl>("pnl_month", { p_month: item }))[0] }))),
   ]);
-  const [animalMilk, calvingOffspring, animalCareTasks, healthAttachments, healthDetails] = await Promise.all([
+  const [animalMilk, calvingOffspring, animalCareTasks, animalWeights, healthAttachments, healthDetails] = await Promise.all([
     only(detail || scope === "milk", () => allRows<AnimalMilk>("animal_milk", "id",
       detail ? eq("animal_id", id) : shifts.length ? [{ column: "shift_id", op: "in", value: `(${shifts.map((s) => s.id).join(",")})` }] : eq("shift_id", "00000000-0000-0000-0000-000000000000"))),
     only(detail, async () => {
@@ -206,6 +208,7 @@ export async function loadFarmData(scope: FarmScope, id = "", date = farmToday()
       return [...new Map([...related, ...children].map((child) => [child.id, child])).values()];
     }),
     only(detail, () => allRows<AnimalCareTask>("animal_care_tasks", "due_date", eq("animal_id", id))),
+    only(detail, () => allRows<AnimalWeightRecord>("animal_weight_records", "weight_date", eq("animal_id", id))),
     only(detail && health.length > 0, () => rowsForIds<HealthEventAttachment>("health_event_attachments", "health_event_id", health.map((event) => event.id))),
     only(detail && health.length > 0, () => rowsForIds<HealthEventDetails>("health_event_details", "health_event_id", health.map((event) => event.id), "health_event_id")),
   ]);
@@ -219,7 +222,7 @@ export async function loadFarmData(scope: FarmScope, id = "", date = farmToday()
   const relevantShifts = detail
     ? [...new Map([...shifts, ...animalHistoryShifts].map((shift) => [shift.id, shift])).values()]
     : shifts;
-  return { today, settings, animals, animalStatus, health: detailedHealth, healthAttachments, inseminations, calvings: animalCalvings, calvingOffspring, animalMilk, animalCareTasks,
+  return { today, settings, animals, animalStatus, health: detailedHealth, healthAttachments, inseminations, calvings: animalCalvings, calvingOffspring, animalMilk, animalCareTasks, animalWeights,
     customers, rates, shifts: relevantShifts, deliveries, dispositions, milkShiftConfig, payments, categories, expenses, accounts,
     companyBills, otherIncome, reports, balances, alerts, monthlyPnl: pnl };
 }

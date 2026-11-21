@@ -332,6 +332,41 @@ export type Database = {
           },
         ]
       }
+      animal_weight_records: {
+        Row: {
+          animal_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          weight_date: string
+          weight_kg: number
+        }
+        Insert: {
+          animal_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          weight_date: string
+          weight_kg: number
+        }
+        Update: {
+          animal_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          weight_date?: string
+          weight_kg?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "animal_weight_records_animal_id_fkey"
+            columns: ["animal_id"]
+            isOneToOne: false
+            referencedRelation: "animals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calving_offspring: {
         Row: {
           animal_id: string | null

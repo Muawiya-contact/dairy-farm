@@ -15,7 +15,7 @@ const input: AnimalDossier = {
   animal: cow("animal-one", "A-101"), animals: [cow("animal-one", "A-101"), cow("other", "B-202")],
   farm: { id: 1, farm_name: "Test Farm", owner_name: "Farm Owner", contact_phone: "+923001234567", go_live_date: "2026-01-01" } as LoadedFarmSettings,
   today: "2026-11-21", status: { life: "active", production: "milking", breeding: "open", health: "no-record", healthDueDate: null },
-  health: [], healthAttachments: [], activeAlerts: [], inseminations: [], calvings: [], offspring: [], dueTasks: [], milkShifts: [], careTasks: [],
+  health: [], healthAttachments: [], activeAlerts: [], inseminations: [], calvings: [], offspring: [], animalWeights: [], dueTasks: [], milkShifts: [], careTasks: [],
   milk: [{ date: "2026-11-20", shift: "Morning", litres: 6.5 }],
 };
 

@@ -1,10 +1,11 @@
-import type { Animal, AnimalCareTask, Calving, CalvingOffspring, HealthEvent, HealthEventAttachment, HerdAlert, Insemination, MilkShift } from "./farm-data";
+import type { Animal, AnimalCareTask, AnimalWeightRecord, Calving, CalvingOffspring, HealthEvent, HealthEventAttachment, HerdAlert, Insemination, MilkShift } from "./farm-data";
 import type { LoadedFarmSettings } from "./settings";
 import { formatDay } from "./dates";
 import { animalAge } from "./animal-life";
 import { latestHealthEvent, sevenDayMilkAverage, type AnimalProfileStatuses } from "./animal-profile";
 import { breedingDueDate } from "./breeding-register";
 import { sumMilkLitres } from "./milk-entry";
+import { animalWeightChange, animalWeightHistory } from "./animal-weight-history";
 
 export type AnimalDossier = {
   animal: Animal;
@@ -18,6 +19,7 @@ export type AnimalDossier = {
   inseminations: Insemination[];
   calvings: Calving[];
   offspring: CalvingOffspring[];
+  animalWeights: AnimalWeightRecord[];
   milkShifts: Pick<MilkShift, "milk_date" | "mode">[];
   milk: { date: string; shift: string; litres: number }[];
   dueTasks: { date: string; label: string; overdue: boolean }[];
@@ -123,6 +125,9 @@ function dossierSheets(input: AnimalDossier) {
   const mother = input.animals.find((item) => item.id === animal.mother_id);
   const relatedBirth = input.offspring.find((item) => item.animal_id === animal.id);
   const birthCalving = relatedBirth ? input.calvings.find((item) => item.id === relatedBirth.calving_id) : undefined;
+  const weightHistory = animalWeightHistory(input.animalWeights, relatedBirth?.birth_weight_kg != null && birthCalving
+    ? { date: birthCalving.calving_date, weight_kg: Number(relatedBirth.birth_weight_kg) } : null);
+  const weightSummary = animalWeightChange(weightHistory);
   const ownedCalvings = input.calvings.filter((item) => item.animal_id === animal.id);
   const sheet = (name: string, columns: string[], rows: Record<string, unknown>[], emptyMessage: string): { name: string; columns: string[]; rows: Record<string, unknown>[] } => ({ name, columns, rows: rows.length ? rows : [{ [columns[0]]: emptyMessage }] });
   const profile = [
@@ -144,6 +149,9 @@ function dossierSheets(input: AnimalDossier) {
       const litres = sumMilkLitres(input.milk.filter((row) => row.date === latestDate).map((row) => Number(row.litres) || 0));
       return `${latestDate} · ${litres.toFixed(2)} L`;
     })() : "No milk record" },
+    { field: "Latest weight", value: weightSummary.latest ? `${weightSummary.latest.weight_date} · ${weightSummary.latest.weight_kg.toFixed(2)} kg` : "No weight history" },
+    { field: "Previous weight", value: weightSummary.previous ? `${weightSummary.previous.weight_date} · ${weightSummary.previous.weight_kg.toFixed(2)} kg` : "No previous weight" },
+    { field: "Weight change", value: weightSummary.change_kg == null ? "Not calculated" : `${weightSummary.change_kg > 0 ? "+" : ""}${weightSummary.change_kg.toFixed(2)} kg` },
     { field: "Latest health event", value: input.health.length ? (() => {
       const latest = latestHealthEvent(input.health)!;
       return `${latest.event_date} · ${latest.title}`;
@@ -193,7 +201,9 @@ function dossierSheets(input: AnimalDossier) {
     } else calvingRows.push({ date: calving.calving_date, role: "Dam", outcome: calving.outcome, birth_order: "",
       calf: calving.calf_id ? animalName(input.animals.find((item) => item.id === calving.calf_id)) : "", sex: "", weight_kg: "", notes: calving.notes || "" });
   }
-  const weights = relatedBirth?.birth_weight_kg == null ? [] : [{ date: birthCalving?.calving_date ?? "", event: "Birth weight", weight_kg: num(relatedBirth.birth_weight_kg), source: "Calving record" }];
+  const weights = weightHistory.map((row) => ({ date: row.weight_date,
+    event: row.source === "birth" ? "Paidaish par wazan" : "Wazan ki entry", weight_kg: num(row.weight_kg),
+    source: row.source === "birth" ? "Paidaish ka record" : "Farm ki entry", notes: row.notes || "" }));
   const healthCostPaise = input.health.reduce((total, event) => total + Math.round(Number(event.cost || 0) * 100), 0);
   const healthCosts = healthCostPaise / 100;
   const careTasks = [...input.careTasks].sort((a, b) => (a.completed_date ?? "9999-12-31").localeCompare(b.completed_date ?? "9999-12-31") || a.due_date.localeCompare(b.due_date)).map((task) => ({
@@ -214,7 +224,7 @@ function dossierSheets(input: AnimalDossier) {
     sheet("Health", ["date", "kind", "title", "symptoms", "diagnosis", "severity", "current_condition", "medicine", "medicine_type", "dosage", "route", "treatment_start_date", "treatment_end_date", "veterinarian", "cost_rs", "next_due_date", "attachments", "notes"], health, "No treatment or checkup records for this animal."),
     sheet("Vaccinations", ["date", "kind", "title", "symptoms", "diagnosis", "severity", "current_condition", "medicine", "medicine_type", "dosage", "route", "treatment_start_date", "treatment_end_date", "veterinarian", "next_due_date", "cost_rs", "attachments", "notes"], vaccines, "No vaccination or deworming records for this animal."),
     sheet("Calving & offspring", ["date", "role", "outcome", "birth_order", "calf", "sex", "weight_kg", "notes"], calvingRows, "No calving or offspring records for this animal."),
-    sheet("Weight", ["date", "event", "weight_kg", "source"], weights, "No weight history recorded for this animal."),
+    sheet("Weight", ["date", "event", "weight_kg", "source", "notes"], weights, "No weight history recorded for this animal."),
     sheet("Feed", ["date", "feed", "quantity", "unit", "notes"], [], "No feed history is recorded in the app."),
     sheet("Financial summary", ["date", "kind", "detail", "amount_rs"], financial, "No animal purchase, sale, or health costs recorded."),
   ];
@@ -328,7 +338,7 @@ export async function buildAnimalDossierPdf(input: AnimalDossier): Promise<Uint8
     Health: ["date", "kind", "title", "symptoms", "diagnosis", "severity", "current_condition", "medicine", "medicine_type", "dosage", "route", "treatment_start_date", "treatment_end_date", "veterinarian", "next_due_date", "attachments", "cost_rs", "notes"],
     Vaccinations: ["date", "kind", "title", "symptoms", "diagnosis", "severity", "current_condition", "medicine", "medicine_type", "dosage", "route", "treatment_start_date", "treatment_end_date", "veterinarian", "next_due_date", "attachments", "cost_rs", "notes"],
     "Calving & offspring": ["date", "role", "outcome", "calf", "sex", "weight_kg", "notes"],
-    Weight: ["date", "event", "weight_kg", "source"],
+    Weight: ["date", "event", "weight_kg", "source", "notes"],
     Feed: ["date", "feed", "quantity", "unit", "notes"],
     "Financial summary": ["date", "kind", "detail", "amount_rs"],
   };

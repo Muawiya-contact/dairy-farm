@@ -148,7 +148,7 @@ export function AnimalHealthHistory({ animalId, events, attachments, categories,
       <p className="text-sm text-muted">Health record par darj kharcha — farm expenses ke saath sirf aik dafa ledger mein jata hai.</p>
       <strong className="text-sm">Recorded medical total: {money(totalCost)}</strong>
     </div>
-    <p className="mt-1 text-xs text-muted">Tashkhees, dawa aur dose sirf vet/owner ke darj karda notes hain; app medical advice nahi deti.</p>
+    <p className="mt-1 text-xs text-muted">Private tashkhees, dose aur prescription/report sirf farm malik dekh sakta hai; app medical advice nahi deti.</p>
     {active && <form onSubmit={submit} className="mt-3 grid gap-2 rounded-xl border border-line p-3 sm:grid-cols-2 lg:grid-cols-3 print:hidden">
       <h3 className="font-semibold sm:col-span-2 lg:col-span-3">Nayi health ya vaccine entry</h3>
       <label className="text-sm font-semibold">Entry ka naam<input name="title" required maxLength={180} placeholder="Misal: FMD vaccination" className={field} disabled={busy} /></label>
@@ -200,7 +200,7 @@ export function AnimalHealthHistory({ animalId, events, attachments, categories,
           {event.vet && <p>Vet: {event.vet}</p>}{event.notes && <p>Notes: {event.notes}</p>}
           {event.next_due_date && <p className="font-semibold text-berseem">Agli due tareekh: {shortDate(event.next_due_date)}</p>}
         </div><div className="text-right">{Number(event.cost) > 0 ? <strong>{money(event.cost)}</strong> : null}{event.expense_id && <p className="text-xs text-muted">Expense ledger mein linked</p>}</div></div>
-        <HealthAttachments event={event} attachments={eventAttachments} busy={busy} run={run} />
+        {canManagePrivateDetails && <HealthAttachments event={event} attachments={eventAttachments} busy={busy} run={run} />}
       </li>;
     })}</ol> : <p className="mt-3 text-sm text-muted">Is filter mein health record nahi.</p>}
   </Panel>;

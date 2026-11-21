@@ -28,6 +28,7 @@ it("filters vaccine/deworming records and shows the full veterinary history and 
   ]} attachments={[]} categories={[]} accounts={[]} today="2026-10-20" active={false} busy={false} run={run} />);
 
   expect(screen.getByText("Recorded medical total: Rs 350")).toBeInTheDocument();
+  expect(await screen.findAllByRole("button", { name: "Private file upload" })).toHaveLength(3);
   expect(screen.getAllByText(/Symptoms: Limping/)).toHaveLength(3);
   expect(screen.getAllByText(/Vet ki tashkhees: Hoof check by vet/)).toHaveLength(3);
   await user.click(screen.getByRole("button", { name: "Vaccines" }));
@@ -75,10 +76,11 @@ it("lets an editor save the shared health event while hiding private clinical fi
   supabaseMocks.getSupabase.mockReturnValue({ rpc } as never);
   farmMocks.recordHealthEvent.mockReset().mockResolvedValue(undefined);
   const run = vi.fn(async (task: () => Promise<void>) => task());
-  renderWithQuery(<AnimalHealthHistory animalId="animal-1" events={[]} attachments={[]} categories={[]} accounts={[]} today="2026-10-20" active busy={false} run={run} />);
+  renderWithQuery(<AnimalHealthHistory animalId="animal-1" events={[event()]} attachments={[]} categories={[]} accounts={[]} today="2026-10-20" active busy={false} run={run} />);
 
   expect(await screen.findByText(/sirf farm malik darj kar sakta hai/)).toBeInTheDocument();
   expect(screen.queryByLabelText("Symptoms / nishaniyan")).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Private file upload" })).not.toBeInTheDocument();
   await user.type(screen.getByLabelText("Entry ka naam"), "FMD vaccination");
   await user.type(screen.getByLabelText("Medicine / vaccine product"), "Vaccine batch 4");
   await user.type(screen.getByLabelText("Veterinarian"), "Dr. Farm");

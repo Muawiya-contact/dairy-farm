@@ -2,12 +2,12 @@
 
 import { useSearchParams } from "next/navigation";
 import FarmCustomers from "@/components/FarmCustomers";
-import ReportCategoryPlaceholder from "@/components/ReportCategoryPlaceholder";
+import KhataSummaryReport from "@/components/KhataSummaryReport";
 
-/** Keep deep-linked customer statements available while the report index is planned. */
+/** Keep customer statements deep-linkable and use the saved Khata summary as the customer report index. */
 export default function CustomerReportEntry() {
   const searchParams = useSearchParams();
   return searchParams.get("id")?.trim()
     ? <FarmCustomers />
-    : <ReportCategoryPlaceholder title="Customer Report" />;
+    : <KhataSummaryReport title="Customer Report" />;
 }

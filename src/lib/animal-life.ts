@@ -3,6 +3,8 @@ import type { Animal, FarmData } from "./farm-data";
 
 export type AnimalSource = "born" | "purchased" | "gift" | "transfer" | "other";
 export type AnimalExit = "sold" | "dead" | "removed";
+const semenTypeLabels: Record<string, string> = { normal: "Mamooli", sexed: "Jins ke mutabiq", bull: "Saand" };
+const calvingOutcomeLabels: Record<string, string> = { alive: "Zinda", dead: "Wafat", twins: "Joray", normal: "Mamool ke mutabiq", stillborn: "Paidaish par wafat" };
 
 export function matchesAnimalFilter(animal: Pick<Animal, "life_status" | "species" | "milking_status">, filter: string): boolean {
   if (filter === "all") return true;
@@ -82,9 +84,9 @@ export function animalLifeEvents(animal: Animal, data: Pick<FarmData, "health" |
   for (const h of data.health.filter((row) => row.animal_id === animal.id))
     events.push({ id: `health:${h.id}`, date: h.event_date, title: "Sehat", detail: h.title });
   for (const i of data.inseminations.filter((row) => row.animal_id === animal.id))
-    events.push({ id: `breeding:${i.id}`, date: i.service_date, title: "Nasl kashi", detail: i.semen_name || i.semen_type });
+    events.push({ id: `breeding:${i.id}`, date: i.service_date, title: "Nasl kashi", detail: i.semen_name || semenTypeLabels[i.semen_type] || "Semen darj nahi" });
   for (const c of data.calvings.filter((row) => row.animal_id === animal.id))
-    events.push({ id: `calving:${c.id}`, date: c.calving_date, title: "Bachay ki paidaish", detail: c.outcome });
+    events.push({ id: `calving:${c.id}`, date: c.calving_date, title: "Bachay ki paidaish", detail: calvingOutcomeLabels[c.outcome] || "Nateeja darj nahi" });
   if (animal.exit_date) events.push({ id: "exit", date: animal.exit_date,
     title: animal.life_status === "sold" ? "Farokht" : animal.life_status === "dead" ? "Wafat" : "Farm se nikla",
     detail: [animal.exit_reason, animal.sale_price == null ? "" : `Rs ${Number(animal.sale_price).toLocaleString("en-PK")}`].filter(Boolean).join(" · ") });

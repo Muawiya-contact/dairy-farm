@@ -29,6 +29,9 @@ it("filters vaccine/deworming records and shows the full veterinary history and 
 
   expect(screen.getByText("Recorded medical total: Rs 350")).toBeInTheDocument();
   expect(await screen.findAllByRole("button", { name: "Private file upload" })).toHaveLength(3);
+  expect(screen.getAllByRole("button", { name: "Private file upload" })[0]).toHaveClass("min-h-11");
+  expect(screen.getByRole("button", { name: "Vaccines" })).toHaveClass("min-h-11");
+  expect(screen.getByRole("button", { name: "Deworming" })).toHaveClass("min-h-11");
   expect(screen.getAllByText(/Symptoms: Limping/)).toHaveLength(3);
   expect(screen.getAllByText(/Vet ki tashkhees: Hoof check by vet/)).toHaveLength(3);
   await user.click(screen.getByRole("button", { name: "Vaccines" }));
@@ -36,6 +39,30 @@ it("filters vaccine/deworming records and shows the full veterinary history and 
   expect(screen.queryByText("Vet visit")).not.toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "Deworming" }));
   expect(screen.getByText("Deworming", { selector: "strong" })).toBeInTheDocument();
+});
+
+it("keeps private attachment open, refresh, and download controls at least 44px tall", async () => {
+  const user = userEvent.setup();
+  const createSignedUrl = vi.fn().mockResolvedValue({ data: { signedUrl: "https://example.test/private-file" }, error: null });
+  supabaseMocks.getSupabase.mockReturnValue({
+    rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
+    storage: { from: vi.fn(() => ({ createSignedUrl })) },
+  } as never);
+  const attachment = {
+    id: "attachment-1", health_event_id: "health-1", storage_path: "health-1/11111111-1111-4111-8111-111111111111.pdf",
+    file_name: "vet-report.pdf", content_type: "application/pdf", size_bytes: 1024, created_at: "2026-10-20T10:00:00Z",
+  };
+  renderWithQuery(<AnimalHealthHistory animalId="animal-1" events={[event()]} attachments={[attachment]} categories={[]} accounts={[]} today="2026-10-20" active={false} busy={false} run={async (task) => task()} />);
+
+  const openButton = await screen.findByRole("button", { name: "Private file dekhein" });
+  expect(openButton).toHaveClass("min-h-11");
+  await user.click(openButton);
+  expect(await screen.findByRole("link", { name: "File download karein" })).toHaveClass("min-h-11");
+  const refreshButton = screen.getByRole("button", { name: "Naya private link" });
+  expect(refreshButton).toHaveClass("min-h-11");
+  expect(createSignedUrl).toHaveBeenCalledOnce();
+  await user.click(refreshButton);
+  await waitFor(() => expect(createSignedUrl).toHaveBeenCalledTimes(2));
 });
 
 it("records optional vet details and one linked health expense through the atomic RPC", async () => {

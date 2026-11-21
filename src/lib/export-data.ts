@@ -48,6 +48,18 @@ export const REPORTS = [
 export const BREEDING_COLUMNS = ["tag", "name", "service_date", "semen_type", "semen_name", "semen_batch", "technician", "ultrasound_due", "ultrasound_due_override", "ultrasound_date", "ultrasound_result", "checkup_due", "checkup_due_override", "checkup_date", "checkup_result", "dry_off_date", "dry_off_due", "dry_off_due_override", "calving_due", "calving_due_override", "calving_date", "offspring_summary", "ease_score", "status", "abortion_date", "notes"];
 
 const COLUMN_LABELS: Record<string, string> = {
+  section: "Report ka hissa", farm_name: "Farm ka naam", generated_at: "Tayyar karne ki tareekh",
+  metric: "Mad", amount_rs: "Raqam (Rs)", source: "Zariya", classification: "Farm ya ghar / zaati",
+  entries: "Entries ki tadaad", line: "Hisaab ki mad", treatment: "Hisaab ka tareeqa",
+  account_name: "Account ka naam", account_kind: "Account ki qism", opening_balance: "Shuru ka baqaya (Rs)",
+  money_received: "Wasooli (Rs)", money_paid: "Adaigi (Rs)", transfers_in: "Andar transfer (Rs)",
+  transfers_out: "Bahar transfer (Rs)", closing_balance: "Aakhri baqaya (Rs)", customer: "Customer",
+  opening_added: "Naya shuruati baqaya (Rs)", charges: "Bill (Rs)", payments: "Wasooli (Rs)",
+  discounts: "Riayat (Rs)", refunds: "Wapsi (Rs)", paid_amount: "Ada shuda (Rs)",
+  outstanding_amount: "Baqi (Rs)", bucket_start: "Muddat ki tareekh", net_profit: "Farm munafa / nuqsan (Rs)",
+  customer_collections: "Wapsi minus kar ke wasooli (Rs)", cash_paid: "Ada ki gayi raqam (Rs)",
+  income_date: "Tareekh", animal_tag: "Janwar ka tag", entry_date: "Tareekh", entry_kind: "Harkat ki qism",
+  money_in: "Raqam aayi (Rs)", money_out: "Raqam gayi (Rs)", ref_id: "Record ID", details: "Tafseel",
   source_key: "Source ID", source_label: "Purana naam / tafseel", canonical_label: "Ab ka naam", source_workbook: "Asal workbook",
   source_sheet: "Asal sheet", source_cell: "Asal cell", record_date: "Tareekh",
   source_file_sha256: "Workbook SHA-256", row_sha256: "Entry SHA-256",
@@ -160,6 +172,8 @@ export function columnLabel(column: string, title = ""): string {
   const auditLabels: Record<string, string> = { month: "Maheena", action: "Faisla", reason: "Wajah", created_at: "Waqt" };
   if (title === "Maheena band faislay" && auditLabels[column]) return auditLabels[column];
   if (column === "category" && (title === "Category ke mutabiq" || title === "Tafseeli entries")) return "Category";
+  if (column === "category" && (title === "Darj qism ke mutabiq kharchay" || title === "Kharchay ki tafseel")) return "Qism";
+  if (column === "cash_received" && title === "Maali rujhan") return "Wasooli (Rs)";
   if (column === "difference" && title === "Cash counts") return "Farq (Rs)";
   if (column === "difference" && title === "Doodh ka khulasa") return "Farq (L)";
   return COLUMN_LABELS[column] ?? column.replaceAll("_", " ");

@@ -14,7 +14,7 @@ test("Reports menu routes each category to its matching entry page", async ({ pa
     ["Kharcha Report", "Kharcha Report"],
     ["Stock ki Report", "Stock ki Report"],
     ["Animal Report", "Animal-wise Milk Report"],
-    ["Financial Report", "Financial Report"],
+    ["Maali Report", "Maali Report"],
     ["Accounts Report", "Accounts Report"],
     ["Final Report", "Reports aur PDF"],
   ] as const;

@@ -102,13 +102,13 @@ describe("animal dossier exports", () => {
     const ExcelJS = (await import("exceljs")).default;
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(Buffer.from(bytes) as unknown as Parameters<typeof workbook.xlsx.load>[0]);
-    const healthValues = workbook.getWorksheet("Health")!.getRow(2).values;
+    const healthValues = workbook.getWorksheet("Sehat ka record")!.getRow(2).values;
     expect(healthValues).toEqual(expect.arrayContaining([
-      "Limping", "Vet-entered hoof injury", "moderate", "Recovering", "Topical", "Recorded from vet note",
+      "Limping", "Vet-entered hoof injury", "Darmiyani", "Recovering", "Topical", "Recorded from vet note",
       "2026-11-20", "2026-11-22", "prescription.pdf",
     ]));
-    expect(workbook.getWorksheet("Health")!.getSheetValues().flat().map(String)).not.toContain("other-animal.pdf");
-    expect(workbook.getWorksheet("Vaccinations")!.getRow(2).values).toEqual(expect.arrayContaining(["FMD shot", "Vet product"]));
+    expect(workbook.getWorksheet("Sehat ka record")!.getSheetValues().flat().map(String)).not.toContain("other-animal.pdf");
+    expect(workbook.getWorksheet("Teekay aur deworming")!.getRow(2).values).toEqual(expect.arrayContaining(["FMD shot", "Vet product"]));
   });
 
   it("sums fractional health costs in paise for both dossier exports", async () => {

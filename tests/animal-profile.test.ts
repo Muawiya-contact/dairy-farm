@@ -37,6 +37,19 @@ describe("animal profile overview", () => {
     ], "2026-11-21")).toBe(3);
   });
 
+  it("uses cent-based totals and omits an average when a recent shift has no animal attribution", () => {
+    const rows = [
+      { date: "2026-11-20", litres: 0.1 },
+      { date: "2026-11-20", litres: 0.2 },
+    ];
+    expect(sevenDayMilkAverage(rows, "2026-11-21", [
+      { milk_date: "2026-11-20", mode: "per_animal" },
+    ])).toBeCloseTo(0.3 / 7, 10);
+    expect(sevenDayMilkAverage(rows, "2026-11-21", [
+      { milk_date: "2026-11-20", mode: "total" },
+    ])).toBeNull();
+  });
+
   it("lists only incomplete breeding tasks and the current health follow-ups", () => {
     const tasks = animalDueTasks({
       today: "2026-11-21", health: [health({ next_due_date: "2026-11-25" })], milking: true,

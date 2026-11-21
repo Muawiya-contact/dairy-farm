@@ -151,7 +151,7 @@ function SettingsForm({ initial, open, onToggle }: { initial: FarmSettings; open
         <div className="mt-4 grid gap-4 sm:grid-cols-2"><label className="font-semibold">Ultrasound, checkup, khushk aur sehat ki yaad-dihani (din pehle)<input type="number" min="1" max="30" step="1" value={reminderDays} onChange={(event) => { edit(); setReminderDays(event.target.value); }} className={inputClass} /></label><label className="font-semibold">Paidaish ki yaad-dihani (din pehle)<input type="number" min="1" max="60" step="1" value={calvingReminderDays} onChange={(event) => { edit(); setCalvingReminderDays(event.target.value); }} className={inputClass} /></label></div>
       </fieldset>
       </SettingsSection>
-      {(open === "farm" || open === "breeding") && <div className="max-w-2xl">
+      {(open === "farm" || open === "milk" || open === "breeding") && <div className="max-w-2xl">
       <button disabled={mutation.isPending} className="mt-5 min-h-12 rounded-xl bg-berseem px-5 font-bold text-white disabled:opacity-50">{mutation.isPending ? "Save ho raha hai…" : "Save karein"}</button>
       {validation && <p role="alert" className="mt-3 text-udhaar">{validation}</p>}
       {mutation.isSuccess && <p role="status" className="mt-3 text-berseem-deep">Settings farm ke data mein save ho gayi.</p>}

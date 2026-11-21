@@ -22,6 +22,14 @@ it("shows life, production, breeding, and health as separate dimensions", () => 
       medicine: "Medicine A", vet: "Dr A", notes: null, cost: 0, next_due_date: "2026-10-20", expense_id: null }],
     alerts: [{ alert_kind: "dry_off", severity: "soon", due_date: "2026-11-22", animal_id: fixtures.cow.id,
       tag: fixtures.cow.tag, message: `${fixtures.cow.tag}: khushk karna — 1 din baad`, days_left: 1 }],
+    animalMilk: [
+      { id: "milk-morning", shift_id: "shift-morning", animal_id: fixtures.cow.id, litres: 0.1 },
+      { id: "milk-evening", shift_id: "shift-evening", animal_id: fixtures.cow.id, litres: 0.2 },
+    ],
+    shifts: [
+      { id: "shift-morning", milk_date: "2026-10-16", shift: "morning", total_litres: 0.1, mode: "per_animal", notes: null, updated_at: "2026-10-16T06:00:00Z" },
+      { id: "shift-evening", milk_date: "2026-10-16", shift: "evening", total_litres: 0.2, mode: "per_animal", notes: null, updated_at: "2026-10-16T18:00:00Z" },
+    ],
   }), error: null });
   renderWithQuery(<FarmAnimals />);
   expect(screen.getByText("Farm mein haisiyat")).toBeInTheDocument();
@@ -32,12 +40,23 @@ it("shows life, production, breeding, and health as separate dimensions", () => 
   expect(screen.getByText("Market seller")).toBeInTheDocument();
   expect(screen.getByText("Okara")).toBeInTheDocument();
   expect(screen.getByText(/Hoof care · agla check-up/)).toBeInTheDocument();
+  expect(screen.getByText(/0\.3 L/)).toBeInTheDocument();
+  expect(screen.getByText("0.04 L rozana")).toBeInTheDocument();
   expect(screen.getByText(/khushk karna — 1 din baad/)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "PDF download karein" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Excel download karein" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "PDF share karein" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "WhatsApp kholein" })).toHaveAttribute("href", expect.stringContaining("wa.me/"));
   expect(screen.getByRole("button", { name: "Print karein" })).toBeInTheDocument();
+});
+
+it("does not show a zero animal average for a total-only milk shift", () => {
+  farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({
+    animalStatus: [],
+    shifts: [{ id: "shift-total", milk_date: "2026-10-16", shift: "morning", total_litres: 20, mode: "total", notes: null, updated_at: "2026-10-16T06:00:00Z" }],
+  }), error: null });
+  renderWithQuery(<FarmAnimals />);
+  expect(screen.getByText("Total shift ke saath per-janwar ausat mukammal nahi")).toBeInTheDocument();
 });
 
 it("keeps sparse legacy profiles readable and shows no-record states", () => {

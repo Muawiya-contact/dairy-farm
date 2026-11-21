@@ -36,7 +36,7 @@ async function setAnimalPhotoPath(animalId: string, expectedUpdatedAt: string, p
   if (!data) throw new Error("ANIMAL_STALE");
 }
 
-export async function replaceAnimalPhoto(animal: { id: string; updated_at: string; photo_path: string | null }, file: File): Promise<{ cleanupWarning: boolean }> {
+export async function replaceAnimalPhoto(animal: { id: string; updated_at: string; photo_path: string | null }, file: File): Promise<{ cleanupWarning: boolean; photoPath: string }> {
   const validation = validateAnimalPhoto(file);
   if (validation) throw new RangeError(validation);
   const extension = file.type === "image/png" ? "png" : "jpg";
@@ -50,14 +50,22 @@ export async function replaceAnimalPhoto(animal: { id: string; updated_at: strin
     await storage.remove([path]).catch(() => ({ error: true }));
     throw error;
   }
-  if (!animal.photo_path) return { cleanupWarning: false };
-  const { error: cleanupError } = await storage.remove([animal.photo_path]);
-  return { cleanupWarning: Boolean(cleanupError) };
+  if (!animal.photo_path) return { cleanupWarning: false, photoPath: path };
+  try {
+    const { error: cleanupError } = await storage.remove([animal.photo_path]);
+    return { cleanupWarning: Boolean(cleanupError), photoPath: path };
+  } catch {
+    return { cleanupWarning: true, photoPath: path };
+  }
 }
 
-export async function removeAnimalPhoto(animal: { id: string; updated_at: string; photo_path: string | null }): Promise<{ cleanupWarning: boolean }> {
-  if (!animal.photo_path) return { cleanupWarning: false };
+export async function removeAnimalPhoto(animal: { id: string; updated_at: string; photo_path: string | null }): Promise<{ cleanupWarning: boolean; photoPath: null }> {
+  if (!animal.photo_path) return { cleanupWarning: false, photoPath: null };
   await setAnimalPhotoPath(animal.id, animal.updated_at, null);
-  const { error } = await getSupabase().storage.from("animal-photos").remove([animal.photo_path]);
-  return { cleanupWarning: Boolean(error) };
+  try {
+    const { error } = await getSupabase().storage.from("animal-photos").remove([animal.photo_path]);
+    return { cleanupWarning: Boolean(error), photoPath: null };
+  } catch {
+    return { cleanupWarning: true, photoPath: null };
+  }
 }

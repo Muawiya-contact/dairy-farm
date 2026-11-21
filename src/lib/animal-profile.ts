@@ -1,6 +1,7 @@
 import type { Animal, AnimalCareTask, HealthEvent, Insemination } from "./farm-data";
 import { addDays } from "./dates";
 import { breedingDueDate } from "./breeding-register";
+import { sumMilkLitres } from "./milk-entry";
 
 export function currentHealthFollowups(health: HealthEvent[]): HealthEvent[] {
   const latestByFollowup = new Map<string, HealthEvent>();
@@ -31,10 +32,14 @@ export function animalProfileStatuses(animal: Animal, breedingStatus: string | n
   };
 }
 
-export function sevenDayMilkAverage(rows: { date: string; litres: number }[], today: string): number {
+export function sevenDayMilkAverage(
+  rows: { date: string; litres: number }[],
+  today: string,
+  shifts: { milk_date: string; mode: "total" | "per_animal" }[] = [],
+): number | null {
   const from = addDays(today, -6);
-  return rows.filter((row) => row.date >= from && row.date <= today)
-    .reduce((total, row) => total + Number(row.litres || 0), 0) / 7;
+  if (shifts.some((shift) => shift.mode === "total" && shift.milk_date >= from && shift.milk_date <= today)) return null;
+  return sumMilkLitres(rows.filter((row) => row.date >= from && row.date <= today).map((row) => Number(row.litres) || 0)) / 7;
 }
 
 export type DueTask = { date: string; label: string; overdue: boolean };

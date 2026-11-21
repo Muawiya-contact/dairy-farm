@@ -2,7 +2,7 @@ import type { Animal, AnimalCareTask, Calving, CalvingOffspring, HealthEvent, He
 import type { LoadedFarmSettings } from "./settings";
 import { formatDay } from "./dates";
 import { animalAge } from "./animal-life";
-import { sevenDayMilkAverage, type AnimalProfileStatuses } from "./animal-profile";
+import { latestHealthEvent, sevenDayMilkAverage, type AnimalProfileStatuses } from "./animal-profile";
 import { breedingDueDate } from "./breeding-register";
 import { sumMilkLitres } from "./milk-entry";
 
@@ -144,7 +144,7 @@ function dossierSheets(input: AnimalDossier) {
       return `${latestDate} · ${litres.toFixed(2)} L`;
     })() : "No milk record" },
     { field: "Latest health event", value: input.health.length ? (() => {
-      const latest = [...input.health].sort((a, b) => b.event_date.localeCompare(a.event_date))[0];
+      const latest = latestHealthEvent(input.health)!;
       return `${latest.event_date} · ${latest.title}`;
     })() : "No health record" },
     { field: "Current breeding cycle", value: input.inseminations.filter((record) => record.status === "pending" || record.status === "pregnant")
@@ -285,7 +285,7 @@ export async function buildAnimalDossierPdf(input: AnimalDossier): Promise<Uint8
       return `${formatDay(latestDate)} · ${litres.toFixed(2)} L`;
     })() : "Doodh ka record nahi"],
     ["Aakhri sehat entry", input.health.length ? (() => {
-      const latest = [...input.health].sort((a, b) => b.event_date.localeCompare(a.event_date))[0];
+      const latest = latestHealthEvent(input.health)!;
       return `${formatDay(latest.event_date)} · ${latest.title}`;
     })() : "Sehat ka record nahi"],
     ["Maujooda nasl kashi", input.inseminations.filter((record) => record.status === "pending" || record.status === "pregnant")

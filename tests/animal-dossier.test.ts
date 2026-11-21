@@ -105,7 +105,6 @@ describe("animal dossier exports", () => {
   it("sums fractional health costs in paise for both dossier exports", async () => {
     const health = [0.1, 0.2].map((cost, index) => ({
       id: `health-${index + 1}`, animal_id: "animal-one", event_date: `2026-11-${19 + index}`,
-      created_at: `2026-11-${19 + index}T00:00:00Z`,
       kind: "treatment", title: `Treatment ${index + 1}`, medicine: null, vet: null, notes: null,
       cost, next_due_date: null, expense_id: null, created_at: `2026-11-${19 + index}T00:00:00Z`,
     } satisfies HealthEvent));

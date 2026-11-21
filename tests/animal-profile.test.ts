@@ -11,7 +11,7 @@ const animal = {
   milking_status: "milking", life_status: "active", exit_date: null, exit_reason: null, sale_price: null, notes: null, updated_at: "v1",
 } as Animal;
 const health = (value: Partial<HealthEvent>): HealthEvent => ({
-  id: "health-1", animal_id: animal.id, event_date: "2026-11-20", kind: "treatment", title: "Hoof care", created_at: "2026-11-20T00:00:00Z",
+  id: "health-1", animal_id: animal.id, event_date: "2026-11-20", kind: "treatment", title: "Hoof care",
   medicine: null, vet: null, notes: null, cost: 0, next_due_date: null, expense_id: null,
   symptoms: null, diagnosis: null, severity: null, current_condition: null, medicine_type: null, dosage: null, route: null,
   treatment_start_date: null, treatment_end_date: null, ...value,

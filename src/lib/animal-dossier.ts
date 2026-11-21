@@ -5,6 +5,9 @@ import { animalAge } from "./animal-life";
 import { latestHealthEvent, sevenDayMilkAverage, type AnimalProfileStatuses } from "./animal-profile";
 import { breedingDueDate } from "./breeding-register";
 import { sumMilkLitres } from "./milk-entry";
+import { loadPdfDeveloperLogo, loadPdfDeveloperQr, loadPdfLogo, pdfTrackingUrl } from "./pdf-brand";
+import { installPdfFonts } from "./pdf/fonts";
+import { CODING_MOVES_DEVELOPER_CREDIT, CODING_MOVES_DISPLAY_URL } from "./coding-moves";
 
 export type AnimalDossier = {
   animal: Animal;
@@ -251,18 +254,24 @@ export async function buildAnimalDossierWorkbook(input: AnimalDossier): Promise<
 export async function buildAnimalDossierPdf(input: AnimalDossier): Promise<Uint8Array<ArrayBuffer>> {
   const [{ jsPDF }, { autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const trackingUrl = pdfTrackingUrl("animal-profile");
+  const [, logo, developerLogo, developerQr] = await Promise.all([
+    installPdfFonts(pdf), loadPdfLogo(), loadPdfDeveloperLogo(), loadPdfDeveloperQr(trackingUrl),
+  ]);
   const pageWidth = pdf.internal.pageSize.getWidth();
   const margin = 14;
   const animal = input.animal;
   const recentMilkAverage = dossierMilkRecentAverage(input);
   pdf.setProperties({ title: `${animal.tag} janwar ka record`, subject: `${animal.tag} ka farm record` });
-  pdf.setFont("helvetica", "bold"); pdf.setFontSize(17); pdf.text(input.farm.farm_name, margin, 17);
-  pdf.setFont("helvetica", "normal"); pdf.setFontSize(9);
+  pdf.addImage(logo, "PNG", margin, 10, 12, 12);
+  pdf.setFont("BricolageGrotesque", "extrabold"); pdf.setTextColor(23, 41, 28); pdf.setFontSize(17); pdf.text(input.farm.farm_name, margin + 16, 17);
+  pdf.setFont("NotoSans", "normal"); pdf.setTextColor(87, 99, 91); pdf.setFontSize(8);
   const contact = [input.farm.owner_name, input.farm.contact_phone].filter(Boolean).join(" · ");
-  if (contact) pdf.text(contact, margin, 23);
-  pdf.setFont("helvetica", "bold"); pdf.setFontSize(14); pdf.text("Janwar ka mukammal record", margin, 34);
-  pdf.setFont("helvetica", "normal"); pdf.setFontSize(9); pdf.text(`Report banayi: ${formatDay(input.today)}`, margin, 40);
-  let cursorY = 48;
+  if (contact) pdf.text(`Maalik: ${contact}`, margin + 16, 22);
+  pdf.setFont("NotoSans", "bold"); pdf.setTextColor(29, 70, 38); pdf.setFontSize(11); pdf.text("Janwar ka mukammal record", pageWidth - margin, 16, { align: "right" });
+  pdf.setFont("NotoSans", "normal"); pdf.setTextColor(50, 62, 53); pdf.setFontSize(7.5); pdf.text(`Report banayi: ${formatDay(input.today)}`, pageWidth - margin, 21, { align: "right" });
+  pdf.setDrawColor(29, 70, 38); pdf.setLineWidth(0.7); pdf.line(margin, 28, pageWidth - margin, 28);
+  let cursorY = 37;
   if (input.photoDataUrl) {
     try {
       const format = input.photoDataUrl.startsWith("data:image/png") ? "PNG" : "JPEG";
@@ -298,14 +307,14 @@ export async function buildAnimalDossierPdf(input: AnimalDossier): Promise<Uint8
   ];
   const profileTable = (pdf as typeof pdf & { lastAutoTable?: { finalY?: number } });
   autoTable(pdf, { startY: cursorY, margin: { left: margin, right: margin, bottom: 17 }, head: [["Janwar ka record", "Darj shuda maloomat"]], body: profile,
-    styles: { font: "helvetica", fontSize: 8, cellPadding: 2.2, overflow: "linebreak" }, headStyles: { fillColor: [37, 94, 53] },
+    styles: { font: "NotoSans", fontSize: 8, cellPadding: 2.2, overflow: "linebreak" }, headStyles: { fillColor: [230, 238, 231], textColor: [29, 70, 38], font: "NotoSans", fontStyle: "bold" },
     columnStyles: { 0: { cellWidth: 45 }, 1: { cellWidth: pageWidth - 2 * margin - 45 } } });
   cursorY = (profileTable.lastAutoTable?.finalY ?? cursorY) + 8;
 
   const addTable = (title: string, columns: string[], rows: Record<string, unknown>[]) => {
     if (cursorY > 250) { pdf.addPage(); cursorY = 18; }
     const visibleTitle = sheetNames[title] ?? title;
-    pdf.setFont("helvetica", "bold"); pdf.setFontSize(11); pdf.text(visibleTitle, margin, cursorY);
+    pdf.setFont("NotoSans", "bold"); pdf.setFontSize(11); pdf.setTextColor(29, 70, 38); pdf.text(visibleTitle, margin, cursorY);
     const table = pdf as typeof pdf & { lastAutoTable?: { finalY?: number } };
     autoTable(pdf, { startY: cursorY + 3, margin: { left: margin, right: margin, bottom: 17 },
       head: [columns.map(localizeColumn)],
@@ -314,7 +323,7 @@ export async function buildAnimalDossierPdf(input: AnimalDossier): Promise<Uint8
         if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return formatDay(value);
         return value == null ? "" : String(localizeEnum(column.replace(/_(?:due|date|result)$/, ""), value));
       })) : [["Is hissay ka record darj nahi.", ...columns.slice(1).map(() => "")]],
-      styles: { font: "helvetica", fontSize: 7.5, cellPadding: 1.8, overflow: "linebreak" }, headStyles: { fillColor: [37, 94, 53] },
+      styles: { font: "NotoSans", fontSize: 7.5, cellPadding: 1.8, overflow: "linebreak" }, headStyles: { fillColor: [230, 238, 231], textColor: [29, 70, 38], font: "NotoSans", fontStyle: "bold" },
       horizontalPageBreak: true, horizontalPageBreakRepeat: [0],
     });
     cursorY = (table.lastAutoTable?.finalY ?? cursorY) + 8;
@@ -338,9 +347,15 @@ export async function buildAnimalDossierPdf(input: AnimalDossier): Promise<Uint8
   }
   const pages = pdf.getNumberOfPages();
   for (let page = 1; page <= pages; page++) {
-    pdf.setPage(page); pdf.setFont("helvetica", "normal"); pdf.setFontSize(8); pdf.setTextColor(90, 100, 93);
-    pdf.text(`${input.farm.farm_name} · ${animal.tag}`, margin, 289);
-    pdf.text(`${page}/${pages}`, pageWidth - margin, 289, { align: "right" });
+    pdf.setPage(page); pdf.setDrawColor(222, 227, 220); pdf.setLineWidth(0.25); pdf.line(margin, 270, pageWidth - margin, 270);
+    pdf.setFont("NotoSans", "normal"); pdf.setFontSize(6.5); pdf.setTextColor(83, 95, 86);
+    pdf.text(`${input.farm.farm_name} · ${animal.tag}`, margin, 276); pdf.text(`Page ${page} / ${pages}`, margin, 281);
+    pdf.addImage(developerLogo, "PNG", pageWidth - margin - 72, 271, 8, 8);
+    pdf.setFont("NotoSans", "bold"); pdf.setTextColor(31, 42, 34); pdf.setFontSize(6.8);
+    pdf.text(CODING_MOVES_DEVELOPER_CREDIT, pageWidth - margin - 62, 275);
+    pdf.setFont("NotoSans", "normal"); pdf.setFontSize(5.8); pdf.setTextColor(75, 86, 77);
+    pdf.textWithLink(CODING_MOVES_DISPLAY_URL, pageWidth - margin - 62, 280, { url: trackingUrl });
+    pdf.addImage(developerQr, "PNG", pageWidth - margin - 12, 271, 12, 12); pdf.link(pageWidth - margin - 72, 270, 72, 14, { url: trackingUrl });
   }
   return new Uint8Array(pdf.output("arraybuffer"));
 }

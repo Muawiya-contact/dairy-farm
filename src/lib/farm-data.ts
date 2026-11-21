@@ -24,7 +24,7 @@ export type Animal = {
   updated_at: string;
 };
 export type AnimalStatus = { id: string; breeding_status: string; service_date: string | null; calving_due: string | null };
-export type HealthEvent = { id: string; animal_id: string; event_date: string; kind: string; title: string; medicine: string | null; vet: string | null; notes: string | null; cost: number; next_due_date: string | null; expense_id: string | null };
+export type HealthEvent = { id: string; animal_id: string; event_date: string; created_at: string; kind: string; title: string; medicine: string | null; vet: string | null; notes: string | null; cost: number; next_due_date: string | null; expense_id: string | null };
 export type Insemination = Database["public"]["Tables"]["inseminations"]["Row"];
 export type Calving = Database["public"]["Tables"]["calvings"]["Row"];
 export type CalvingOffspring = Database["public"]["Tables"]["calving_offspring"]["Row"];

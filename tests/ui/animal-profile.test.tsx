@@ -42,11 +42,12 @@ it("shows life, production, breeding, and health as separate dimensions", () => 
   expect(screen.getByText(/0\.3 L/)).toBeInTheDocument();
   expect(screen.getByText("0.04 L rozana")).toBeInTheDocument();
   expect(screen.getByText(/khushk karna — 1 din baad/)).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "PDF download karein" })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Excel download karein" })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "PDF share karein" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "PDF download karein" })).toHaveClass("min-h-11");
+  expect(screen.getByRole("button", { name: "Excel download karein" })).toHaveClass("min-h-11");
+  expect(screen.getByRole("button", { name: "PDF share karein" })).toHaveClass("min-h-11");
+  expect(screen.getByRole("link", { name: "WhatsApp kholein" })).toHaveClass("min-h-11");
   expect(screen.getByRole("link", { name: "WhatsApp kholein" })).toHaveAttribute("href", expect.stringContaining("wa.me/"));
-  expect(screen.getByRole("button", { name: "Print karein" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Print karein" })).toHaveClass("min-h-11");
 });
 
 it("keeps an exited animal's health history without showing actionable due tasks", () => {

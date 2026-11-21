@@ -133,11 +133,11 @@ export default function FarmAnimals() {
       <Panel title="Janwar ka mukammal record" className="print:hidden">
         <p className="mb-3 text-sm text-muted">Is file mein sirf {selected.tag} aur is se jure khandani record hain. Jo maloomat darj nahi, woh wazeh rahegi.</p>
         <div className="flex flex-wrap gap-2">
-          <button type="button" disabled={dossierBusy} onClick={() => void exportDossier("pdf")} className="min-h-10 rounded-xl border border-berseem px-3 text-sm font-semibold text-berseem disabled:opacity-50">PDF download karein</button>
-          <button type="button" disabled={dossierBusy} onClick={() => void exportDossier("excel")} className="min-h-10 rounded-xl border border-line px-3 text-sm font-semibold disabled:opacity-50">Excel download karein</button>
-          <button type="button" disabled={dossierBusy} onClick={() => void exportDossier("share")} className="min-h-10 rounded-xl border border-line px-3 text-sm font-semibold disabled:opacity-50">PDF share karein</button>
-          <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center rounded-xl border border-line px-3 text-sm font-semibold">WhatsApp kholein</a>
-          <button type="button" onClick={() => window.print()} className="min-h-10 rounded-xl border border-line px-3 text-sm font-semibold">Print karein</button>
+          <button type="button" disabled={dossierBusy} onClick={() => void exportDossier("pdf")} className="min-h-11 rounded-xl border border-berseem px-3 text-sm font-semibold text-berseem disabled:opacity-50">PDF download karein</button>
+          <button type="button" disabled={dossierBusy} onClick={() => void exportDossier("excel")} className="min-h-11 rounded-xl border border-line px-3 text-sm font-semibold disabled:opacity-50">Excel download karein</button>
+          <button type="button" disabled={dossierBusy} onClick={() => void exportDossier("share")} className="min-h-11 rounded-xl border border-line px-3 text-sm font-semibold disabled:opacity-50">PDF share karein</button>
+          <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center rounded-xl border border-line px-3 text-sm font-semibold">WhatsApp kholein</a>
+          <button type="button" onClick={() => window.print()} className="min-h-11 rounded-xl border border-line px-3 text-sm font-semibold">Print karein</button>
         </div>
         <p className="mt-2 text-xs text-muted">Jahan device share support karta hai, wahan share menu khulega. Warna file download karke WhatsApp par khud attach karein.</p>
         {dossierMessage && <p role={dossierMessage.includes("export nahi hua") ? "alert" : "status"} className="mt-3 text-sm text-muted">{dossierMessage}</p>}

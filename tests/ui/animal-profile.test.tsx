@@ -17,7 +17,7 @@ it("shows life, production, breeding, and health as separate dimensions", () => 
     animals: [{ ...fixtures.cow, seller_name: "Market seller", purchase_location: "Okara", photo_path: null }],
     settings: { farm_name: "Farm" },
     animalStatus: [{ id: fixtures.cow.id, breeding_status: "pregnant", service_date: "2026-10-01", calving_due: "2027-06-28" }],
-    health: [{ id: "health-1", animal_id: fixtures.cow.id, event_date: "2026-10-15", kind: "treatment", title: "Hoof care",
+    health: [{ id: "health-1", animal_id: fixtures.cow.id, event_date: "2026-10-15", created_at: "2026-10-15T10:00:00Z", kind: "treatment", title: "Hoof care",
       medicine: "Medicine A", vet: "Dr A", notes: null, cost: 0, next_due_date: "2026-10-20", expense_id: null }],
     alerts: [{ alert_kind: "dry_off", severity: "soon", due_date: "2026-11-22", animal_id: fixtures.cow.id,
       tag: fixtures.cow.tag, message: `${fixtures.cow.tag}: khushk karna — 1 din baad`, days_left: 1 }],

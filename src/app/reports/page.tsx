@@ -5,7 +5,7 @@ import { BankIcon, BookIcon, BoxesIcon, CanIcon, ChartIcon, CowIcon, PeopleIcon,
 const REPORT_GROUPS = [
   {
     id: "customers", label: "Customer Reports", Icon: PeopleIcon,
-    description: "Customer delivery, billed, paid, outstanding aur Khata history saved records se.",
+    description: "Customer delivery, bill, wasooli aur Khata history saved records se. Zero-baakaya be-activity customers aur inactivity ki muddat wali report abhi nahi.",
     reports: [
       ["Customer Report", "/reports/customer/"],
       ["Khata Report", "/reports/khata/"],

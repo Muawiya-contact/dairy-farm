@@ -7,7 +7,7 @@ leaves it unknown or unavailable instead of inventing a figure.
 
 | Group | Existing report and supported records | Limits in the current data model |
 |---|---|---|
-| Customer Reports | `/reports/customer/` and `/reports/khata/`: saved deliveries, bills, payments, discounts, balances, and customer statements. | No automated bank or payment-provider feed. Collections only include saved payments. |
+| Customer Reports | `/reports/customer/` and `/reports/khata/`: saved deliveries, bills, payments, discounts, balances, and customer statements. | No automated bank or payment-provider feed. Collections only include saved payments. Customers with zero balance and no recorded activity are omitted; an inactivity-by-lookback report is not available yet. |
 | Milk Reports | `/reports/milk/` and `/reports/animal/milk/`: production, opening/closing stock, Khata/cash/free/farm-use/waste destinations, collections, customer details, and animal shifts. | Historical categories are shown only where records exist; no past destination is inferred. |
 | Purchase Reports | `/reports/inventory/`: saved inventory purchases by item, date, quantity, supplier text, reference, amount, and account. | Supplier balances, purchase returns, and purchase orders have no separate ledger. |
 | Sales Reports | `/reports/milk/` and `/reports/customer/`: milk sales, cash/Khata distinction, customer totals, and actual collections. | Other dairy-product sales and returns are not recorded by this app. |

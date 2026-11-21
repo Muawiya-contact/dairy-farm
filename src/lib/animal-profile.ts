@@ -38,10 +38,14 @@ export function animalProfileStatuses(animal: Animal, breedingStatus: string | n
 export function sevenDayMilkAverage(
   rows: { date: string; litres: number }[],
   today: string,
-  shifts: { milk_date: string; mode: "total" | "per_animal" }[] = [],
+  shifts?: { milk_date: string; mode: "total" | "per_animal" }[],
 ): number | null {
   const from = addDays(today, -6);
-  if (shifts.some((shift) => shift.mode === "total" && shift.milk_date >= from && shift.milk_date <= today)) return null;
+  if (shifts) {
+    const recentShifts = shifts.filter((shift) => shift.milk_date >= from && shift.milk_date <= today);
+    if (recentShifts.some((shift) => shift.mode === "total")) return null;
+    if (!recentShifts.some((shift) => shift.mode === "per_animal")) return null;
+  }
   return sumMilkLitres(rows.filter((row) => row.date >= from && row.date <= today).map((row) => Number(row.litres) || 0)) / 7;
 }
 

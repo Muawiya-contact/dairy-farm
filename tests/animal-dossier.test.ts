@@ -36,15 +36,24 @@ describe("animal dossier exports", () => {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(Buffer.from(bytes) as unknown as Parameters<typeof workbook.xlsx.load>[0]);
     expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual([
-      "Profile", "Milk", "Breeding", "Care reminders", "Health", "Vaccinations", "Calving & offspring", "Weight", "Feed", "Financial summary",
+      "Janwar ka record", "Doodh", "Nasl kashi", "Janwar ke follow-up", "Sehat ka record", "Teekay aur deworming", "Paidaish aur bachay", "Wazan", "Charah", "Maali khulasa",
     ]);
-    const profileValues = workbook.getWorksheet("Profile")!.getSheetValues().flat().map(String);
+    const profileSheet = workbook.getWorksheet("Janwar ka record")!;
+    const profileValues = profileSheet.getSheetValues().flat().map(String);
     expect(profileValues).toContain("A-101");
+    expect(profileValues).toContain("Chalu");
+    expect(profileValues).toContain("Doodh de rahi hai");
+    expect(profileValues).not.toContain("active");
+    expect(profileValues).not.toContain("milking");
+    expect(profileSheet.getRow(1).values).toContain("Maloomat");
     expect(profileValues).toContain("A-101: khushk karna — 1 din baad");
     expect(profileValues).not.toContain("B-202");
-    expect(workbook.getWorksheet("Milk")!.getRow(2).values).toContain("2026-11-20");
-    expect(workbook.getWorksheet("Milk")!.getRow(2).values).toContain(6.5);
-    expect(workbook.getWorksheet("Feed")!.getRow(2).getCell(1).value).toMatch(/No feed history/);
+    expect(workbook.getWorksheet("Doodh")!.getRow(2).values).toContain("2026-11-20");
+    expect(workbook.getWorksheet("Doodh")!.getRow(2).values).toContain(6.5);
+    expect(workbook.getWorksheet("Charah")!.getRow(2).getCell(1).value).toBe("App mein charah dene ka record nahi.");
+    const pdfText = new TextDecoder().decode(await buildAnimalDossierPdf(input));
+    expect(pdfText).toContain("Janwar ka mukammal record");
+    expect(pdfText).toContain("Doodh de rahi hai");
   });
 
   it("includes only the selected animal's calving and offspring details", async () => {
@@ -59,7 +68,7 @@ describe("animal dossier exports", () => {
     const ExcelJS = (await import("exceljs")).default;
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(Buffer.from(bytes) as unknown as Parameters<typeof workbook.xlsx.load>[0]);
-    const calvingSheet = workbook.getWorksheet("Calving & offspring")!;
+    const calvingSheet = workbook.getWorksheet("Paidaish aur bachay")!;
     expect(calvingSheet.getRow(2).values).toContain("2026-10-01");
     expect(calvingSheet.getRow(2).values).toContain("B-202");
     expect(calvingSheet.getRow(2).values).toContain(31.5);
@@ -73,7 +82,7 @@ describe("animal dossier exports", () => {
     const ExcelJS = (await import("exceljs")).default;
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(Buffer.from(bytes) as unknown as Parameters<typeof workbook.xlsx.load>[0]);
-    expect(workbook.getWorksheet("Care reminders")!.getSheetValues().flat().map(String)).toEqual(expect.arrayContaining(["FMD vaccine", "Completed", "Given by vet"]));
+    expect(workbook.getWorksheet("Janwar ke follow-up")!.getSheetValues().flat().map(String)).toEqual(expect.arrayContaining(["FMD vaccine", "Mukammal", "Given by vet"]));
   });
 
   it("sums fractional health costs in paise for both dossier exports", async () => {
@@ -88,7 +97,7 @@ describe("animal dossier exports", () => {
     const ExcelJS = (await import("exceljs")).default;
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(Buffer.from(bytes) as unknown as Parameters<typeof workbook.xlsx.load>[0]);
-    expect(workbook.getWorksheet("Financial summary")!.getRow(2).values).toContain(0.3);
+    expect(workbook.getWorksheet("Maali khulasa")!.getRow(2).values).toContain(0.3);
 
     const pdfText = new TextDecoder().decode(await buildAnimalDossierPdf(dossier));
     expect(pdfText).not.toContain("0.30000000000000004");
@@ -107,8 +116,8 @@ describe("animal dossier exports", () => {
     const ExcelJS = (await import("exceljs")).default;
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(Buffer.from(bytes) as unknown as Parameters<typeof workbook.xlsx.load>[0]);
-    const profile = workbook.getWorksheet("Profile")!.getSheetValues().flat().map(String);
+    const profile = workbook.getWorksheet("Janwar ka record")!.getSheetValues().flat().map(String);
     expect(profile).toContain("2026-11-20 · 0.30 L");
-    expect(profile).toContain("Incomplete: total-only shift in last seven days");
+    expect(profile).toContain("Saat din ka per-janwar doodh record mukammal nahi");
   });
 });

@@ -92,7 +92,7 @@ it("keeps each item unit separate, labels unassigned usage, and exports filtered
   const medicineRow = screen.getAllByRole("row").find((row) => row.textContent?.includes("Medicine"));
   expect(medicineRow).toBeDefined();
   expect(medicineRow).toHaveTextContent("2");
-  expect(medicineRow).toHaveTextContent("litre");
+  expect(medicineRow).toHaveTextContent("liter");
   expect(screen.getByText("Stock khatam")).toBeInTheDocument();
   expect(screen.getAllByText("Farm ka aam istemal (mulazim ke baghair)")).not.toHaveLength(0);
   expect(screen.getByText(/Istemaal ki qeemat dastiyab nahin/)).toBeInTheDocument();

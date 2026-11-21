@@ -1891,6 +1891,23 @@ export type Database = {
           opening_date: string; opening_amount: number
         }[]
       }
+      final_report_cash_position: {
+        Args: { p_from: string; p_to: string }
+        Returns: { closing_cash_bank_balance: number | null; cash_bank_account_count: number }[]
+      }
+      final_report_khata: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          is_grand_total: boolean; customer_id: string | null; name: string; sort_order: number;
+          litres: number; opening_balance: number; opening_added: number; charges: number;
+          total_payable: number; payments: number; discounts: number; refunds: number;
+          closing_balance: number; receivables_due: number; customer_credits: number
+        }[]
+      }
+      final_report_expense_categories: {
+        Args: { p_from: string; p_to: string }
+        Returns: { category: string; is_farm_cost: boolean; entries: number; amount: number }[]
+      }
       financial_report_income_rows: {
         Args: { p_from: string; p_to: string; p_limit?: number; p_offset?: number }
         Returns: {

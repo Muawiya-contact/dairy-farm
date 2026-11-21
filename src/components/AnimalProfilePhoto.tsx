@@ -82,7 +82,7 @@ export function AnimalProfilePhoto({ animal }: { animal: Animal }) {
         </label>
         <p className="text-xs text-muted">Sirf JPEG ya PNG · 5 MB tak</p>
         {animal.photo_path && <button type="button" onClick={() => void remove()} disabled={busy}
-          className="min-h-10 justify-self-start rounded-xl border border-line px-3 text-sm font-semibold disabled:opacity-50">Tasveer hata dein</button>}
+          className="min-h-11 justify-self-start rounded-xl border border-line px-3 text-sm font-semibold disabled:opacity-50">Tasveer hata dein</button>}
       </div>
     </div>
     {photo.isError && <p role="alert" className="mt-3 text-sm text-udhaar">Photo load nahi hui: {friendlyError(photo.error)}</p>}

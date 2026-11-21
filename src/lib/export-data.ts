@@ -55,7 +55,7 @@ export const BREEDING_COLUMNS = ["tag", "name", "service_date", "semen_type", "s
 
 const COLUMN_LABELS: Record<string, string> = {
   section: "Report ka hissa", farm_name: "Farm ka naam", generated_at: "Tayyar karne ki tareekh",
-  metric: "Mad", amount_rs: "Raqam (Rs)", source: "Zariya", classification: "Farm ya ghar / zaati",
+  metric: "Hisaab ki mad", amount_rs: "Raqam (Rs)", source: "Zariya", classification: "Farm ya ghar / zaati",
   entries: "Entries ki tadaad", line: "Hisaab ki mad", treatment: "Hisaab ka tareeqa",
   account_name: "Account ka naam", account_kind: "Account ki qism", opening_balance: "Shuru ka baqaya (Rs)",
   money_received: "Wasooli (Rs)", money_paid: "Adaigi (Rs)", transfers_in: "Andar transfer (Rs)",
@@ -103,6 +103,7 @@ const COLUMN_LABELS: Record<string, string> = {
   wasted_litres: "Zaya doodh (L)", waste_reason: "Waste ki wajah", closing_litres: "Aakhir balance (L)",
   milk_shift: "Shift", khata_litres: "Khata sale (L)", cash_litres: "Cash sale (L)",
   allocated_litres: "Kul allocated (L)", remaining_litres: "Baqi doodh (L)",
+  variance_litres: "Milan ka farq (L)",
   khata_delivery_amount: "Khata delivery (Rs)", company_bill_amount: "Company bill (Rs)",
   khata_amount: "Khata billed (Rs)", cash_sale_amount: "Cash sale (Rs)", total_sales_amount: "Kul milk sales (Rs)",
   cash_received: "Wasooli ki tareekh par received (Rs)", galla_cash_received: "Cash sale Galla credit (Rs)",
@@ -133,7 +134,7 @@ const COLUMN_LABELS: Record<string, string> = {
   owner_account_name: "Maalik ka account", farm_account_name: "Farm account",
   transfer_date: "Tareekh", recorded_by: "Darj karne wala user ID",
   is_local: "Local customer", active: "Chalu",
-  item: "Mad", value: "Raqam", period_balance_change: "Baqaya farq (Rs)",
+  item: "Tafseel", value: "Raqam", period_balance_change: "Baqaya farq (Rs)",
   expense_date: "Kharcha ki tareekh", account: "Paisa kis account se nikla", received_by: "Raqam lene wala",
   description: "Tafseel", expense_type: "Kharcha ki qism", recipient: "Naam / recipient",
   entry_count: "Entries ki tadaad", total_expenses: "Kul kharcha (Rs)", home_expenses: "Ghar ka kharcha (Rs)",

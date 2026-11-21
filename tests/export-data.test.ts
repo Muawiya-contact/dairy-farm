@@ -55,6 +55,12 @@ describe("CSV exports", () => {
     expect(toCsv(["before_row"], [{ before_row: { amount: 10 } }])).toContain('{""amount"":10}');
   });
 
+  it("uses clear Roman Urdu headings for final-report PDF sections", () => {
+    expect(columnLabel("metric")).toBe("Hisaab ki mad");
+    expect(columnLabel("item")).toBe("Tafseel");
+    expect(columnLabel("variance_litres")).toBe("Milan ka farq (L)");
+  });
+
   it("exports Inventory Report headings in Roman Urdu", () => {
     expect(columnLabel("opening_stock", "Har samaan ka stock baqaya")).toBe("Shuru ka stock");
     expect(columnLabel("movement_date", "Stock ki harkat")).toBe("Harkat ki tareekh");

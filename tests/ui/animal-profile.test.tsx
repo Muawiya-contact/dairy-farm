@@ -17,7 +17,7 @@ it("shows life, production, breeding, and health as separate dimensions", () => 
     animals: [{ ...fixtures.cow, seller_name: "Market seller", purchase_location: "Okara", photo_path: null }],
     settings: { farm_name: "Farm" },
     animalStatus: [{ id: fixtures.cow.id, breeding_status: "pregnant", service_date: "2026-10-01", calving_due: "2027-06-28" }],
-    health: [{ id: "health-1", animal_id: fixtures.cow.id, event_date: "2026-10-15", kind: "treatment", title: "Hoof care",
+    health: [{ id: "health-1", animal_id: fixtures.cow.id, event_date: "2026-10-15", created_at: "2026-10-15T10:00:00Z", kind: "treatment", title: "Hoof care",
       medicine: "Medicine A", vet: "Dr A", notes: null, cost: 0, next_due_date: "2026-10-20", expense_id: null }],
     alerts: [{ alert_kind: "dry_off", severity: "soon", due_date: "2026-11-22", animal_id: fixtures.cow.id,
       tag: fixtures.cow.tag, message: `${fixtures.cow.tag}: khushk karna — 1 din baad`, days_left: 1 }],
@@ -47,6 +47,20 @@ it("shows life, production, breeding, and health as separate dimensions", () => 
   expect(screen.getByRole("button", { name: "PDF share karein" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "WhatsApp kholein" })).toHaveAttribute("href", expect.stringContaining("wa.me/"));
   expect(screen.getByRole("button", { name: "Print karein" })).toBeInTheDocument();
+});
+
+it("keeps an exited animal's health history without showing actionable due tasks", () => {
+  farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({
+    animals: [{ ...fixtures.cow, life_status: "sold", photo_path: null }],
+    animalStatus: [],
+    health: [{ id: "health-sold", animal_id: fixtures.cow.id, event_date: "2026-10-15", created_at: "2026-10-15T10:00:00Z",
+      kind: "treatment", title: "Hoof care", medicine: null, vet: null, notes: null, cost: 0, next_due_date: "2026-10-20", expense_id: null }],
+  }), error: null });
+  const { container } = renderWithQuery(<FarmAnimals />);
+
+  expect(screen.getByText("Koi due tareekh darj nahi.")).toBeInTheDocument();
+  expect(screen.getAllByText(/Hoof care/).length).toBeGreaterThan(0);
+  expect(container.querySelector(".animal-profile-print")).toHaveTextContent("Hoof care");
 });
 
 it("does not show a zero animal average for a total-only milk shift", () => {

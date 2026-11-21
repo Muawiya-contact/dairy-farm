@@ -3,6 +3,10 @@ import type { Database } from "./database.types";
 import { pdfTrackingUrl, loadPdfDeveloperLogo, loadPdfDeveloperQr, loadPdfLogo } from "./pdf-brand";
 import { CODING_MOVES_CONTACT_EMAIL, CODING_MOVES_CONTACT_URL, CODING_MOVES_DEVELOPER_CREDIT, CODING_MOVES_DISPLAY_URL } from "./coding-moves";
 import { installPdfFonts } from "./pdf/fonts";
+import {
+  needsPdfSectionPageBreak, nextPdfSectionYAfterEmptyState,
+  PDF_EMPTY_SECTION_MINIMUM_HEIGHT_MM, PDF_PAGE_CONTENT_TOP_MM, PDF_TABLE_SECTION_MINIMUM_HEIGHT_MM,
+} from "./pdf/layout";
 import { getSettings } from "./settings";
 
 type Table = keyof Database["public"]["Tables"];
@@ -327,8 +331,15 @@ export async function buildPdfReport(title: string, sections: PdfSection[], farm
   pdf.setFont("NotoSans", "normal"); pdf.setFontSize(7.5); pdf.setTextColor(50, 62, 53);
   pdf.text(pdfPeriod(title), width - margin, 21, { align: "right" });
   pdf.setDrawColor(29, 70, 38); pdf.setLineWidth(0.7); pdf.line(margin, 28, width - margin, 28);
-  let cursorY = 36;
+  let cursorY = PDF_PAGE_CONTENT_TOP_MM;
   for (const section of sections) {
+    const minimumSectionHeight = section.rows.length
+      ? PDF_TABLE_SECTION_MINIMUM_HEIGHT_MM
+      : PDF_EMPTY_SECTION_MINIMUM_HEIGHT_MM;
+    if (needsPdfSectionPageBreak(cursorY, height, minimumSectionHeight)) {
+      pdf.addPage();
+      cursorY = PDF_PAGE_CONTENT_TOP_MM;
+    }
     pdf.setFont("NotoSans", "bold"); pdf.setFontSize(10); pdf.setTextColor(29, 70, 38);
     pdf.text(localPdfTitle(section.title), margin, cursorY);
     if (!section.rows.length) {
@@ -336,7 +347,7 @@ export async function buildPdfReport(title: string, sections: PdfSection[], farm
       pdf.setDrawColor(214, 205, 181); pdf.setLineDashPattern([1, 1], 0);
       pdf.roundedRect(margin, cursorY + 3, width - margin * 2, 12, 2, 2, "S"); pdf.setLineDashPattern([], 0);
       pdf.text("Is hissay mein koi record nahi mila.", margin + 4, cursorY + 10);
-      cursorY += 14;
+      cursorY = nextPdfSectionYAfterEmptyState(cursorY);
       continue;
     }
     autoTable(pdf, {

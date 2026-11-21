@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 import { fixtures, farmMocks, makeFarmData, renderWithQuery } from "./utils";
 import FarmAnimals from "@/components/FarmAnimals";
+import { longDate } from "@/lib/farm-data";
 
 const route = vi.hoisted(() => ({ id: "animal-1" }));
 const documentMocks = vi.hoisted(() => ({ sharePdfFile: vi.fn(), downloadBlob: vi.fn() }));
@@ -59,8 +60,15 @@ it("prints the profile from its explicit print action", async () => {
   Object.defineProperty(window, "print", { configurable: true, value: print });
   farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({
     animals: [{ ...fixtures.cow, photo_path: null }], settings: { farm_name: "Farm" }, animalStatus: [],
+    inseminations: [{ id: "cycle-1", animal_id: fixtures.cow.id, service_date: "2026-10-01", semen_type: "normal",
+      status: "pregnant", ultrasound_due: "2026-10-30", ultrasound_due_override: null, ultrasound_date: null,
+      checkup_due: "2026-12-15", checkup_due_override: null, checkup_date: null, dry_off_due: "2027-05-01",
+      dry_off_due_override: null, dry_off_date: null, calving_due: "2027-06-28", calving_due_override: "2027-07-10" }] as never,
   }), error: null });
   renderWithQuery(<FarmAnimals />);
+  const printReport = document.querySelector(".animal-profile-print");
+  expect(printReport).toHaveTextContent(`Mutawaqqa paidaish ${longDate("2027-07-10")}`);
+  expect(printReport).not.toHaveTextContent(longDate("2027-06-28"));
   await user.click(screen.getByRole("button", { name: "Print karein" }));
   expect(print).toHaveBeenCalledOnce();
   Object.defineProperty(window, "print", { configurable: true, value: undefined });

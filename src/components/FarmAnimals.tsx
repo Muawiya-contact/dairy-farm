@@ -170,7 +170,10 @@ export default function FarmAnimals() {
       <div className="print:hidden"><AnimalBreeding animal={selected} animals={d.animals} records={breeding} calvings={d.calvings.filter((x) => x.animal_id === selected.id)} offspring={d.calvingOffspring} today={d.today} busy={busy} run={run} /></div>
       <Panel title="Record ki tafseel" className="hidden print:block lg:col-span-2">
         <h3 className="font-semibold">Tareekh aur shift ke mutabiq doodh</h3><ul className="divide-y divide-line text-sm">{dossierInput.milk.length ? dossierInput.milk.map((row, index) => <li key={`${row.date}-${row.shift}-${index}`} className="flex justify-between py-1"><span>{longDate(row.date)} · {row.shift}</span><strong>{row.litres} L</strong></li>) : <li className="py-1">Doodh ka record nahi.</li>}</ul>
-        <h3 className="mt-4 font-semibold">Nasl kashi ka record</h3><ul className="divide-y divide-line text-sm">{breeding.length ? breeding.map((row) => <li key={row.id} className="py-1">{longDate(row.service_date)} · {row.status} · {row.technician || "Technician darj nahi"}{row.calving_due ? ` · Mutawaqqa paidaish ${longDate(row.calving_due)}` : ""}</li>) : <li className="py-1">Nasl kashi ka record nahi.</li>}</ul>
+        <h3 className="mt-4 font-semibold">Nasl kashi ka record</h3><ul className="divide-y divide-line text-sm">{breeding.length ? breeding.map((row) => {
+          const calvingDue = breedingDueDate(row, "calving").date;
+          return <li key={row.id} className="py-1">{longDate(row.service_date)} · {row.status} · {row.technician || "Technician darj nahi"}{calvingDue ? ` · Mutawaqqa paidaish ${longDate(calvingDue)}` : ""}</li>;
+        }) : <li className="py-1">Nasl kashi ka record nahi.</li>}</ul>
         <h3 className="mt-4 font-semibold">Paidaish aur bachon ka record</h3><ul className="divide-y divide-line text-sm">{dossierInput.calvings.length ? dossierInput.calvings.map((calving) => {
           const children = dossierInput.offspring.filter((child) => child.calving_id === calving.id);
           const calves = children.map((child) => {

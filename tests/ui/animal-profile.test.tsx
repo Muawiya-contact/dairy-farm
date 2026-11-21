@@ -49,6 +49,20 @@ it("shows life, production, breeding, and health as separate dimensions", () => 
   expect(screen.getByRole("button", { name: "Print karein" })).toBeInTheDocument();
 });
 
+it("keeps an exited animal's health history without showing actionable due tasks", () => {
+  farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({
+    animals: [{ ...fixtures.cow, life_status: "sold", photo_path: null }],
+    animalStatus: [],
+    health: [{ id: "health-sold", animal_id: fixtures.cow.id, event_date: "2026-10-15", created_at: "2026-10-15T10:00:00Z",
+      kind: "treatment", title: "Hoof care", medicine: null, vet: null, notes: null, cost: 0, next_due_date: "2026-10-20", expense_id: null }],
+  }), error: null });
+  const { container } = renderWithQuery(<FarmAnimals />);
+
+  expect(screen.getByText("Koi due tareekh darj nahi.")).toBeInTheDocument();
+  expect(screen.getAllByText(/Hoof care/).length).toBeGreaterThan(0);
+  expect(container.querySelector(".animal-profile-print")).toHaveTextContent("Hoof care");
+});
+
 it("does not show a zero animal average for a total-only milk shift", () => {
   farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({
     animalStatus: [],

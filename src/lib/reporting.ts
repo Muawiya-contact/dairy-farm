@@ -2,6 +2,7 @@ import { getSupabase } from "./supabase";
 import { getSettings } from "./settings";
 import { daysBetween, formatDay } from "./dates";
 import { loadPagedRows } from "./paged-rows";
+import { selectInactiveCustomers, type InactiveCustomer } from "./inactive-customers";
 
 export type PeriodSummary = {
   produced: number; delivered: number; sold_litres: number; free_litres: number;
@@ -244,6 +245,24 @@ export async function loadCustomerPeriodLedgerSummary(customerId: string, from: 
 export async function loadKhataPeriodSummary(from: string, to: string): Promise<KhataPeriodCustomer[]> {
   const data = await loadPagedReportRows<KhataPeriodCustomer>("khata_period_summary", { p_from: from, p_to: to });
   return data.map((row) => ({ ...row, active: Boolean(row.active), sort_order: Number(row.sort_order ?? 0), litres: Number(row.litres ?? 0), charges: Number(row.charges ?? 0), payments: Number(row.payments ?? 0), discounts: Number(row.discounts ?? 0), refunds: Number(row.refunds ?? 0), opening_balance: Number(row.opening_balance ?? 0), opening_added: Number(row.opening_added ?? 0), closing_balance: Number(row.closing_balance ?? 0) }));
+}
+
+export async function loadInactiveCustomers(from: string, to: string): Promise<InactiveCustomer[]> {
+  const supabase = getSupabase();
+  type CustomerPage = {
+    range: (start: number, end: number) => Promise<{ data: InactiveCustomer[] | null; error: Error | null }>;
+  };
+  const loadCustomers = (start: number, end: number) => (supabase.from("customers")
+    .select("id,name,phone,kind,active,sort_order")
+    .eq("active", true)
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true })
+    .order("id", { ascending: true }) as unknown as CustomerPage).range(start, end);
+  const [customers, periodRows] = await Promise.all([
+    loadPagedRows<InactiveCustomer>(loadCustomers),
+    loadKhataPeriodSummary(from, to),
+  ]);
+  return selectInactiveCustomers(customers, periodRows);
 }
 
 export async function loadKhataYearMonthSummary(year: number): Promise<KhataYearMonth[]> {

@@ -69,6 +69,7 @@ const COLUMN_LABELS: Record<string, string> = {
   farm_debit_rs: "Farm kharcha (Rs)", home_debit_rs: "Ghar kharcha (Rs)", daily_credit_rs: "Roz ki aamdani (Rs)",
   flags: "Jaanch ke nishan", imported_at: "Import ka waqt",
   id: "ID", tag: "Tag", name: "Naam", animal_id: "Janwar ID", animal_name: "Janwar ka naam", customer_id: "Customer ID",
+  phone: "Phone",
   arrival_date: "Farm par aane ki tareekh", purchase_date: "Kharid ki tareekh", seller_name: "Bechne wala", purchase_location: "Kharid ki jagah",
   life_status: "Farm ki haalat", milking_status: "Doodh ki haalat", transaction_date: "Len-den ki tareekh", transaction_kind: "Len-den ki qism",
   counterparty: "Doosri taraf", transaction_reason: "Wajah", event_date: "Waqia ki tareekh", title: "Waqia", vet: "Vet",

@@ -94,7 +94,7 @@ export default function AnimalMilkReport() {
   const data = report.data;
   const grand = data?.summary.find((row) => row.is_grand_total);
   return <>
-    <PageHeader title="Animal-wise Milk Report" sub="Tag ke mutabiq Subah, Dopehr aur Shaam ki production" back="/reports/" />
+    <PageHeader title="Animal-wise Milk Report" sub="Tag ke mutabiq Subah, Dopehr aur Shaam ki production" back="/reports/animal/" />
     <Body className="print-report space-y-4 pb-8">
       <p className="no-print text-sm"><Link className="font-semibold text-berseem underline" href="/reports/milk/">Customer / Overall Milk Report kholein</Link></p>
       <ReportPeriodPicker label="Animal Milk Report" today={today} allFrom={bounds.data?.first_date || today} from={from} to={to} preset={preset} allDisabled={!bounds.data} allDisabledHint={bounds.isPending ? "Sab records ki pehli tareekh load ho rahi hai…" : bounds.isError ? "Sab records dikhane ke liye pehli tareekh load karein." : undefined} onRange={setRange} onPreset={choosePreset} />

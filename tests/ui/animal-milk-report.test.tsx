@@ -2,7 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import { renderWithQuery } from "./utils";
-import AnimalMilkReport from "@/components/AnimalMilkReport";
+import AnimalMilkReportPage from "@/app/reports/animal/milk/page";
 
 const reportMocks = vi.hoisted(() => ({
   loadMilkReportBounds: vi.fn(), loadMilkReportAnimalOptions: vi.fn(), loadMilkReportAnimals: vi.fn(),
@@ -30,7 +30,7 @@ beforeEach(() => {
 
 it("filters by animal tag and exports shift totals with date-wise records", async () => {
   const user = userEvent.setup();
-  renderWithQuery(<AnimalMilkReport />);
+  renderWithQuery(<AnimalMilkReportPage />);
   await screen.findByRole("heading", { name: "All animals ka grand summary" });
   await user.selectOptions(screen.getByRole("combobox", { name: "Janwar ka tag number" }), "animal-1");
   await waitFor(() => expect(reportMocks.loadMilkReportAnimals).toHaveBeenCalledWith("2026-10-16", "2026-10-16", "animal-1"));
@@ -51,7 +51,7 @@ it("filters by animal tag and exports shift totals with date-wise records", asyn
 
 it("waits for the database date bounds before enabling all-records period", async () => {
   reportMocks.loadMilkReportBounds.mockImplementationOnce(() => new Promise(() => {}));
-  renderWithQuery(<AnimalMilkReport />);
+  renderWithQuery(<AnimalMilkReportPage />);
   expect(screen.getByRole("button", { name: "Sab record" })).toBeDisabled();
   expect(screen.getByText("Sab records ki pehli tareekh load ho rahi hai…")).toBeInTheDocument();
 });
@@ -59,7 +59,7 @@ it("waits for the database date bounds before enabling all-records period", asyn
 it("explains and retries a farm-settings error before PDF export", async () => {
   const user = userEvent.setup();
   reportMocks.getSettings.mockRejectedValueOnce(new Error("failed to fetch"));
-  renderWithQuery(<AnimalMilkReport />);
+  renderWithQuery(<AnimalMilkReportPage />);
   expect(await screen.findByRole("alert")).toHaveTextContent("Farm ki tafseel nahi mili: Internet nahi chal raha.");
   const download = screen.getByRole("button", { name: "PDF download" });
   expect(download).toBeDisabled();

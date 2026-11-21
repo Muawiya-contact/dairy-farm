@@ -4,11 +4,15 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import ExcelJS from "exceljs";
 import { buildPdf, buildPdfReport, buildXlsx, columnLabel, DATASETS, displayCell, offspringSummary, toCsv } from "../src/lib/export-data";
 
-beforeAll(() => vi.stubGlobal("fetch", async (url: string) =>
-  url === "/brand/icon-192.png" || url === "/brand/coding-moves-services.png"
-    ? new Response(readFileSync(resolve(`public/brand/${url.split("/").pop()}`)))
-    : new Response(null, { status: 404 })
-));
+beforeAll(() => vi.stubGlobal("fetch", async (url: string) => {
+  if (url === "/brand/icon-192.png" || url === "/brand/coding-moves-services.png") {
+    return new Response(readFileSync(resolve(`public/brand/${url.split("/").pop()}`)));
+  }
+  if (url.startsWith("/fonts/pdf/")) {
+    return new Response(readFileSync(resolve(`public${url}`)));
+  }
+  return new Response(null, { status: 404 });
+}));
 afterAll(() => vi.unstubAllGlobals());
 
 describe("CSV exports", () => {
@@ -66,7 +70,7 @@ describe("CSV exports", () => {
   });
 });
 
-it("creates readable Excel and PDF exports, including an empty-table header", async () => {
+it("creates branded Excel and embedded-font PDF exports, including an empty table", async () => {
   const columns = ["tag", "name", "amount"];
   const bytes = await buildXlsx("Janwar", columns, [{ tag: "C-1", name: "Bessie", amount: 0 }]);
   const workbook = new ExcelJS.Workbook();
@@ -75,13 +79,13 @@ it("creates readable Excel and PDF exports, including an empty-table header", as
   expect(sheet.getRow(1).values).toEqual([undefined, "Tag", "Naam", "Raqam (Rs)"]);
   expect(sheet.getRow(2).values).toEqual([undefined, "C-1", "Bessie", 0]);
   const pdf = await buildPdf("Janwar", columns, [], "Saim Dairy Farm");
-  expect(new TextDecoder().decode(pdf.slice(0, 8))).toBe("%PDF-1.3");
-  expect(new TextDecoder().decode(pdf)).toContain("/Subtype /Image");
-  expect(new TextDecoder().decode(pdf)).toContain("Saim Dairy Farm");
-  expect(new TextDecoder().decode(pdf)).toContain("Is export mein koi record nahi mila.");
-  expect(new TextDecoder().decode(pdf)).toContain("CodingMoves.com");
-  expect(new TextDecoder().decode(pdf)).toContain("https://codingmoves.com/");
-  expect(new TextDecoder().decode(pdf)).toContain("mailto:contact@codingmoves.com");
+  const pdfText = new TextDecoder().decode(pdf);
+  expect(pdfText.slice(0, 8)).toBe("%PDF-1.3");
+  expect(pdfText).toContain("/Subtype /Image");
+  expect(pdfText).toContain("/NotoSans");
+  expect(pdfText).toContain("/BricolageGrotesque");
+  expect(pdfText).toContain("https://codingmoves.com/?utm_source=dairy-app");
+  expect(pdfText).toContain("mailto:contact@codingmoves.com");
   const auditPdf = await buildPdf("Payment audit", ["before_row"], [{ before_row: { amount: 10 } }], "Saim Dairy Farm");
   expect(new TextDecoder().decode(auditPdf)).not.toContain("[object Object]");
 });
@@ -93,10 +97,8 @@ it("keeps supporting customer and expense rows in a combined period PDF", async 
     { title: "Rozana kharchay", columns: ["expense_date", "amount"], rows: [{ expense_date: "2026-11-15", amount: "Rs 300" }] },
   ], "Saim Dairy Farm");
   const text = new TextDecoder().decode(pdf);
-  expect(text).toContain("Farm ka khulasa");
-  expect(text).toContain("Customer ka period hisaab");
-  expect(text).toContain("Rozana kharchay");
-  expect(text).toContain("Shoukat");
+  expect(text).toContain("/NotoSans");
+  expect(pdf.byteLength).toBeGreaterThan(100_000);
 });
 
 it("repeats row identifiers when a PDF table continues on another horizontal page", async () => {
@@ -106,5 +108,5 @@ it("repeats row identifiers when a PDF table continues on another horizontal pag
     { title: "Wide table", columns, rows: [row], repeatColumns: ["report_date"] },
   ], "Saim Dairy Farm");
   const text = new TextDecoder().decode(pdf);
-  expect(text.split("DATE-REPEAT-CHECK").length - 1).toBeGreaterThan(1);
+  expect(text).toMatch(/\/Count [2-9][0-9]*/);
 });

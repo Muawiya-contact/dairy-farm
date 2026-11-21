@@ -15,6 +15,7 @@ const health = (value: Partial<HealthEvent>): HealthEvent => ({
   medicine: null, vet: null, notes: null, cost: 0, next_due_date: null, expense_id: null,
   symptoms: null, diagnosis: null, severity: null, current_condition: null, medicine_type: null, dosage: null, route: null,
   treatment_start_date: null, treatment_end_date: null, ...value,
+  created_at: value.created_at ?? "2026-11-20T00:00:00Z",
 });
 
 describe("animal profile overview", () => {
@@ -30,6 +31,20 @@ describe("animal profile overview", () => {
     ], "2026-11-21");
     expect(status.health).toBe("no-follow-up");
     expect(status.healthDueDate).toBeNull();
+  });
+
+  it("uses creation time and ID to resolve same-day health follow-ups", () => {
+    const sameCreationTime = [
+      health({ id: "event-a", event_date: "2026-11-20", created_at: "2026-11-20T10:00:00Z", next_due_date: "2026-11-25" }),
+      health({ id: "event-b", event_date: "2026-11-20", created_at: "2026-11-20T10:00:00Z", next_due_date: null }),
+    ];
+    const laterCreationTime = [
+      health({ id: "newer", event_date: "2026-11-20", created_at: "2026-11-20T11:00:00Z", next_due_date: null }),
+      health({ id: "older", event_date: "2026-11-20", created_at: "2026-11-20T10:00:00Z", next_due_date: "2026-11-25" }),
+    ];
+
+    expect(animalProfileStatuses(animal, "open", sameCreationTime, "2026-11-21").health).toBe("no-follow-up");
+    expect(animalProfileStatuses(animal, "open", laterCreationTime, "2026-11-21").health).toBe("no-follow-up");
   });
 
   it("averages only the seven calendar days through the farm date", () => {

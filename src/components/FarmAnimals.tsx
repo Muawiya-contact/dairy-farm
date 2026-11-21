@@ -68,7 +68,9 @@ export default function FarmAnimals() {
     const currentCycle = breeding.find((record) => record.status === "pending" || record.status === "pregnant");
     const estimatedCalvingDate = currentCycle ? breedingDueDate(currentCycle, "calving").date : status?.calving_due;
     const careTasks = d.animalCareTasks.filter((task) => task.animal_id === selected.id);
-    const dueTasks = animalDueTasks({ today: d.today, health, cycle: currentCycle, milking: selected.milking_status === "milking", careTasks });
+    const dueTasks = selected.life_status === "active"
+      ? animalDueTasks({ today: d.today, health, cycle: currentCycle, milking: selected.milking_status === "milking", careTasks })
+      : [];
     const milkByDay = [...history.reduce((groups, row) => {
       const date = row.shift?.milk_date;
       if (date) groups.set(date, [...(groups.get(date) ?? []), amount(row.litres)]);

@@ -115,7 +115,7 @@ const COLUMN_LABELS: Record<string, string> = {
   current_status: "Current status", total_quantity: "Quantity", transaction_count: "Transactions",
   movement_date: "Movement date", movement_type: "Movement type", entered_quantity: "Entered quantity",
   entered_unit: "Entered unit", quantity_delta: "Stock change", running_balance_after: "Balance after movement",
-  unit_rate: "Unit purchase rate (Rs)", account_name: "Paid from Galla", expense_id: "Kharcha reference",
+  unit_rate: "Unit purchase rate (Rs)", expense_id: "Kharcha reference",
   supplier: "Supplier", reference: "Invoice / reference", batch_code: "Batch", expiry_date: "Expiry date",
   purpose: "Purpose", reason: "Reason",
   contact_phone: "Farm contact number",

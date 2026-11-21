@@ -16,14 +16,15 @@ export type Animal = {
   breed: string | null; sex: "female" | "male"; category: "cow" | "heifer" | "calf" | "bull";
   birth_date: string | null; arrival_date: string | null; estimated_age_months_at_arrival: number | null;
   mother_id: string | null; purchase_date: string | null;
-  purchase_price: number | null; source: "born" | "purchased" | "gift" | "transfer" | "other"; sire: string | null;
+  purchase_price: number | null; seller_name: string | null; purchase_location: string | null; photo_path: string | null;
+  source: "born" | "purchased" | "gift" | "transfer" | "other"; sire: string | null;
   milking_status: "milking" | "dry" | "none";
   life_status: "active" | "sold" | "dead" | "removed"; exit_date: string | null;
   exit_reason: string | null; sale_price: number | null; notes: string | null;
   updated_at: string;
 };
 export type AnimalStatus = { id: string; breeding_status: string; service_date: string | null; calving_due: string | null };
-export type HealthEvent = { id: string; animal_id: string; event_date: string; kind: string; title: string; notes: string | null; cost: number; next_due_date: string | null; expense_id: string | null };
+export type HealthEvent = { id: string; animal_id: string; event_date: string; created_at: string; kind: string; title: string; medicine: string | null; vet: string | null; notes: string | null; cost: number; next_due_date: string | null; expense_id: string | null };
 export type Insemination = Database["public"]["Tables"]["inseminations"]["Row"];
 export type Calving = Database["public"]["Tables"]["calvings"]["Row"];
 export type CalvingOffspring = Database["public"]["Tables"]["calving_offspring"]["Row"];
@@ -149,8 +150,11 @@ export async function loadFarmData(scope: FarmScope, id = "", date = farmToday()
     only(detail, () => allRows<Calving>("calvings", "id", eq("animal_id", id))),
     only(scope === "milk" || scope === "customers", () => allRows<Customer>("customers")),
     only(scope === "milk" || customerDetail, () => allRows<CustomerRate>("customer_rates", "id", customerDetail ? eq("customer_id", id) : [])),
-    only(scope === "dashboard" || scope === "milk", () => allRows<MilkShift>("milk_shifts", "id",
-      scope === "dashboard" ? since("milk_date", addDays(today, -1)) : eq("milk_date", date))),
+    only(scope === "dashboard" || scope === "milk" || detail, () => allRows<MilkShift>("milk_shifts", "id",
+      detail ? [
+        { column: "milk_date", op: "gte", value: addDays(today, -6) },
+        { column: "milk_date", op: "lt", value: addDays(today, 1) },
+      ] : scope === "dashboard" ? since("milk_date", addDays(today, -1)) : eq("milk_date", date))),
     only(scope === "dashboard" || scope === "milk" || customerDetail, () => allRows<MilkDelivery>("milk_deliveries", "id",
       scope === "dashboard" ? monthRows("delivery_date", month) : scope === "milk" ? eq("delivery_date", date) : eq("customer_id", id))),
     only(scope === "milk", () => allRows<MilkDisposition>("milk_dispositions", "id", eq("milk_date", date))),
@@ -163,7 +167,7 @@ export async function loadFarmData(scope: FarmScope, id = "", date = farmToday()
     only(scope === "dashboard", () => allRows<OtherIncome>("other_income", "id", monthRows("income_date", month))),
     only(scope === "customers", () => report<CustomerReport>("customer_month_report", { p_month: today })),
     only(scope === "customers", () => allViewRows<CustomerBalance>("customer_balances", "customer_id")),
-    only(scope === "dashboard", () => report<HerdAlert>("herd_alerts", { p_today: today })),
+    only(scope === "dashboard" || detail, () => report<HerdAlert>("herd_alerts", { p_today: today })),
     Promise.all(months.map(async (item) => ({ month: item, data: (await report<Pnl>("pnl_month", { p_month: item }))[0] }))),
   ]);
   const [animalMilk, calvingOffspring] = await Promise.all([
@@ -176,8 +180,15 @@ export async function loadFarmData(scope: FarmScope, id = "", date = farmToday()
       return [...new Map([...related, ...children].map((child) => [child.id, child])).values()];
     }),
   ]);
-  const relevantShifts = detail && animalMilk.length ? await rowsForIds<MilkShift>("milk_shifts", "id", animalMilk.map((r) => r.shift_id)) : shifts;
-  return { today, settings, animals, animalStatus, health, inseminations, calvings, calvingOffspring, animalMilk,
+  const linkedBirthCalvings = detail && calvingOffspring.length
+    ? await rowsForIds<Calving>("calvings", "id", calvingOffspring.map((row) => row.calving_id))
+    : [];
+  const animalCalvings = [...new Map([...calvings, ...linkedBirthCalvings].map((row) => [row.id, row])).values()];
+  const animalHistoryShifts = detail && animalMilk.length ? await rowsForIds<MilkShift>("milk_shifts", "id", animalMilk.map((r) => r.shift_id)) : [];
+  const relevantShifts = detail
+    ? [...new Map([...shifts, ...animalHistoryShifts].map((shift) => [shift.id, shift])).values()]
+    : shifts;
+  return { today, settings, animals, animalStatus, health, inseminations, calvings: animalCalvings, calvingOffspring, animalMilk,
     customers, rates, shifts: relevantShifts, deliveries, dispositions, milkShiftConfig, payments, categories, expenses, accounts,
     companyBills, otherIncome, reports, balances, alerts, monthlyPnl: pnl };
 }

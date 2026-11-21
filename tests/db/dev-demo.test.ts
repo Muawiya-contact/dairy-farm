@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
 import { DATASETS } from "../../src/lib/export-data";
+import { createStorageFixture } from "./db-fixture";
 
 let db: PGlite;
 
@@ -17,6 +18,7 @@ beforeAll(async () => {
       select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
     $$;
   `);
+  await createStorageFixture(db);
   for (const name of readdirSync(resolve("supabase/migrations")).filter((file) => file.endsWith(".sql")).sort()) {
     await db.exec(readFileSync(resolve("supabase/migrations", name), "utf8"));
   }
@@ -47,6 +49,7 @@ describe("staging demo seed", () => {
           select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
         $$;
       `);
+      await createStorageFixture(firstDayDb);
       for (const name of readdirSync(resolve("supabase/migrations")).filter((file) => file.endsWith(".sql")).sort()) {
         await firstDayDb.exec(readFileSync(resolve("supabase/migrations", name), "utf8"));
       }

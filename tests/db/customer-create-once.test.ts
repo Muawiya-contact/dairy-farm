@@ -2,6 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, it } from "vitest";
+import { createStorageFixture } from "./db-fixture";
 
 it("returns the same customer for a retried request and rejects changed payloads", async () => {
   const db = new PGlite();
@@ -10,6 +11,7 @@ it("returns the same customer for a retried request and rejects changed payloads
       create table auth.users(id uuid primary key);
       create function auth.uid() returns uuid language sql stable as $$
         select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;`);
+    await createStorageFixture(db);
     for (const file of readdirSync(resolve("supabase/migrations")).filter((f) => f.endsWith(".sql")).sort())
       await db.exec(readFileSync(resolve("supabase/migrations", file), "utf8"));
     const owner = "11111111-1111-4111-8111-111111111111";

@@ -52,3 +52,14 @@ it("orders the recorded farm journey, including an other-reason departure", () =
     "2026-01-01:Farm se nikla", "2024-01-01:Sehat", "2023-01-01:Farm mein aaya",
   ]);
 });
+
+it("translates breeding and calving enum values in the animal timeline", () => {
+  const animal = { id: "a1", source: "born", birth_date: null, arrival_date: "2023-01-01", purchase_price: null,
+    exit_date: null, life_status: "active" } as Animal;
+  const data = {
+    health: [],
+    inseminations: [{ id: "i1", animal_id: "a1", service_date: "2024-01-01", semen_type: "normal", semen_name: null }],
+    calvings: [{ id: "c1", animal_id: "a1", calving_date: "2025-01-01", outcome: "twins" }],
+  } as unknown as Pick<FarmData, "health" | "inseminations" | "calvings">;
+  expect(animalLifeEvents(animal, data).filter((event) => event.title !== "Farm mein aaya").map((event) => event.detail)).toEqual(["Joray", "Mamooli"]);
+});

@@ -193,8 +193,11 @@ export type Database = {
           name: string | null
           notes: string | null
           purchase_date: string | null
+          purchase_location: string | null
           purchase_price: number | null
+          photo_path: string | null
           sale_price: number | null
+          seller_name: string | null
           sex: string
           sire: string | null
           source: string
@@ -218,8 +221,11 @@ export type Database = {
           name?: string | null
           notes?: string | null
           purchase_date?: string | null
+          purchase_location?: string | null
           purchase_price?: number | null
+          photo_path?: string | null
           sale_price?: number | null
+          seller_name?: string | null
           sex?: string
           sire?: string | null
           source?: string
@@ -243,8 +249,11 @@ export type Database = {
           name?: string | null
           notes?: string | null
           purchase_date?: string | null
+          purchase_location?: string | null
           purchase_price?: number | null
+          photo_path?: string | null
           sale_price?: number | null
+          seller_name?: string | null
           sex?: string
           sire?: string | null
           source?: string

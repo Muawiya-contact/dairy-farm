@@ -2,6 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, it } from "vitest";
+import { createStorageFixture } from "./db-fixture";
 
 it("audits a manual correction once, updates account money, and rejects stale or direct edits", async () => {
   const db = new PGlite();
@@ -10,6 +11,7 @@ it("audits a manual correction once, updates account money, and rejects stale or
       create table auth.users(id uuid primary key);
       create function auth.uid() returns uuid language sql stable as $$
         select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;`);
+    await createStorageFixture(db);
     for (const file of readdirSync(resolve("supabase/migrations")).filter((f) => f.endsWith(".sql")).sort())
       await db.exec(readFileSync(resolve("supabase/migrations", file), "utf8"));
     const account = (await db.query<{ id: string }>("select id from accounts where is_farm_cash")).rows[0].id;

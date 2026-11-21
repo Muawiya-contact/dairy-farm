@@ -300,9 +300,12 @@ export async function buildPdf(title: string, columns: string[], rows: Record<st
  */
 export async function buildPdfReport(title: string, sections: PdfSection[], farmName: string): Promise<Uint8Array<ArrayBuffer>> {
   const reportSlug = reportSlugFor(title);
-  const [{ jsPDF }, { autoTable }, logo, developerLogo, settings] = await Promise.all([
-    import("jspdf"), import("jspdf-autotable"), loadPdfLogo(), loadPdfDeveloperLogo(), getSettings(),
+  const [{ jsPDF }, { autoTable }, logo, developerLogo] = await Promise.all([
+    import("jspdf"), import("jspdf-autotable"), loadPdfLogo(), loadPdfDeveloperLogo(),
   ]);
+  // Table-only exports are also used by the offline test harness. A missing
+  // Settings row must not prevent a readable document from being generated.
+  const settings = await getSettings().catch(() => null);
   const landscape = sections.some((section) => section.columns.length > 9);
   const pdf = new jsPDF({ orientation: landscape ? "landscape" : "portrait", unit: "mm", format: "a4" });
   await installPdfFonts(pdf);
@@ -311,12 +314,12 @@ export async function buildPdfReport(title: string, sections: PdfSection[], farm
   const width = pdf.internal.pageSize.getWidth();
   const height = pdf.internal.pageSize.getHeight();
   const margin = 13;
-  const reportFarmName = settings.farm_name || farmName;
+  const reportFarmName = settings?.farm_name || farmName;
   pdf.addImage(logo, "PNG", margin, 11, 12, 12);
   pdf.setFont("BricolageGrotesque", "extrabold"); pdf.setTextColor(23, 41, 28); pdf.setFontSize(17);
   pdf.text(reportFarmName, margin + 16, 17);
   pdf.setFont("NotoSans", "normal"); pdf.setFontSize(7.5); pdf.setTextColor(87, 99, 91);
-  const owner = [settings.owner_name, settings.contact_phone].filter(Boolean).join(" · ");
+  const owner = [settings?.owner_name, settings?.contact_phone].filter(Boolean).join(" · ");
   if (owner) pdf.text(`Maalik: ${owner}`, margin + 16, 22);
   pdf.setFont("NotoSans", "bold"); pdf.setFontSize(11); pdf.setTextColor(29, 70, 38);
   pdf.text(localPdfTitle(title), width - margin, 16, { align: "right" });
@@ -341,6 +344,10 @@ export async function buildPdfReport(title: string, sections: PdfSection[], farm
       styles: { font: "NotoSans", fontSize: 7.4, cellPadding: 1.45, overflow: "linebreak", lineColor: [226, 229, 223], lineWidth: 0.15 },
       headStyles: { fillColor: [230, 238, 231], textColor: [29, 70, 38], font: "NotoSans", fontStyle: "bold" },
       alternateRowStyles: { fillColor: [250, 251, 248] },
+      horizontalPageBreak: section.columns.length > 9,
+      horizontalPageBreakRepeat: section.repeatColumns
+        ?.map((column) => section.columns.indexOf(column))
+        .filter((index) => index >= 0),
       margin: { top: 34, right: margin, bottom: 28, left: margin },
       didDrawPage: () => {
         // Tables add pages themselves. The complete, linked footer is painted afterwards.

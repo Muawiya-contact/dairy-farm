@@ -7,7 +7,8 @@ import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { amount, insertRow, longDate, money, recordHealthEvent, shortDate, useFarmData, type Animal } from "@/lib/farm-data";
 import { friendlyError } from "@/lib/errors";
-import { parseAmount } from "@/lib/format";
+import { litres, parseAmount } from "@/lib/format";
+import { sumMilkLitres } from "@/lib/milk-entry";
 import { animalAge, animalCategoryTitle, animalLifeEvents, compareAnimalTags, matchesAnimalFilter, parseAnimalDates, type AnimalSource } from "@/lib/animal-life";
 import { refreshFarmViews } from "@/lib/query-refresh";
 import { Body, PageHeader, Panel, StatusTag } from "./ui";
@@ -66,15 +67,17 @@ export default function FarmAnimals() {
     const dueTasks = animalDueTasks({ today: d.today, health, cycle: currentCycle, milking: selected.milking_status === "milking" });
     const milkByDay = [...history.reduce((groups, row) => {
       const date = row.shift?.milk_date;
-      if (date) groups.set(date, (groups.get(date) ?? 0) + amount(row.litres));
+      if (date) groups.set(date, [...(groups.get(date) ?? []), amount(row.litres)]);
       return groups;
-    }, new Map<string, number>())].map(([date, litres]) => ({ date, litres }));
+    }, new Map<string, number[]>())].map(([date, amounts]) => ({ date, litres: sumMilkLitres(amounts) }));
     const latestMilkDay = milkByDay.sort((a, b) => b.date.localeCompare(a.date))[0];
+    const sevenDayAverage = sevenDayMilkAverage(milkByDay, d.today, d.shifts);
     const latestHealth = health[0];
     const dossierInput: AnimalDossier = {
       animal: selected, animals: d.animals, farm: d.settings, today: d.today, status: profileStatuses,
       dueTasks, health, activeAlerts: d.alerts.filter((alert) => alert.animal_id === selected.id),
       inseminations: breeding, calvings: d.calvings, offspring: d.calvingOffspring,
+      milkShifts: d.shifts,
       milk: history.filter((row) => row.shift).map((row) => ({
         date: row.shift!.milk_date, shift: SHIFT_LABELS[row.shift!.shift], litres: amount(row.litres),
       })),
@@ -111,7 +114,6 @@ export default function FarmAnimals() {
     const whatsappMessage = `${d.settings.farm_name}: ${selected.tag}${selected.name ? ` (${selected.name})` : ""} ka janwar record. PDF saath attach karein.`;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
     const lifeEvents = animalLifeEvents(selected, d);
-    const sevenDayAverage = sevenDayMilkAverage(milkByDay, d.today);
     const lifeLabel = { active: "Farm par hai", sold: "Farokht", dead: "Wafat", removed: "Farm se nikla" }[profileStatuses.life];
     const productionLabel = { milking: "Doodh de rahi", dry: "Khushk", none: "Doodh nahi" }[profileStatuses.production];
     const breedingLabel = { pregnant: "Gaabhan", inseminated: "Nateeja baqi", fresh: "Nayi bachhi", open: "Khuli", na: "Laagu nahi", unknown: "Darj nahi" }[profileStatuses.breeding] ?? profileStatuses.breeding;
@@ -148,8 +150,8 @@ export default function FarmAnimals() {
         <div><dt className="text-muted">Agli delivery</dt><dd>{status?.calving_due ? longDate(status.calving_due) : "Darj nahi"}</dd></div>
       </dl>{selected.notes && <p className="mt-3 text-sm text-muted">{selected.notes}</p>}</Panel>
       <Panel title="Aik nazar mein"><dl className="grid gap-2 text-sm sm:grid-cols-2">
-        <div><dt className="text-muted">Aakhri doodh</dt><dd>{latestMilkDay ? `${longDate(latestMilkDay.date)} · ${amount(latestMilkDay.litres)} L` : "Doodh ka record nahi"}</dd></div>
-        <div><dt className="text-muted">Saat din ka ausat</dt><dd>{sevenDayAverage.toFixed(2)} L rozana</dd></div>
+        <div><dt className="text-muted">Aakhri doodh</dt><dd>{latestMilkDay ? `${longDate(latestMilkDay.date)} · ${litres(latestMilkDay.litres)}` : "Doodh ka record nahi"}</dd></div>
+        <div><dt className="text-muted">Saat din ka ausat</dt><dd>{sevenDayAverage == null ? "Total shift ke saath per-janwar ausat mukammal nahi" : `${sevenDayAverage.toFixed(2)} L rozana`}</dd></div>
         <div><dt className="text-muted">Aakhri sehat entry</dt><dd>{latestHealth ? `${latestHealth.title} · ${longDate(latestHealth.event_date)}` : "Sehat ka record nahi"}</dd></div>
         <div><dt className="text-muted">Maujooda nasl kashi</dt><dd>{currentCycle ? `${breedingLabel} · ${longDate(currentCycle.service_date)}` : "Nasl kashi ka khula record nahi"}</dd></div>
       </dl><div className="mt-3 border-t border-line pt-3"><h3 className="font-semibold">Agla due kaam</h3>{dueTasks.length ? <ul className="mt-1 divide-y divide-line text-sm">{dueTasks.map((task) => <li key={`${task.label}-${task.date}`} className="flex flex-wrap justify-between gap-1 py-1"><span>{task.label}{task.overdue ? " · Tareekh guzar gayi" : ""}</span><time>{longDate(task.date)}</time></li>)}</ul> : <p className="mt-1 text-sm text-muted">Koi due tareekh darj nahi.</p>}</div><div className="mt-3 border-t border-line pt-3"><h3 className="font-semibold">Qareebi aham reminders</h3>{dossierInput.activeAlerts.length ? <ul className="mt-1 divide-y divide-line text-sm">{dossierInput.activeAlerts.map((alert) => <li key={`${alert.alert_kind}-${alert.due_date}`} className="py-1">{alert.message}</li>)}</ul> : <p className="mt-1 text-sm text-muted">Is janwar ka koi qareebi reminder nahi.</p>}</div></Panel>

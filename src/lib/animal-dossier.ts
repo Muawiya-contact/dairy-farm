@@ -1,8 +1,9 @@
-import type { Animal, Calving, CalvingOffspring, HealthEvent, HerdAlert, Insemination } from "./farm-data";
+import type { Animal, Calving, CalvingOffspring, HealthEvent, HerdAlert, Insemination, MilkShift } from "./farm-data";
 import type { LoadedFarmSettings } from "./settings";
-import { addDays, formatDay } from "./dates";
+import { formatDay } from "./dates";
 import { animalAge } from "./animal-life";
-import type { AnimalProfileStatuses } from "./animal-profile";
+import { sevenDayMilkAverage, type AnimalProfileStatuses } from "./animal-profile";
+import { sumMilkLitres } from "./milk-entry";
 
 export type AnimalDossier = {
   animal: Animal;
@@ -15,6 +16,7 @@ export type AnimalDossier = {
   inseminations: Insemination[];
   calvings: Calving[];
   offspring: CalvingOffspring[];
+  milkShifts: Pick<MilkShift, "milk_date" | "mode">[];
   milk: { date: string; shift: string; litres: number }[];
   dueTasks: { date: string; label: string; overdue: boolean }[];
   photoDataUrl?: string;
@@ -26,6 +28,7 @@ const animalName = (animal: Animal | undefined) => animal ? `${animal.tag}${anim
 
 function dossierSheets(input: AnimalDossier) {
   const { animal, farm, status } = input;
+  const recentMilkAverage = dossierMilkRecentAverage(input);
   const mother = input.animals.find((item) => item.id === animal.mother_id);
   const relatedBirth = input.offspring.find((item) => item.animal_id === animal.id);
   const birthCalving = relatedBirth ? input.calvings.find((item) => item.id === relatedBirth.calving_id) : undefined;
@@ -47,7 +50,7 @@ function dossierSheets(input: AnimalDossier) {
     { field: "Active production alerts", value: input.activeAlerts.filter((alert) => alert.alert_kind === "dry_off" || alert.alert_kind === "calving").map((alert) => alert.message).join("; ") || "No active production alerts" },
     { field: "Latest milk", value: input.milk.length ? (() => {
       const latestDate = input.milk.map((row) => row.date).sort().at(-1)!;
-      const litres = input.milk.filter((row) => row.date === latestDate).reduce((total, row) => total + Number(row.litres || 0), 0);
+      const litres = sumMilkLitres(input.milk.filter((row) => row.date === latestDate).map((row) => Number(row.litres) || 0));
       return `${latestDate} · ${litres.toFixed(2)} L`;
     })() : "No milk record" },
     { field: "Latest health event", value: input.health.length ? (() => {
@@ -56,7 +59,7 @@ function dossierSheets(input: AnimalDossier) {
     })() : "No health record" },
     { field: "Current breeding cycle", value: input.inseminations.filter((record) => record.status === "pending" || record.status === "pregnant")
       .sort((a, b) => b.service_date.localeCompare(a.service_date)).map((record) => `${record.status} · ${record.service_date}`)[0] ?? "No open breeding cycle" },
-    { field: "Seven-day milk average (L/day)", value: Number(dossierMilkRecentAverage(input).toFixed(2)) },
+    { field: "Seven-day milk average (L/day)", value: recentMilkAverage == null ? "Incomplete: total-only shift in last seven days" : Number(recentMilkAverage.toFixed(2)) },
     { field: "Upcoming due tasks", value: input.dueTasks.length ? input.dueTasks.map((task) => `${task.label}: ${task.date}${task.overdue ? " (overdue)" : ""}`).join("; ") : "No recorded due tasks" },
     { field: "Exit date", value: animal.exit_date || "Not recorded" }, { field: "Exit reason", value: animal.exit_reason || "Not recorded" },
     { field: "Sale price (Rs)", value: num(animal.sale_price) }, { field: "Notes", value: animal.notes || "Not recorded" },
@@ -142,6 +145,7 @@ export async function buildAnimalDossierPdf(input: AnimalDossier): Promise<Uint8
   const pageWidth = pdf.internal.pageSize.getWidth();
   const margin = 14;
   const animal = input.animal;
+  const recentMilkAverage = dossierMilkRecentAverage(input);
   pdf.setProperties({ title: `${animal.tag} animal dossier`, subject: `Farm animal record for ${animal.tag}` });
   pdf.setFont("helvetica", "bold"); pdf.setFontSize(17); pdf.text(input.farm.farm_name, margin, 17);
   pdf.setFont("helvetica", "normal"); pdf.setFontSize(9);
@@ -171,7 +175,7 @@ export async function buildAnimalDossierPdf(input: AnimalDossier): Promise<Uint8
     ["Active production alerts", input.activeAlerts.filter((alert) => alert.alert_kind === "dry_off" || alert.alert_kind === "calving").map((alert) => alert.message).join("; ") || "No active production alerts"],
     ["Latest milk", input.milk.length ? (() => {
       const latestDate = input.milk.map((row) => row.date).sort().at(-1)!;
-      const litres = input.milk.filter((row) => row.date === latestDate).reduce((total, row) => total + Number(row.litres || 0), 0);
+      const litres = sumMilkLitres(input.milk.filter((row) => row.date === latestDate).map((row) => Number(row.litres) || 0));
       return `${formatDay(latestDate)} · ${litres.toFixed(2)} L`;
     })() : "No milk record"],
     ["Latest health event", input.health.length ? (() => {
@@ -180,7 +184,7 @@ export async function buildAnimalDossierPdf(input: AnimalDossier): Promise<Uint8
     })() : "No health record"],
     ["Current breeding cycle", input.inseminations.filter((record) => record.status === "pending" || record.status === "pregnant")
       .sort((a, b) => b.service_date.localeCompare(a.service_date)).map((record) => `${record.status} · ${formatDay(record.service_date)}`)[0] ?? "No open breeding cycle"],
-    ["Seven-day milk average", `${dossierMilkRecentAverage(input).toFixed(2)} L/day`],
+    ["Seven-day milk average", recentMilkAverage == null ? "Incomplete: total-only shift in last seven days" : `${recentMilkAverage.toFixed(2)} L/day`],
     ["Due tasks", input.dueTasks.map((task) => `${task.label}: ${formatDay(task.date)}${task.overdue ? " (overdue)" : ""}`).join("; ") || "No recorded due tasks"],
   ];
   const profileTable = (pdf as typeof pdf & { lastAutoTable?: { finalY?: number } });
@@ -235,7 +239,11 @@ export function safeAnimalFilename(animal: Pick<Animal, "tag">, extension: "pdf"
   return `animal-${tag}.${extension}`;
 }
 
-export function dossierMilkRecentAverage(input: AnimalDossier): number {
-  const start = addDays(input.today, -6);
-  return input.milk.filter((row) => row.date >= start && row.date <= input.today).reduce((sum, row) => sum + Number(row.litres || 0), 0) / 7;
+export function dossierMilkRecentAverage(input: AnimalDossier): number | null {
+  const milkByDate = new Map<string, number[]>();
+  for (const row of input.milk) {
+    milkByDate.set(row.date, [...(milkByDate.get(row.date) ?? []), Number(row.litres) || 0]);
+  }
+  const dailyMilk = [...milkByDate].map(([date, amounts]) => ({ date, litres: sumMilkLitres(amounts) }));
+  return sevenDayMilkAverage(dailyMilk, input.today, input.milkShifts);
 }

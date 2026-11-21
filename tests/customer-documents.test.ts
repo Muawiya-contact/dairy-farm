@@ -79,6 +79,8 @@ it("generates separate readable statement and payment PDFs", async () => {
   expect(receiptText).toContain("/NotoSans");
   expect(statementText).toContain("https://codingmoves.com/?utm_source=dairy-app");
   expect(receiptText).toContain("https://codingmoves.com/?utm_source=dairy-app");
+  expect(statementText).toContain("mailto:contact@codingmoves.com");
+  expect(receiptText).toContain("mailto:contact@codingmoves.com");
 });
 
 it("hands the receipt PDF to the phone's app chooser", async () => {

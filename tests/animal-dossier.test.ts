@@ -189,6 +189,7 @@ describe("animal dossier exports", () => {
     const pdfText = new TextDecoder().decode(await buildAnimalDossierPdf(dossier));
     expect(pdfText).toContain("/NotoSans");
     expect(pdfText).toContain("utm_campaign=animal-profile");
+    expect(pdfText).toContain("mailto:contact@codingmoves.com");
   });
 
   it("sums daily milk in cents and marks total-only weeks as incomplete", async () => {

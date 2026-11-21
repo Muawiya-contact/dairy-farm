@@ -4,7 +4,7 @@ import { formatDay, formatMonth } from "./dates";
 import { downloadBlob } from "./export-data";
 import { loadPdfDeveloperLogo, loadPdfDeveloperQr, loadPdfLogo, pdfTrackingUrl } from "./pdf-brand";
 import { installPdfFonts } from "./pdf/fonts";
-import { CODING_MOVES_DEVELOPER_CREDIT, CODING_MOVES_DISPLAY_URL } from "./coding-moves";
+import { CODING_MOVES_CONTACT_EMAIL, CODING_MOVES_CONTACT_URL, CODING_MOVES_DEVELOPER_CREDIT, CODING_MOVES_DISPLAY_URL } from "./coding-moves";
 import { SHIFT_LABELS } from "./milk-shifts";
 
 export type StatementLine = {
@@ -105,6 +105,7 @@ function addFooters(pdf: Pdf, farmName: string, developerLogo: Uint8Array<ArrayB
     pdf.text(CODING_MOVES_DEVELOPER_CREDIT, 134, 275);
     pdf.setFont("NotoSans", "normal"); pdf.setFontSize(5.8); pdf.setTextColor(75, 86, 77);
     pdf.textWithLink(CODING_MOVES_DISPLAY_URL, 134, 280, { url: trackingUrl });
+    pdf.textWithLink(CODING_MOVES_CONTACT_EMAIL, 134, 284, { url: CODING_MOVES_CONTACT_URL });
     pdf.addImage(developerQr, "PNG", 182, 271, 12, 12); pdf.link(124, 270, 72, 14, { url: trackingUrl });
   }
 }

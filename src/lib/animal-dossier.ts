@@ -7,7 +7,7 @@ import { breedingDueDate } from "./breeding-register";
 import { sumMilkLitres } from "./milk-entry";
 import { loadPdfDeveloperLogo, loadPdfDeveloperQr, loadPdfLogo, pdfTrackingUrl } from "./pdf-brand";
 import { installPdfFonts } from "./pdf/fonts";
-import { CODING_MOVES_DEVELOPER_CREDIT, CODING_MOVES_DISPLAY_URL } from "./coding-moves";
+import { CODING_MOVES_CONTACT_EMAIL, CODING_MOVES_CONTACT_URL, CODING_MOVES_DEVELOPER_CREDIT, CODING_MOVES_DISPLAY_URL } from "./coding-moves";
 import { animalWeightChange, animalWeightHistory } from "./animal-weight-history";
 import { animalFinancialSummary } from "./animal-finance";
 
@@ -386,6 +386,7 @@ export async function buildAnimalDossierPdf(input: AnimalDossier): Promise<Uint8
     pdf.text(CODING_MOVES_DEVELOPER_CREDIT, pageWidth - margin - 62, 275);
     pdf.setFont("NotoSans", "normal"); pdf.setFontSize(5.8); pdf.setTextColor(75, 86, 77);
     pdf.textWithLink(CODING_MOVES_DISPLAY_URL, pageWidth - margin - 62, 280, { url: trackingUrl });
+    pdf.textWithLink(CODING_MOVES_CONTACT_EMAIL, pageWidth - margin - 62, 284, { url: CODING_MOVES_CONTACT_URL });
     pdf.addImage(developerQr, "PNG", pageWidth - margin - 12, 271, 12, 12); pdf.link(pageWidth - margin - 72, 270, 72, 14, { url: trackingUrl });
   }
   return new Uint8Array(pdf.output("arraybuffer"));

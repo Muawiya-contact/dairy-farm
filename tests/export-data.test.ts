@@ -85,6 +85,7 @@ it("creates branded Excel and embedded-font PDF exports, including an empty tabl
   expect(pdfText).toContain("/NotoSans");
   expect(pdfText).toContain("/BricolageGrotesque");
   expect(pdfText).toContain("https://codingmoves.com/?utm_source=dairy-app");
+  expect(pdfText).toContain("mailto:contact@codingmoves.com");
   const auditPdf = await buildPdf("Payment audit", ["before_row"], [{ before_row: { amount: 10 } }], "Saim Dairy Farm");
   expect(new TextDecoder().decode(auditPdf)).not.toContain("[object Object]");
 });

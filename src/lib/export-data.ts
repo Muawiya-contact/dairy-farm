@@ -1,7 +1,7 @@
 import { getSupabase } from "./supabase";
 import type { Database } from "./database.types";
 import { pdfTrackingUrl, loadPdfDeveloperLogo, loadPdfDeveloperQr, loadPdfLogo } from "./pdf-brand";
-import { CODING_MOVES_DEVELOPER_CREDIT, CODING_MOVES_DISPLAY_URL } from "./coding-moves";
+import { CODING_MOVES_CONTACT_EMAIL, CODING_MOVES_CONTACT_URL, CODING_MOVES_DEVELOPER_CREDIT, CODING_MOVES_DISPLAY_URL } from "./coding-moves";
 import { installPdfFonts } from "./pdf/fonts";
 import { getSettings } from "./settings";
 
@@ -368,9 +368,10 @@ export async function buildPdfReport(title: string, sections: PdfSection[], farm
     pdf.setFont("NotoSans", "bold"); pdf.setTextColor(31, 42, 34); pdf.setFontSize(6.8);
     pdf.text(CODING_MOVES_DEVELOPER_CREDIT, brandX + 10, footerY - 3);
     pdf.setFont("NotoSans", "normal"); pdf.setFontSize(5.8); pdf.setTextColor(75, 86, 77);
-    pdf.text("Apne karobar ka software banwayein ·", brandX + 10, footerY + 1);
     pdf.setFont("NotoSans", "bold"); pdf.setTextColor(196, 106, 0);
-    pdf.textWithLink(CODING_MOVES_DISPLAY_URL, brandX + 52, footerY + 1, { url: trackingUrl });
+    pdf.textWithLink(CODING_MOVES_DISPLAY_URL, brandX + 10, footerY + 1, { url: trackingUrl });
+    pdf.setFont("NotoSans", "normal"); pdf.setTextColor(75, 86, 77);
+    pdf.textWithLink(CODING_MOVES_CONTACT_EMAIL, brandX + 10, footerY + 5, { url: CODING_MOVES_CONTACT_URL });
     pdf.addImage(developerQr, "PNG", width - margin - 14, footerY - 9, 14, 14);
     pdf.link(brandX, footerY - 9, 72, 16, { url: trackingUrl });
   }

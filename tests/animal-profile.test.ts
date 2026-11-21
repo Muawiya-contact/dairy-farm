@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { animalDueTasks, animalProfileStatuses, sevenDayMilkAverage } from "@/lib/animal-profile";
+import { animalDueTasks, animalProfileStatuses, latestHealthEvent, sevenDayMilkAverage } from "@/lib/animal-profile";
 import { breedingDueDate, nextBreedingTask } from "@/lib/breeding-register";
 import { ANIMAL_PHOTO_MAX_BYTES, validateAnimalPhoto } from "@/lib/animal-photos";
 import type { Animal, HealthEvent, Insemination } from "@/lib/farm-data";
@@ -19,6 +19,19 @@ const health = (value: Partial<HealthEvent>): HealthEvent => ({
 });
 
 describe("animal profile overview", () => {
+  it("uses creation time and ID to select the latest same-day health event", () => {
+    const events = [
+      health({ id: "older", event_date: "2026-11-20", created_at: "2026-11-20T10:00:00Z", title: "Older entry" }),
+      health({ id: "newer", event_date: "2026-11-20", created_at: "2026-11-20T11:00:00Z", title: "Newer entry" }),
+    ];
+    expect(latestHealthEvent(events)?.title).toBe("Newer entry");
+    expect(latestHealthEvent([...events].reverse())?.title).toBe("Newer entry");
+    expect(latestHealthEvent([
+      ...events,
+      health({ id: "z-latest-id", event_date: "2026-11-20", created_at: "2026-11-20T11:00:00Z", title: "Latest ID" }),
+    ])?.title).toBe("Latest ID");
+  });
+
   it("keeps life, production, breeding, and health dimensions independent", () => {
     const status = animalProfileStatuses(animal, "pregnant", [health({ next_due_date: "2026-11-20" })], "2026-11-21");
     expect(status).toEqual({ life: "active", production: "milking", breeding: "pregnant", health: "overdue", healthDueDate: "2026-11-20" });

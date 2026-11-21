@@ -3,12 +3,20 @@ import { addDays } from "./dates";
 import { breedingDueDate } from "./breeding-register";
 import { sumMilkLitres } from "./milk-entry";
 
-export function currentHealthFollowups(health: HealthEvent[]): HealthEvent[] {
-  const latestByFollowup = new Map<string, HealthEvent>();
-  for (const event of [...health].sort((a, b) =>
+export function sortHealthEventsNewestFirst(health: HealthEvent[]): HealthEvent[] {
+  return [...health].sort((a, b) =>
     b.event_date.localeCompare(a.event_date)
     || b.created_at.localeCompare(a.created_at)
-    || b.id.localeCompare(a.id))) {
+    || b.id.localeCompare(a.id));
+}
+
+export function latestHealthEvent(health: HealthEvent[]): HealthEvent | null {
+  return sortHealthEventsNewestFirst(health)[0] ?? null;
+}
+
+export function currentHealthFollowups(health: HealthEvent[]): HealthEvent[] {
+  const latestByFollowup = new Map<string, HealthEvent>();
+  for (const event of sortHealthEventsNewestFirst(health)) {
     const key = `${event.kind}:${event.title.trim().toLocaleLowerCase()}`;
     if (!latestByFollowup.has(key)) latestByFollowup.set(key, event);
   }

@@ -29,7 +29,7 @@ const animalLabel = (a: Animal) => `${a.tag}${a.name ? ` · ${a.name}` : ""}`;
 const printedBreedingStatus: Record<string, string> = { pending: "Nateeja baqi", pregnant: "Gaabhan", empty: "Khali", aborted: "Hamla zaya", calved: "Bacha paida" };
 const printedCalvingOutcome: Record<string, string> = { alive: "Zinda", dead: "Wafat", twins: "Joray", normal: "Mamool ke mutabiq", stillborn: "Paidaish par wafat" };
 const printedSex: Record<string, string> = { female: "Mada", male: "Nar" };
-const printedHealthKind: Record<string, string> = { vaccine: "Vaccine", treatment: "Ilaj", deworming: "Deworming", checkup: "Vet check-up", other: "Doosra" };
+const printedHealthKind: Record<string, string> = { vaccine: "Teeka", treatment: "Ilaj", deworming: "Deworming", checkup: "Vet check-up", other: "Doosra" };
 
 export default function FarmAnimals() {
   const id = useSearchParams().get("id") ?? "";

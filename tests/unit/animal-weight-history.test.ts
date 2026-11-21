@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { animalWeightChange, animalWeightChart, animalWeightHistory, parseAnimalWeight, type AnimalWeightRecord } from "@/lib/animal-weight-history";
+import { animalWeightChange, animalWeightChart, animalWeightHistory, parseAnimalWeight, type AnimalWeightHistoryItem, type AnimalWeightRecord } from "@/lib/animal-weight-history";
 
-const record = (id: string, weight_date: string, weight_kg: number, created_at = `${weight_date}T10:00:00Z`): AnimalWeightRecord => ({
-  id, animal_id: "calf-1", weight_date, weight_kg, notes: null, created_at,
+const record = (id: string, weight_date: string, weight_kg: number, created_at = `${weight_date}T10:00:00Z`): AnimalWeightRecord & AnimalWeightHistoryItem => ({
+  id, animal_id: "calf-1", weight_date, weight_kg, notes: null, created_at, source: "measurement",
 });
 
 describe("calf weight history", () => {

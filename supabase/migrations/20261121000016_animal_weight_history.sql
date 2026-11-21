@@ -37,9 +37,12 @@ end $$;
 create trigger animal_weight_record_guard
 before insert or update or delete on public.animal_weight_records
 for each row execute function public.guard_animal_weight_record();
-create trigger animal_weight_subscription_guard
+create trigger subscription_write_guard
 before insert or update or delete on public.animal_weight_records
 for each row execute function private.guard_subscription_write();
+create trigger animal_weight_records_month_lock
+before insert or update or delete on public.animal_weight_records
+for each row execute function public.trg_month_lock('weight_date');
 
 alter table public.animal_weight_records enable row level security;
 create policy animal_weight_owner_read on public.animal_weight_records for select to authenticated

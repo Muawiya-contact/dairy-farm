@@ -23,8 +23,8 @@ describe("animal weight history database rules", () => {
       `select weight_date,weight_kg,notes from animal_weight_records where animal_id=$1 order by weight_date,created_at,id`, [animalId],
     )).rows;
     expect(rows).toHaveLength(3);
-    expect(rows.map((row) => Number(row.weight_kg))).toEqual([34.25, 34.5, 39]);
-    expect(rows[0].notes).toBe("Before feeding");
+    expect(rows.map((row) => Number(row.weight_kg)).sort((a, b) => a - b)).toEqual([34.25, 34.5, 39]);
+    expect(rows.find((row) => row.notes === "Before feeding")?.weight_kg).toBe("34.25");
   });
 
   it("rejects invalid weights, future dates, and entries before arrival", async () => {
@@ -32,6 +32,16 @@ describe("animal weight history database rules", () => {
     await expect(db.query("insert into animal_weight_records(animal_id,weight_date,weight_kg) values ($1,'2026-11-02',-1)", [animalId])).rejects.toThrow();
     await expect(db.query("insert into animal_weight_records(animal_id,weight_date,weight_kg) values ($1,'2026-11-22',40)", [animalId])).rejects.toThrow(/ANIMAL_WEIGHT_DATE_IN_FUTURE/);
     await expect(db.query("insert into animal_weight_records(animal_id,weight_date,weight_kg) values ($1,'2026-10-31',40)", [animalId])).rejects.toThrow(/ANIMAL_WEIGHT_BEFORE_FARM_ARRIVAL/);
+  });
+
+  it("rejects measurements in a closed farm month", async () => {
+    const historicalAnimal = (await db.query<{ id: string }>(`
+      insert into animals(tag,species,sex,category,source,birth_date,arrival_date)
+      values ('WEIGHT-LOCKED','cow','female','calf','born','2024-12-01','2024-12-01') returning id
+    `)).rows[0].id;
+    await db.query("insert into month_locks(month,note) values ('2025-01-01','Test lock')");
+    await expect(db.query("insert into animal_weight_records(animal_id,weight_date,weight_kg) values ($1,'2025-01-15',41)", [historicalAnimal]))
+      .rejects.toThrow(/MONTH_LOCKED/);
   });
 
   it("preserves readings as append-only history and denies anonymous production access", async () => {

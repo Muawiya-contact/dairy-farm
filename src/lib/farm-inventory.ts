@@ -5,6 +5,9 @@ export type InventoryCategory = Tables<"inventory_categories">;
 export type InventoryItem = Tables<"inventory_items">;
 export type InventoryStock = Database["public"]["Functions"]["inventory_stock_on"]["Returns"][number];
 export type InventoryMovement = Database["public"]["Functions"]["inventory_item_history"]["Returns"][number];
+export type InventoryReportSummary = Database["public"]["Functions"]["inventory_report_summary"]["Returns"][number];
+export type InventoryReportUsage = Database["public"]["Functions"]["inventory_report_usage_by_staff"]["Returns"][number];
+export type InventoryReportTransaction = Database["public"]["Functions"]["inventory_report_transactions"]["Returns"][number];
 export type InventoryAccount = Pick<Tables<"accounts">, "id" | "name" | "active" | "opening_date">;
 export type InventoryExpenseCategory = Pick<Tables<"expense_categories">, "id" | "name" | "active" | "is_farm_cost" | "is_salary" | "sort_order">;
 export type InventoryStaff = Pick<Tables<"staff">, "id" | "name" | "active">;
@@ -39,6 +42,12 @@ export async function loadInventorySetup() {
   };
 }
 
+export async function loadInventoryReportStaff() {
+  const { data, error } = await getSupabase().from("staff").select("id,name,active").order("name");
+  if (error) throw error;
+  return (data ?? []) as InventoryStaff[];
+}
+
 export async function getInventoryItems() {
   const { data, error } = await getSupabase().from("inventory_items").select("*").order("name");
   if (error) throw error;
@@ -48,6 +57,37 @@ export async function getInventoryItems() {
 export async function getInventoryHistory(itemId: string, from: string, to: string) {
   const { data, error } = await getSupabase().rpc("inventory_item_history", {
     p_item_id: itemId, p_from: from, p_to: to,
+  });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getInventoryReportSummary(from: string, to: string, itemId: string | null, categoryId: string | null) {
+  const { data, error } = await getSupabase().rpc("inventory_report_summary", {
+    p_from: from, p_to: to, p_item_id: itemId, p_category_id: categoryId,
+  });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getInventoryReportUsage(from: string, to: string, itemId: string | null,
+  categoryId: string | null, staffId: string | null, unassigned: boolean) {
+  const { data, error } = await getSupabase().rpc("inventory_report_usage_by_staff", {
+    p_from: from, p_to: to, p_item_id: itemId, p_category_id: categoryId,
+    p_staff_id: staffId, p_unassigned: unassigned,
+  });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getInventoryReportTransactions(input: {
+  from: string; to: string; itemId: string | null; categoryId: string | null;
+  staffId: string | null; unassigned: boolean; search: string; limit: number; offset: number;
+}) {
+  const { data, error } = await getSupabase().rpc("inventory_report_transactions", {
+    p_from: input.from, p_to: input.to, p_item_id: input.itemId, p_category_id: input.categoryId,
+    p_staff_id: input.staffId, p_unassigned: input.unassigned, p_search: input.search || null,
+    p_limit: input.limit, p_offset: input.offset,
   });
   if (error) throw error;
   return data ?? [];

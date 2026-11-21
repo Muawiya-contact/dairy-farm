@@ -14,12 +14,13 @@ export function AnimalFinancialSummary({ animal, health, income, milk, feed, cur
   currentMilkRate: number;
 }) {
   const summary = animalFinancialSummary({ animal, health, income, milk, feed, currentMilkRate });
+  const hasRecordedCosts = summary.lines.some((line) => line.treatment === "recorded cost" && line.included_in_recorded_total);
   const hasRecordedRows = summary.lines.some((line) => line.included_in_recorded_total);
   const card = "rounded-xl bg-ground p-3";
   return <Panel title="Janwar ka recorded maali khulasa" className="lg:col-span-2">
     <p className="text-sm text-muted">Yeh sirf is janwar se juri maloomat hai. Actual income mein linked ledger transactions aik martaba ginay jate hain. Milk estimate actual cash nahi, aur estimate net recorded result mein shamil nahi.</p>
     <dl className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <div className={card}><dt className="text-sm text-muted">Maloom recorded costs</dt><dd className="mt-1 text-lg font-bold">{money(summary.recorded_cost_rs)}</dd><dd className="text-xs text-muted">Purchase profile value aur linked medical expenses</dd></div>
+      <div className={card}><dt className="text-sm text-muted">Maloom recorded costs</dt><dd className="mt-1 text-lg font-bold">{hasRecordedCosts ? money(summary.recorded_cost_rs) : "Kharchay ka koi record nahi"}</dd><dd className="text-xs text-muted">Purchase profile value aur linked medical expenses</dd></div>
       <div className={card}><dt className="text-sm text-muted">Actual linked income</dt><dd className="mt-1 text-lg font-bold">{summary.lines.some((line) => line.treatment === "recorded revenue") ? money(summary.recorded_revenue_rs) : "Koi linked transaction nahi"}</dd><dd className="text-xs text-muted">Animal sale aur doosri juri hui income</dd></div>
       <div className={card}><dt className="text-sm text-muted">Net recorded result</dt><dd className="mt-1 text-lg font-bold">{hasRecordedRows ? money(summary.net_recorded_rs) : "Financial history nahi"}</dd><dd className="text-xs text-muted">Estimated milk value shamil nahi</dd></div>
       <div className={card}><dt className="text-sm text-muted">Milk value estimate</dt><dd className="mt-1 text-lg font-bold">{summary.milk_value_estimate_rs == null ? "Dastiyab nahi" : money(summary.milk_value_estimate_rs)}</dd><dd className="text-xs text-muted">{summary.milk_litres == null ? "Per-animal milk record nahi" : `${summary.milk_litres.toFixed(2)} L × current rate ${money(summary.milk_rate_rs_per_litre ?? 0)}/L`}</dd></div>

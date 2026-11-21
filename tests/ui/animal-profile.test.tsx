@@ -111,6 +111,7 @@ it("keeps sparse legacy profiles readable and shows no-record states", () => {
   route.id = "old";
   renderWithQuery(<FarmAnimals />);
   expect(screen.getByText("Doodh ka record nahi")).toBeInTheDocument();
+  expect(screen.getByText("Kharchay ka koi record nahi")).toBeInTheDocument();
   expect(screen.getAllByText("Sehat ka record nahi").length).toBeGreaterThan(0);
   expect(screen.getAllByText("Darj nahi").length).toBeGreaterThan(0);
   expect(screen.getByText("Saat din ka per-janwar doodh record mukammal nahi")).toBeInTheDocument();

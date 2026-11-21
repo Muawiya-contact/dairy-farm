@@ -23,7 +23,10 @@ export async function go(page: Page, name: string): Promise<void> {
 }
 
 export function section(page: Page, heading: string | RegExp) {
-  return page.locator("section").filter({ has: page.getByRole("heading", { name: heading }) }).first();
+  const headingLocator = typeof heading === "string"
+    ? page.getByRole("heading", { name: heading, exact: true })
+    : page.getByRole("heading", { name: heading });
+  return page.locator("section").filter({ has: headingLocator }).first();
 }
 
 export function moneyValue(text: string): number {

@@ -9,15 +9,15 @@ test("Reports menu groups all nine categories and routes each group to its exist
   await expect(menu.locator("section")).toHaveCount(9);
   await expect(menu.getByRole("link")).toHaveCount(18);
   const destinations = [
-    ["Customer Reports", "Customer statements and sales", "Customer Report"],
-    ["Milk Reports", "Production, destinations and collections", "Milk Report"],
-    ["Purchase Reports", "Purchases by item and supplier", "Stock ki Report"],
-    ["Sales Reports", "Milk cash and Khata sales", "Milk Report"],
-    ["Accounts Reports", "Accounts and owner movements", "Accounts Report"],
-    ["Financial Reports", "Income, expenses and profit/loss", "Maali Report"],
-    ["Animal Reports", "Animal inventory, health and breeding", "Animal Report"],
-    ["Feed & Inventory Reports", "Stock, purchases and usage", "Stock ki Report"],
-    ["Farm Analytics", "Monthly Farm Performance", "Final Report"],
+    ["Customer Reports", "Customer Report", "Customer Report"],
+    ["Milk Reports", "Milk Report", "Milk Report"],
+    ["Purchase Reports", "Stock ki Report", "Stock ki Report"],
+    ["Sales Reports", "Milk Report", "Milk Report"],
+    ["Accounts Reports", "Accounts Report", "Accounts Report"],
+    ["Financial Reports", "Maali Report", "Maali Report"],
+    ["Animal Reports", "Animal Report", "Animal Report"],
+    ["Feed & Inventory Reports", "Stock ki Report", "Stock ki Report"],
+    ["Farm Analytics", "Final Report", "Final Report"],
   ] as const;
 
   for (const [groupName, reportLink, heading] of destinations) {

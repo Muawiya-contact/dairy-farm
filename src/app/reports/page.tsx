@@ -7,61 +7,61 @@ const REPORT_GROUPS = [
     id: "customers", label: "Customer Reports", Icon: PeopleIcon,
     description: "Customer delivery, billed, paid, outstanding aur Khata history saved records se.",
     reports: [
-      ["Customer statements and sales", "/reports/customer/"],
-      ["Khata balances and ledger", "/reports/khata/"],
+      ["Customer Report", "/reports/customer/"],
+      ["Khata Report", "/reports/khata/"],
     ],
   },
   {
     id: "milk", label: "Milk Reports", Icon: CanIcon,
     description: "Production, destinations, carry-forward balance, actual collections aur customer breakdown.",
     reports: [
-      ["Production, destinations and collections", "/reports/milk/"],
-      ["Animal-wise milk", "/reports/animal/milk/"],
+      ["Milk Report", "/reports/milk/"],
+      ["Animal-wise Milk Report", "/reports/animal/milk/"],
     ],
   },
   {
     id: "purchases", label: "Purchase Reports", Icon: BoxesIcon,
     description: "Inventory Report mein darj khareed, item, supplier aur raqam dekhein. Supplier balance, purchase returns aur purchase orders alag se track nahi hote.",
-    reports: [["Purchases by item and supplier", "/reports/inventory/"]],
+    reports: [["Stock ki Report", "/reports/inventory/"]],
   },
   {
     id: "sales", label: "Sales Reports", Icon: WalletIcon,
     description: "Milk Report mein doodh ki cash/Khata sales aur asal wasooli hain. Dahi, makkhan ya ghee ki sales alag se record nahi hoti.",
     reports: [
-      ["Milk cash and Khata sales", "/reports/milk/"],
-      ["Sales by customer", "/reports/customer/"],
+      ["Milk Report", "/reports/milk/"],
+      ["Customer Report", "/reports/customer/"],
     ],
   },
   {
     id: "accounts", label: "Accounts Reports", Icon: BankIcon,
     description: "Account balance, owner movements, Khata ledger aur expense day book.",
     reports: [
-      ["Accounts and owner movements", "/reports/accounts/"],
-      ["Customer ledgers", "/reports/khata/"],
-      ["Expense day book", "/reports/kharcha/"],
+      ["Accounts Report", "/reports/accounts/"],
+      ["Khata Report", "/reports/khata/"],
+      ["Kharcha Report", "/reports/kharcha/"],
     ],
   },
   {
     id: "financial", label: "Financial Reports", Icon: ChartIcon,
     description: "Billed income aur saved farm/personal expenses ke separate totals.",
     reports: [
-      ["Income, expenses and profit/loss", "/reports/financial/"],
-      ["Expense categories", "/reports/kharcha/"],
+      ["Maali Report", "/reports/financial/"],
+      ["Kharcha Report", "/reports/kharcha/"],
     ],
   },
   {
     id: "animals", label: "Animal Reports", Icon: CowIcon,
     description: "Herd, animal milk, breeding aur health records.",
     reports: [
-      ["Animal inventory, health and breeding", "/reports/animal/"],
-      ["Animal-wise milk", "/reports/animal/milk/"],
+      ["Animal Report", "/reports/animal/"],
+      ["Animal-wise Milk Report", "/reports/animal/milk/"],
     ],
   },
   {
     id: "feed-inventory", label: "Feed & Inventory Reports", Icon: BookIcon,
     description: "Stock, feed purchases, usage, wastage aur low stock dekhein. Har janwar ka feed record aur muddat ka miqdar uske profile mein milega.",
     reports: [
-      ["Stock, purchases and usage", "/reports/inventory/"],
+      ["Stock ki Report", "/reports/inventory/"],
       ["Per-animal feed history", "/janwar/"],
     ],
   },
@@ -69,8 +69,8 @@ const REPORT_GROUPS = [
     id: "analytics", label: "Farm Analytics", Icon: ReportIcon,
     description: "Period ka farm khulasa saved records se banta hai; missing data ko asal income ya munafa nahi maana jata.",
     reports: [
-      ["Monthly Farm Performance", "/reports/final/"],
-      ["Financial trends", "/reports/financial/"],
+      ["Final Report", "/reports/final/"],
+      ["Maali Report", "/reports/financial/"],
     ],
   },
 ] as const;

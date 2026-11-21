@@ -51,14 +51,14 @@ function HealthAttachments({ event, attachments, busy, run }: {
     {ordered.length > 0 && <ul className="mt-1 grid gap-1 text-sm">{ordered.map((attachment) => <li key={attachment.id} className="flex flex-wrap items-center justify-between gap-2">
       <span>{attachment.file_name} · {Math.max(1, Math.ceil(attachment.size_bytes / 1024))} KB</span>
       {links[attachment.id] ? <div className="flex flex-wrap gap-2">
-        <a href={links[attachment.id]} target="_blank" rel="noreferrer" className="min-h-9 rounded-lg border border-line px-3 py-1 font-semibold underline">File download karein</a>
-        <button type="button" disabled={openingId === attachment.id || busy} onClick={() => void openAttachment(attachment)} className="min-h-9 rounded-lg border border-line px-3 py-1 font-semibold disabled:opacity-50">{openingId === attachment.id ? "Naya link ban raha hai" : "Naya private link"}</button>
+        <a href={links[attachment.id]} target="_blank" rel="noreferrer" className="min-h-11 rounded-lg border border-line px-3 py-1 font-semibold underline">File download karein</a>
+        <button type="button" disabled={openingId === attachment.id || busy} onClick={() => void openAttachment(attachment)} className="min-h-11 rounded-lg border border-line px-3 py-1 font-semibold disabled:opacity-50">{openingId === attachment.id ? "Naya link ban raha hai" : "Naya private link"}</button>
       </div>
-        : <button type="button" disabled={openingId === attachment.id || busy} onClick={() => void openAttachment(attachment)} className="min-h-9 rounded-lg border border-line px-3 py-1 font-semibold disabled:opacity-50">{openingId === attachment.id ? "File khul rahi hai" : "Private file dekhein"}</button>}
+        : <button type="button" disabled={openingId === attachment.id || busy} onClick={() => void openAttachment(attachment)} className="min-h-11 rounded-lg border border-line px-3 py-1 font-semibold disabled:opacity-50">{openingId === attachment.id ? "File khul rahi hai" : "Private file dekhein"}</button>}
     </li>)}</ul>}
     <form onSubmit={upload} className="mt-2 flex flex-wrap items-center gap-2 print:hidden">
       <label className="text-sm">File jorein<input name="health-attachment" type="file" accept="application/pdf,image/jpeg,image/png" disabled={busy} className="ml-2 max-w-full text-sm" /></label>
-      <button disabled={busy} className="min-h-9 rounded-lg border border-berseem px-3 text-sm font-semibold text-berseem disabled:opacity-50">Private file upload</button>
+      <button disabled={busy} className="min-h-11 rounded-lg border border-berseem px-3 text-sm font-semibold text-berseem disabled:opacity-50">Private file upload</button>
     </form>
     <p className="mt-1 text-xs text-muted">PDF, JPEG ya PNG · 10 MB tak · sirf farm ke authorized user</p>
     {message && <p role="status" className="mt-1 text-xs text-muted">{message}</p>}
@@ -185,7 +185,7 @@ export function AnimalHealthHistory({ animalId, events, attachments, categories,
       <button disabled={busy || (cost > 0 && (!farmCategories.length || !activeAccounts.length))} className="min-h-11 rounded-xl bg-berseem px-4 font-bold text-white disabled:opacity-50 sm:col-span-2 lg:col-span-3">Health entry save</button>
     </form>}
     <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Health history filter">
-      {filters.map((item) => <button key={item.id} type="button" aria-pressed={filter === item.id} onClick={() => setFilter(item.id)} className={`min-h-10 rounded-xl border px-3 text-sm font-semibold ${filter === item.id ? "border-berseem bg-ground text-berseem" : "border-line"}`}>{item.label}</button>)}
+      {filters.map((item) => <button key={item.id} type="button" aria-pressed={filter === item.id} onClick={() => setFilter(item.id)} className={`min-h-11 rounded-xl border px-3 text-sm font-semibold ${filter === item.id ? "border-berseem bg-ground text-berseem" : "border-line"}`}>{item.label}</button>)}
     </div>
     {history.length ? <ol className="mt-2 divide-y divide-line">{history.map((event) => {
       const eventAttachments = attachments.filter((attachment) => attachment.health_event_id === event.id);

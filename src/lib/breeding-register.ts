@@ -10,6 +10,25 @@ export type Newborn = {
   notes: string | null;
 };
 
+export type BreedingDueField = "ultrasound" | "checkup" | "dry_off" | "calving";
+export type BreedingDueRecord = Pick<Insemination, "ultrasound_due" | "checkup_due" | "dry_off_due" | "calving_due">
+  & Partial<Pick<Insemination, "ultrasound_due_override" | "checkup_due_override" | "dry_off_due_override" | "calving_due_override">>;
+export function breedingDueDate(record: BreedingDueRecord, field: BreedingDueField): { date: string; overridden: boolean } {
+  const calculated: Record<BreedingDueField, string> = {
+    ultrasound: record.ultrasound_due,
+    checkup: record.checkup_due,
+    dry_off: record.dry_off_due,
+    calving: record.calving_due,
+  };
+  const override: Record<BreedingDueField, string | null> = {
+    ultrasound: record.ultrasound_due_override ?? null,
+    checkup: record.checkup_due_override ?? null,
+    dry_off: record.dry_off_due_override ?? null,
+    calving: record.calving_due_override ?? null,
+  };
+  return { date: override[field] ?? calculated[field], overridden: override[field] !== null };
+}
+
 const optional = (form: FormData, key: string) => String(form.get(key) ?? "").trim() || null;
 
 export function parseCalving(form: FormData, count: number, serviceDate: string, today: string) {
@@ -44,18 +63,22 @@ export function parseCalving(form: FormData, count: number, serviceDate: string,
 }
 
 export function nextBreedingTask(record: Insemination, today?: string, animalLifeStatus = "active"): { label: string; date: string } | null {
+  const ultrasound = breedingDueDate(record, "ultrasound").date;
+  const checkup = breedingDueDate(record, "checkup").date;
+  const dryOff = breedingDueDate(record, "dry_off").date;
+  const calving = breedingDueDate(record, "calving").date;
   if (animalLifeStatus !== "active") return null;
   if (record.status === "pending") {
-    if (record.ultrasound_result === "empty") return { label: "Nateeja update", date: record.ultrasound_date ?? record.ultrasound_due };
-    if (!record.ultrasound_result) return { label: "Ultrasound", date: record.ultrasound_due };
-    if (record.checkup_result === "empty") return { label: "Nateeja update", date: record.checkup_date ?? record.checkup_due };
-    if (!record.checkup_result) return { label: "Checkup", date: record.checkup_due };
-    return { label: "Nateeja update", date: record.checkup_date ?? record.checkup_due };
+    if (record.ultrasound_result === "empty") return { label: "Nateeja update", date: record.ultrasound_date ?? ultrasound };
+    if (!record.ultrasound_result) return { label: "Ultrasound", date: ultrasound };
+    if (record.checkup_result === "empty") return { label: "Nateeja update", date: record.checkup_date ?? checkup };
+    if (!record.checkup_result) return { label: "Checkup", date: checkup };
+    return { label: "Nateeja update", date: record.checkup_date ?? checkup };
   }
   if (record.status === "pregnant") {
-    if (today && record.calving_due <= today) return { label: "Paidaish", date: record.calving_due };
-    if (!record.dry_off_date) return { label: "Khushk hone ki jaanch", date: record.dry_off_due };
-    return { label: "Paidaish", date: record.calving_due };
+    if (today && calving <= today) return { label: "Paidaish", date: calving };
+    if (!record.dry_off_date) return { label: "Khushk hone ki jaanch", date: dryOff };
+    return { label: "Paidaish", date: calving };
   }
   return null;
 }

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { nextBreedingTask } from "@/lib/breeding-register";
+import { breedingDueDate, nextBreedingTask } from "@/lib/breeding-register";
 import { shortDate, useFarmData } from "@/lib/farm-data";
 import { BREEDING_COLUMNS, exportRows, fetchBreedingRegister, type ExportFormat } from "@/lib/export-data";
 import { friendlyError } from "@/lib/errors";
@@ -61,7 +61,7 @@ export default function FarmBreeding() {
       <ul className="grid gap-3 lg:grid-cols-2">{rows.map(({ record, animal, task }) => <li key={record.id} className="rounded-2xl border border-line bg-paper p-4">
         <div className="flex flex-wrap items-start justify-between gap-2"><div><Link href={`/janwar/?id=${animal!.id}`} className="font-display text-lg font-bold text-berseem underline">{animal!.tag}{animal!.name ? ` · ${animal!.name}` : ""}</Link><p className="text-sm text-muted">Tukhm rezi {shortDate(record.service_date)} · {record.semen_type}{record.semen_name ? ` · ${record.semen_name}` : ""}</p></div><strong className="text-sm">{statusName[record.status] ?? record.status}</strong></div>
         {task && <p className={`mt-2 text-sm font-semibold ${task.date < data.today ? "text-udhaar" : "text-berseem"}`}>{task.label}: {shortDate(task.date)}{task.date < data.today ? " · Tareekh guzar chuki" : task.date === data.today ? " · Aaj" : ""}</p>}
-        <div className="mt-2 grid gap-1 text-sm text-muted sm:grid-cols-2"><span>Ultrasound: {record.ultrasound_date ? shortDate(record.ultrasound_date) : `mutawaqqa ${shortDate(record.ultrasound_due)}`}</span><span>Checkup: {record.checkup_date ? shortDate(record.checkup_date) : `mutawaqqa ${shortDate(record.checkup_due)}`}</span><span>Khushk: {record.dry_off_date ? shortDate(record.dry_off_date) : `mutawaqqa ${shortDate(record.dry_off_due)}`}</span><span>Paidaish: {shortDate(record.calving_due)}</span></div>
+        <div className="mt-2 grid gap-1 text-sm text-muted sm:grid-cols-2"><span>Ultrasound: {record.ultrasound_date ? shortDate(record.ultrasound_date) : `mutawaqqa ${shortDate(breedingDueDate(record, "ultrasound").date)}${breedingDueDate(record, "ultrasound").overridden ? " · khud set" : " · hisab se"}`}</span><span>Checkup: {record.checkup_date ? shortDate(record.checkup_date) : `mutawaqqa ${shortDate(breedingDueDate(record, "checkup").date)}${breedingDueDate(record, "checkup").overridden ? " · khud set" : " · hisab se"}`}</span><span>Khushk: {record.dry_off_date ? shortDate(record.dry_off_date) : `mutawaqqa ${shortDate(breedingDueDate(record, "dry_off").date)}${breedingDueDate(record, "dry_off").overridden ? " · khud set" : " · hisab se"}`}</span><span>Paidaish: {shortDate(breedingDueDate(record, "calving").date)}{breedingDueDate(record, "calving").overridden ? " · khud set" : " · hisab se"}</span></div>
       </li>)}{rows.length === 0 && <li className="rounded-2xl border border-line bg-paper p-6 text-muted">Is filter mein koi record nahi. Janwar ke page se nayi tukhm rezi darj karein.</li>}</ul>
     </Body></>;
 }

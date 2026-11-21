@@ -7,7 +7,8 @@ type Table = keyof Database["public"]["Tables"];
 
 export const DATASETS: { table: Table; label: string; key: string; columns: string[] }[] = [
   { table: "animals", label: "Janwar", key: "id", columns: ["id", "tag", "name", "species", "breed", "sex", "category", "birth_date", "arrival_date", "estimated_age_months_at_arrival", "mother_id", "sire", "source", "purchase_date", "purchase_price", "seller_name", "purchase_location", "photo_path", "milking_status", "life_status", "exit_date", "exit_reason", "sale_price", "notes", "created_at", "updated_at"] },
-  { table: "inseminations", label: "Nasl kashi", key: "id", columns: ["id", "animal_id", "service_date", "semen_type", "semen_name", "semen_batch", "technician", "ultrasound_due", "ultrasound_date", "ultrasound_result", "checkup_due", "checkup_date", "checkup_result", "dry_off_due", "dry_off_date", "calving_due", "status", "abortion_date", "notes", "created_at", "updated_at"] },
+  { table: "inseminations", label: "Nasl kashi", key: "id", columns: ["id", "animal_id", "service_date", "semen_type", "semen_name", "semen_batch", "technician", "ultrasound_due", "ultrasound_due_override", "ultrasound_date", "ultrasound_result", "checkup_due", "checkup_due_override", "checkup_date", "checkup_result", "dry_off_due", "dry_off_due_override", "dry_off_date", "calving_due", "calving_due_override", "status", "abortion_date", "notes", "created_at", "updated_at"] },
+  { table: "animal_care_tasks", label: "Animal care reminders", key: "id", columns: ["id", "animal_id", "category", "title", "due_date", "notes", "completed_date", "completion_notes", "created_at", "updated_at"] },
   { table: "calvings", label: "Bachay ki paidaish", key: "id", columns: ["id", "animal_id", "calving_date", "insemination_id", "outcome", "calf_id", "ease_score", "notes", "created_at"] },
   { table: "calving_offspring", label: "Har bacha", key: "id", columns: ["id", "calving_id", "birth_order", "outcome", "animal_id", "sex", "tag_at_birth", "birth_weight_kg", "notes", "created_at"] },
   { table: "health_events", label: "Sehat", key: "id", columns: ["id", "animal_id", "event_date", "kind", "title", "medicine", "vet", "cost", "next_due_date", "expense_id", "notes", "created_at"] },
@@ -42,7 +43,7 @@ export const REPORTS = [
   { name: "pnl_month", label: "Aamdani aur kharcha", columns: ["milk_income", "other_income", "total_income", "farm_expenses", "personal_expenses", "profit"] },
 ] as const;
 
-export const BREEDING_COLUMNS = ["tag", "name", "service_date", "semen_type", "semen_name", "semen_batch", "technician", "ultrasound_date", "ultrasound_result", "checkup_date", "checkup_result", "dry_off_date", "dry_off_due", "calving_due", "calving_date", "offspring_summary", "ease_score", "status", "abortion_date", "notes"];
+export const BREEDING_COLUMNS = ["tag", "name", "service_date", "semen_type", "semen_name", "semen_batch", "technician", "ultrasound_due", "ultrasound_due_override", "ultrasound_date", "ultrasound_result", "checkup_due", "checkup_due_override", "checkup_date", "checkup_result", "dry_off_date", "dry_off_due", "dry_off_due_override", "calving_due", "calving_due_override", "calving_date", "offspring_summary", "ease_score", "status", "abortion_date", "notes"];
 
 const COLUMN_LABELS: Record<string, string> = {
   section: "Report ka hissa", farm_name: "Farm ka naam", generated_at: "Tayyar karne ki tareekh",
@@ -67,9 +68,13 @@ const COLUMN_LABELS: Record<string, string> = {
   service_date: "Tukhm rezi ki tareekh", semen_type: "Semen qism", semen_name: "Semen naam", semen_batch: "Semen batch / bull ID",
   offspring_summary: "Bachon ka record", birth_order: "Paidaish ka number", outcome: "Nateeja", tag_at_birth: "Paidaish ka tag", birth_weight_kg: "Paidaish ka wazan (kg)", ease_score: "Paidaish ki mushkil (1-5)",
   checkup_due: "Checkup ki mutawaqqa tareekh", checkup_date: "Checkup ki tareekh",
+  checkup_due_type: "Checkup tareekh ka zariya",
   dry_off_due: "Khushk hone ki mutawaqqa tareekh", dry_off_date: "Asal khushk hone ki tareekh", calving_due: "Bachay ki mutawaqqa tareekh",
+  dry_off_due_type: "Doodh band tareekh ka zariya", calving_due_type: "Paidaish tareekh ka zariya",
   calving_date: "Bachay ki paidaish ki tareekh", ultrasound_date: "Ultrasound ki tareekh",
-  ultrasound_due: "Ultrasound ki mutawaqqa tareekh", ultrasound_result: "Ultrasound ka nateeja",
+  ultrasound_due: "Ultrasound ki mutawaqqa tareekh", ultrasound_due_type: "Ultrasound tareekh ka zariya", ultrasound_result: "Ultrasound ka nateeja",
+  ultrasound_due_override: "Ultrasound ki manually set tareekh", checkup_due_override: "Checkup ki manually set tareekh",
+  dry_off_due_override: "Khushk hone ki manually set tareekh", calving_due_override: "Paidaish ki manually set tareekh",
   checkup_result: "Checkup ka nateeja", abortion_date: "Hamla zaya ki tareekh",
   status: "Haalat", notes: "Notes", note: "Note", milk_date: "Doodh ki tareekh",
   delivery_date: "Delivery ki tareekh", litres: "Doodh (L)", total_litres: "Kul doodh (L)",

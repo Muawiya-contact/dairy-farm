@@ -4,7 +4,7 @@ import { useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
 import { insertRow, shortDate, type Animal, type Calving, type CalvingOffspring, type Insemination } from "@/lib/farm-data";
-import { parseCalving } from "@/lib/breeding-register";
+import { breedingDueDate, parseCalving } from "@/lib/breeding-register";
 import { Panel } from "./ui";
 import { ConfirmActionDialog } from "./ConfirmActionDialog";
 import { UI_TEXT } from "@/lib/text";
@@ -81,19 +81,31 @@ export function AnimalBreeding({ animal, animals, records, calvings, offspring, 
     const checkupDate = optional(values, "checkup_date");
     const checkupResult = optional(values, "checkup_result");
     const abortionDate = status === "aborted" ? optional(values, "abortion_date") : null;
+    const serviceDate = String(values.get("service_date"));
+    const dateOverrides = {
+      ultrasound_due_override: optional(values, "ultrasound_due_override"),
+      checkup_due_override: optional(values, "checkup_due_override"),
+      dry_off_due_override: optional(values, "dry_off_due_override"),
+      calving_due_override: optional(values, "calving_due_override"),
+    };
     if ((ultrasoundResult && !ultrasoundDate) || (checkupResult && !checkupDate) || (status === "aborted" && !abortionDate)) {
       setValidation("Nateeja ke saath tareekh bhi likhein; hamla zaya ho to uski tareekh bhi likhein.");
+      return;
+    }
+    if (Object.values(dateOverrides).some((date) => date && date < serviceDate)) {
+      setValidation("Har manually badli hui due tareekh tukhm rezi ki tareekh ke barabar ya baad honi chahiye.");
       return;
     }
     setValidation("");
     const record = editing;
     void run(async () => {
       const { data, error } = await getSupabase().from("inseminations").update({
-        service_date: String(values.get("service_date")), semen_type: String(values.get("semen_type")),
+        service_date: serviceDate, semen_type: String(values.get("semen_type")),
         semen_name: optional(values, "semen_name"), semen_batch: optional(values, "semen_batch"), technician: optional(values, "technician"),
         ultrasound_date: ultrasoundDate, ultrasound_result: ultrasoundResult,
         checkup_date: checkupDate, checkup_result: checkupResult,
         dry_off_date: optional(values, "dry_off_date"),
+        ...dateOverrides,
         status, abortion_date: abortionDate, notes: optional(values, "notes"),
       }).eq("id", record.id).eq("updated_at", record.updated_at).select("id").maybeSingle();
       if (error) throw error;
@@ -140,15 +152,24 @@ export function AnimalBreeding({ animal, animals, records, calvings, offspring, 
     try {
       const rows = records.map((record) => {
         const calving = calvings.find((item) => item.insemination_id === record.id);
+        const ultrasoundDue = breedingDueDate(record, "ultrasound");
+        const checkupDue = breedingDueDate(record, "checkup");
+        const dryOffDue = breedingDueDate(record, "dry_off");
+        const calvingDue = breedingDueDate(record, "calving");
         return {
           service_date: record.service_date, semen_type: semenNames[record.semen_type] ?? record.semen_type,
           semen_name: record.semen_name ?? "", technician: record.technician ?? "",
           status: statusNames[record.status] ?? record.status, ultrasound_date: record.ultrasound_date ?? "",
-          checkup_date: record.checkup_date ?? "", calving_date: calving?.calving_date ?? "", notes: record.notes ?? "",
+          ultrasound_due: ultrasoundDue.date, ultrasound_due_type: ultrasoundDue.overridden ? "Khud darj" : "Hisab se",
+          checkup_date: record.checkup_date ?? "", checkup_due: checkupDue.date,
+          checkup_due_type: checkupDue.overridden ? "Khud darj" : "Hisab se",
+          dry_off_due: dryOffDue.date, dry_off_due_type: dryOffDue.overridden ? "Khud darj" : "Hisab se",
+          calving_due: calvingDue.date, calving_due_type: calvingDue.overridden ? "Khud darj" : "Hisab se",
+          calving_date: calving?.calving_date ?? "", notes: record.notes ?? "",
         };
       });
       const settings = await getSettings();
-      const bytes = await buildPdf(`Nasl kashi record — ${animal.tag}`, ["service_date", "semen_type", "semen_name", "technician", "status", "ultrasound_date", "checkup_date", "calving_date", "notes"], rows, settings.farm_name);
+      const bytes = await buildPdf(`Nasl kashi record — ${animal.tag}`, ["service_date", "semen_type", "semen_name", "technician", "status", "ultrasound_due", "ultrasound_due_type", "ultrasound_date", "checkup_due", "checkup_due_type", "checkup_date", "dry_off_due", "dry_off_due_type", "calving_due", "calving_due_type", "calving_date", "notes"], rows, settings.farm_name);
       const filename = `nasl-kashi-${animal.tag}.pdf`;
       if (kind === "download") {
         downloadBlob(filename, new Blob([bytes], { type: "application/pdf" }));
@@ -162,16 +183,16 @@ export function AnimalBreeding({ animal, animals, records, calvings, offspring, 
   };
 
   return <Panel title="Nasl kashi aur bachay ki paidaish" className="lg:col-span-2">
-    <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><p className="text-sm text-muted">Is janwar ki {records.length} nasl kashi entries.</p><div className="flex flex-wrap gap-2"><button type="button" disabled={documentBusy !== null} onClick={() => void exportHistory("download")} className="min-h-10 rounded-xl border border-berseem px-3 text-sm font-semibold text-berseem disabled:opacity-50">Is janwar ki PDF</button><button type="button" disabled={documentBusy !== null} onClick={() => void exportHistory("share")} className="min-h-10 rounded-xl border border-line px-3 text-sm font-semibold disabled:opacity-50">PDF share</button></div></div>
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><p className="text-sm text-muted">Is janwar ki {records.length} nasl kashi entries.</p><div className="flex flex-wrap gap-2"><button type="button" disabled={documentBusy !== null} onClick={() => void exportHistory("download")} className="min-h-11 rounded-xl border border-berseem px-3 text-sm font-semibold text-berseem disabled:opacity-50">Is janwar ki PDF</button><button type="button" disabled={documentBusy !== null} onClick={() => void exportHistory("share")} className="min-h-11 rounded-xl border border-line px-3 text-sm font-semibold disabled:opacity-50">PDF share</button></div></div>
     {documentStatus && <p role={documentStatus.startsWith("PDF nahi") ? "alert" : "status"} className="mb-3 text-sm text-berseem-deep">{documentStatus}</p>}
     {current && <section className="mb-4 rounded-xl border border-line bg-ground p-4" aria-label="Maujooda nasl cycle"><h3 className="font-semibold">Maujooda cycle</h3><dl className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
       <div><dt className="text-muted">Tag / Nasl</dt><dd>{animal.tag} / {animal.breed || "—"}</dd></div>
       <div><dt className="text-muted">Tukhm rezi</dt><dd>{shortDate(current.service_date)}</dd></div>
-      <div><dt className="text-muted">Ultrasound</dt><dd>{current.ultrasound_date ? shortDate(current.ultrasound_date) : `Mutawaqqa ${shortDate(current.ultrasound_due)}`} {current.ultrasound_result ? `· ${current.ultrasound_result === "empty" ? "Khali" : "Gaabhan"}` : ""}</dd></div>
+      <div><dt className="text-muted">Ultrasound</dt><dd>{current.ultrasound_date ? shortDate(current.ultrasound_date) : `Mutawaqqa ${shortDate(breedingDueDate(current, "ultrasound").date)} · ${breedingDueDate(current, "ultrasound").overridden ? "khud set" : "hisab se"}`} {current.ultrasound_result ? `· ${current.ultrasound_result === "empty" ? "Khali" : "Gaabhan"}` : ""}</dd></div>
       <div><dt className="text-muted">Haalat</dt><dd>{statusNames[current.status] ?? current.status}</dd></div>
-      <div><dt className="text-muted">Checkup</dt><dd>{current.checkup_date ? shortDate(current.checkup_date) : `Mutawaqqa ${shortDate(current.checkup_due)}`}</dd></div>
-      <div><dt className="text-muted">Khushk</dt><dd>{current.dry_off_date ? shortDate(current.dry_off_date) : `Mutawaqqa ${shortDate(current.dry_off_due)}`}</dd></div>
-      <div><dt className="text-muted">Mutawaqqa paidaish</dt><dd>{shortDate(current.calving_due)}</dd></div>
+      <div><dt className="text-muted">Checkup</dt><dd>{current.checkup_date ? shortDate(current.checkup_date) : `Mutawaqqa ${shortDate(breedingDueDate(current, "checkup").date)} · ${breedingDueDate(current, "checkup").overridden ? "khud set" : "hisab se"}`}</dd></div>
+      <div><dt className="text-muted">Khushk</dt><dd>{current.dry_off_date ? shortDate(current.dry_off_date) : `Mutawaqqa ${shortDate(breedingDueDate(current, "dry_off").date)} · ${breedingDueDate(current, "dry_off").overridden ? "khud set" : "hisab se"}`}</dd></div>
+      <div><dt className="text-muted">Mutawaqqa paidaish</dt><dd>{shortDate(breedingDueDate(current, "calving").date)} · {breedingDueDate(current, "calving").overridden ? "khud set" : "hisab se"}</dd></div>
       <div><dt className="text-muted">Asal paidaish</dt><dd>{currentCalving ? shortDate(currentCalving.calving_date) : "—"}</dd></div>
       <div><dt className="text-muted">Bacha</dt><dd>{currentCalf?.animal_id ? <Link href={`/janwar/?id=${currentCalf.animal_id}`} className="text-berseem underline">{currentCalfTag}</Link> : "—"}</dd></div>
     </dl></section>}
@@ -198,10 +219,10 @@ export function AnimalBreeding({ animal, animals, records, calvings, offspring, 
       return <article key={record.id} className="rounded-xl border border-line p-3">
         <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{shortDate(record.service_date)} · {semenNames[record.semen_type] ?? record.semen_type} · {record.semen_name || "Naam darj nahi"}</h3><span className="text-sm font-semibold text-berseem-deep">{statusNames[record.status] ?? record.status}</span></div>
         <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
-          <div><dt className="text-muted">Ultrasound</dt><dd>{record.ultrasound_date ? shortDate(record.ultrasound_date) : `Mutawaqqa ${shortDate(record.ultrasound_due)}`} {record.ultrasound_result === "pregnant" ? "· Gaabhan" : record.ultrasound_result === "empty" ? "· Khali" : ""}</dd></div>
-          <div><dt className="text-muted">Checkup</dt><dd>{record.checkup_date ? shortDate(record.checkup_date) : `Mutawaqqa ${shortDate(record.checkup_due)}`} {record.checkup_result === "pregnant" ? "· Gaabhan" : record.checkup_result === "empty" ? "· Khali" : ""}</dd></div>
-          <div><dt className="text-muted">Khushk tareekh</dt><dd>{record.dry_off_date ? shortDate(record.dry_off_date) : `Mutawaqqa ${shortDate(record.dry_off_due)}`}</dd></div>
-          <div><dt className="text-muted">Bachay ki mutawaqqa tareekh</dt><dd>{shortDate(record.calving_due)}</dd></div>
+          <div><dt className="text-muted">Ultrasound</dt><dd>{record.ultrasound_date ? shortDate(record.ultrasound_date) : `Mutawaqqa ${shortDate(breedingDueDate(record, "ultrasound").date)} · ${breedingDueDate(record, "ultrasound").overridden ? "khud set" : "hisab se"}`} {record.ultrasound_result === "pregnant" ? "· Gaabhan" : record.ultrasound_result === "empty" ? "· Khali" : ""}</dd></div>
+          <div><dt className="text-muted">Checkup</dt><dd>{record.checkup_date ? shortDate(record.checkup_date) : `Mutawaqqa ${shortDate(breedingDueDate(record, "checkup").date)} · ${breedingDueDate(record, "checkup").overridden ? "khud set" : "hisab se"}`} {record.checkup_result === "pregnant" ? "· Gaabhan" : record.checkup_result === "empty" ? "· Khali" : ""}</dd></div>
+          <div><dt className="text-muted">Khushk tareekh</dt><dd>{record.dry_off_date ? shortDate(record.dry_off_date) : `Mutawaqqa ${shortDate(breedingDueDate(record, "dry_off").date)} · ${breedingDueDate(record, "dry_off").overridden ? "khud set" : "hisab se"}`}</dd></div>
+          <div><dt className="text-muted">Bachay ki mutawaqqa tareekh</dt><dd>{shortDate(breedingDueDate(record, "calving").date)} · {breedingDueDate(record, "calving").overridden ? "khud set" : "hisab se"}</dd></div>
           {record.technician && <div><dt className="text-muted">Technician</dt><dd>{record.technician}</dd></div>}
           {record.semen_batch && <div><dt className="text-muted">Semen batch / bull ID</dt><dd>{record.semen_batch}</dd></div>}
           {record.abortion_date && <div><dt className="text-muted">Hamla zaya</dt><dd>{shortDate(record.abortion_date)}</dd></div>}
@@ -217,6 +238,11 @@ export function AnimalBreeding({ animal, animals, records, calvings, offspring, 
           <label className="text-sm font-semibold">Semen ka naam<input name="semen_name" defaultValue={record.semen_name ?? ""} placeholder="Semen ka naam" disabled={busy} className={field} /></label>
           <label className="text-sm font-semibold">Semen batch / bull ID (optional)<input name="semen_batch" maxLength={100} defaultValue={record.semen_batch ?? ""} placeholder="Misal: Batch 42" disabled={busy} className={field} /></label>
           <label className="text-sm font-semibold">Technician<input name="technician" defaultValue={record.technician ?? ""} placeholder="Technician ka naam" disabled={busy} className={field} /></label>
+          <p className="text-sm text-muted sm:col-span-2 lg:col-span-3">Yeh tareekhein is record ke saved intervals se nikalti hain. Vet ke mashware par kisi tareekh ko badlein; khaali karne se asal hisaabi tareekh wapas aayegi.</p>
+          <label className="text-sm font-semibold">Ultrasound ki due tareekh (manual)<input name="ultrasound_due_override" type="date" min={record.service_date} defaultValue={record.ultrasound_due_override ?? ""} disabled={busy} className={field} /></label>
+          <label className="text-sm font-semibold">Checkup ki due tareekh (manual)<input name="checkup_due_override" type="date" min={record.service_date} defaultValue={record.checkup_due_override ?? ""} disabled={busy} className={field} /></label>
+          <label className="text-sm font-semibold">Khushk hone ki due tareekh (manual)<input name="dry_off_due_override" type="date" min={record.service_date} defaultValue={record.dry_off_due_override ?? ""} disabled={busy} className={field} /></label>
+          <label className="text-sm font-semibold">Paidaish ki mutawaqqa tareekh (manual)<input name="calving_due_override" type="date" min={record.service_date} defaultValue={record.calving_due_override ?? ""} disabled={busy} className={field} /></label>
           <label className="text-sm font-semibold">Ultrasound ki tareekh<input name="ultrasound_date" type="date" defaultValue={record.ultrasound_date ?? ""} disabled={busy} className={field} /></label>
           <label className="text-sm font-semibold">Ultrasound ka nateeja<select name="ultrasound_result" defaultValue={record.ultrasound_result ?? ""} disabled={busy} className={field}><option value="">Abhi nahi</option><option value="pregnant">Gaabhan</option><option value="empty">Khali</option></select></label>
           <label className="text-sm font-semibold">Checkup ki tareekh<input name="checkup_date" type="date" defaultValue={record.checkup_date ?? ""} disabled={busy} className={field} /></label>

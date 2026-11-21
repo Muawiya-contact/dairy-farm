@@ -16,6 +16,8 @@ import { FarmLoading } from "./FarmDashboard";
 import { PlusIcon, SearchIcon } from "./icons";
 import { AnimalManagement } from "./AnimalManagement";
 import { AnimalBreeding } from "./AnimalBreeding";
+import { AnimalCareTasks } from "./AnimalCareTasks";
+import { breedingDueDate } from "@/lib/breeding-register";
 import { UI_TEXT } from "@/lib/text";
 import { AnimalProfilePhoto } from "./AnimalProfilePhoto";
 import { animalDueTasks, animalProfileStatuses, sevenDayMilkAverage, sortHealthEventsNewestFirst } from "@/lib/animal-profile";
@@ -68,8 +70,10 @@ export default function FarmAnimals() {
     const breedingStatus = d.animalStatus.find((x) => x.id === selected.id)?.breeding_status;
     const profileStatuses = animalProfileStatuses(selected, breedingStatus, health, d.today);
     const currentCycle = breeding.find((record) => record.status === "pending" || record.status === "pregnant");
+    const estimatedCalvingDate = currentCycle ? breedingDueDate(currentCycle, "calving").date : status?.calving_due;
+    const careTasks = d.animalCareTasks.filter((task) => task.animal_id === selected.id);
     const dueTasks = selected.life_status === "active"
-      ? animalDueTasks({ today: d.today, health, cycle: currentCycle, milking: selected.milking_status === "milking" })
+      ? animalDueTasks({ today: d.today, health, cycle: currentCycle, milking: selected.milking_status === "milking", careTasks })
       : [];
     const milkByDay = [...history.reduce((groups, row) => {
       const date = row.shift?.milk_date;
@@ -81,7 +85,7 @@ export default function FarmAnimals() {
     const latestHealth = health[0];
     const dossierInput: AnimalDossier = {
       animal: selected, animals: d.animals, farm: d.settings, today: d.today, status: profileStatuses,
-      dueTasks, health, activeAlerts: d.alerts.filter((alert) => alert.animal_id === selected.id),
+      dueTasks, careTasks, health, activeAlerts: d.alerts.filter((alert) => alert.animal_id === selected.id),
       inseminations: breeding, calvings: d.calvings, offspring: d.calvingOffspring,
       milkShifts: d.shifts,
       milk: history.filter((row) => row.shift).map((row) => ({
@@ -153,7 +157,7 @@ export default function FarmAnimals() {
         <div><dt className="text-muted">Kharid qeemat</dt><dd>{selected.purchase_price == null ? "Darj nahi" : money(selected.purchase_price)}</dd></div>
         <div><dt className="text-muted">Bechne wala</dt><dd>{selected.seller_name || "Darj nahi"}</dd></div>
         <div><dt className="text-muted">Mandi / jagah</dt><dd>{selected.purchase_location || "Darj nahi"}</dd></div>
-        <div><dt className="text-muted">Agli delivery</dt><dd>{status?.calving_due ? longDate(status.calving_due) : "Darj nahi"}</dd></div>
+        <div><dt className="text-muted">Agli delivery</dt><dd>{estimatedCalvingDate ? longDate(estimatedCalvingDate) : "Darj nahi"}</dd></div>
       </dl>{selected.notes && <p className="mt-3 text-sm text-muted">{selected.notes}</p>}</Panel>
       <Panel title="Aik nazar mein"><dl className="grid gap-2 text-sm sm:grid-cols-2">
         <div><dt className="text-muted">Aakhri doodh</dt><dd>{latestMilkDay ? `${longDate(latestMilkDay.date)} · ${litres(latestMilkDay.litres)}` : "Doodh ka record nahi"}</dd></div>
@@ -161,6 +165,7 @@ export default function FarmAnimals() {
         <div><dt className="text-muted">Aakhri sehat entry</dt><dd>{latestHealth ? `${latestHealth.title} · ${longDate(latestHealth.event_date)}` : "Sehat ka record nahi"}</dd></div>
         <div><dt className="text-muted">Maujooda nasl kashi</dt><dd>{currentCycle ? `${breedingLabel} · ${longDate(currentCycle.service_date)}` : "Nasl kashi ka khula record nahi"}</dd></div>
       </dl><div className="mt-3 border-t border-line pt-3"><h3 className="font-semibold">Agla due kaam</h3>{dueTasks.length ? <ul className="mt-1 divide-y divide-line text-sm">{dueTasks.map((task) => <li key={`${task.label}-${task.date}`} className="flex flex-wrap justify-between gap-1 py-1"><span>{task.label}{task.overdue ? " · Tareekh guzar gayi" : ""}</span><time>{longDate(task.date)}</time></li>)}</ul> : <p className="mt-1 text-sm text-muted">Koi due tareekh darj nahi.</p>}</div><div className="mt-3 border-t border-line pt-3"><h3 className="font-semibold">Qareebi aham reminders</h3>{dossierInput.activeAlerts.length ? <ul className="mt-1 divide-y divide-line text-sm">{dossierInput.activeAlerts.map((alert) => <li key={`${alert.alert_kind}-${alert.due_date}`} className="py-1">{alert.message}</li>)}</ul> : <p className="mt-1 text-sm text-muted">Is janwar ka koi qareebi reminder nahi.</p>}</div></Panel>
+      <AnimalCareTasks animalId={selected.id} tasks={careTasks} today={d.today} active={selected.life_status === "active"} busy={busy} run={run} />
       <div className="print:hidden"><AnimalManagement key={selected.id} animal={selected} animals={d.animals} accounts={d.accounts} today={d.today} linkedBirth={d.calvingOffspring.some((child) => child.animal_id === selected.id)} /></div>
       <Panel title="Farm mein zindagi ka record" className="lg:col-span-2">{!selected.arrival_date && <p className="mb-2 text-sm text-muted">Is purane janwar ki aane ki tareekh darj nahi. Maloom ho to record mein likhein.</p>}{lifeEvents.length ? <ol className="divide-y divide-line">{lifeEvents.map((event) => <li key={event.id} className="grid gap-1 py-2 text-sm sm:grid-cols-[8rem_9rem_1fr]"><time className="text-muted">{longDate(event.date)}</time><strong>{event.title}</strong><span>{event.detail}</span></li>)}</ol> : <p className="text-sm text-muted">Abhi zindagi ka koi tareekhwar record nahi.</p>}</Panel>
       <Panel title={`Doodh ka record (${history.length})`}>{history.length ? <><ul className="divide-y divide-line">{history.slice(0, milkLimit).map((x) => <li key={x.id} className="flex justify-between py-2 text-sm"><span>{x.shift ? shortDate(x.shift.milk_date) : ""} · {x.shift ? SHIFT_LABELS[x.shift.shift] : ""}</span><strong>{amount(x.litres)} L</strong></li>)}</ul>{history.length > milkLimit && <button type="button" onClick={() => setMilkLimit((count) => count + 50)} className="mt-2 min-h-10 rounded-xl border border-line px-3 text-sm font-semibold">Mazeed {Math.min(50, history.length - milkLimit)} entries dekhein</button>}</> : <p className="text-sm text-muted">Abhi per-janwar doodh entry nahi.</p>}</Panel>
@@ -173,7 +178,10 @@ export default function FarmAnimals() {
       <div className="print:hidden"><AnimalBreeding animal={selected} animals={d.animals} records={breeding} calvings={d.calvings.filter((x) => x.animal_id === selected.id)} offspring={d.calvingOffspring} today={d.today} busy={busy} run={run} /></div>
       <Panel title="Record ki tafseel" className="hidden print:block lg:col-span-2">
         <h3 className="font-semibold">Tareekh aur shift ke mutabiq doodh</h3><ul className="divide-y divide-line text-sm">{dossierInput.milk.length ? dossierInput.milk.map((row, index) => <li key={`${row.date}-${row.shift}-${index}`} className="flex justify-between py-1"><span>{longDate(row.date)} · {row.shift}</span><strong>{row.litres} L</strong></li>) : <li className="py-1">Doodh ka record nahi.</li>}</ul>
-        <h3 className="mt-4 font-semibold">Nasl kashi ka record</h3><ul className="divide-y divide-line text-sm">{breeding.length ? breeding.map((row) => <li key={row.id} className="py-1">{longDate(row.service_date)} · {printedBreedingStatus[row.status] ?? "Darj nahi"} · {row.technician || "Technician darj nahi"}{row.calving_due ? ` · Mutawaqqa paidaish ${longDate(row.calving_due)}` : ""}</li>) : <li className="py-1">Nasl kashi ka record nahi.</li>}</ul>
+        <h3 className="mt-4 font-semibold">Nasl kashi ka record</h3><ul className="divide-y divide-line text-sm">{breeding.length ? breeding.map((row) => {
+          const calvingDue = breedingDueDate(row, "calving").date;
+          return <li key={row.id} className="py-1">{longDate(row.service_date)} · {printedBreedingStatus[row.status] ?? "Darj nahi"} · {row.technician || "Technician darj nahi"}{calvingDue ? ` · Mutawaqqa paidaish ${longDate(calvingDue)}` : ""}</li>;
+        }) : <li className="py-1">Nasl kashi ka record nahi.</li>}</ul>
         <h3 className="mt-4 font-semibold">Paidaish aur bachon ka record</h3><ul className="divide-y divide-line text-sm">{dossierInput.calvings.length ? dossierInput.calvings.map((calving) => {
           const children = dossierInput.offspring.filter((child) => child.calving_id === calving.id);
           const calves = children.map((child) => {

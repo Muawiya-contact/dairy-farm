@@ -278,6 +278,60 @@ export type Database = {
           },
         ]
       }
+      animal_care_tasks: {
+        Row: {
+          animal_id: string
+          category: string
+          completed_date: string | null
+          completion_notes: string | null
+          created_at: string
+          due_date: string
+          id: string
+          notes: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          animal_id: string
+          category: string
+          completed_date?: string | null
+          completion_notes?: string | null
+          created_at?: string
+          due_date: string
+          id?: string
+          notes?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          animal_id?: string
+          category?: string
+          completed_date?: string | null
+          completion_notes?: string | null
+          created_at?: string
+          due_date?: string
+          id?: string
+          notes?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "animal_care_tasks_animal_id_fkey"
+            columns: ["animal_id"]
+            isOneToOne: false
+            referencedRelation: "animal_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "animal_care_tasks_animal_id_fkey"
+            columns: ["animal_id"]
+            isOneToOne: false
+            referencedRelation: "animals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calving_offspring: {
         Row: {
           animal_id: string | null
@@ -791,12 +845,15 @@ export type Database = {
           abortion_date: string | null
           animal_id: string
           calving_due: string
+          calving_due_override: string | null
           checkup_date: string | null
           checkup_due: string
+          checkup_due_override: string | null
           checkup_result: string | null
           created_at: string
           dry_off_date: string | null
           dry_off_due: string
+          dry_off_due_override: string | null
           id: string
           notes: string | null
           semen_batch: string | null
@@ -807,6 +864,7 @@ export type Database = {
           technician: string | null
           ultrasound_date: string | null
           ultrasound_due: string
+          ultrasound_due_override: string | null
           ultrasound_result: string | null
           updated_at: string
         }
@@ -814,12 +872,15 @@ export type Database = {
           abortion_date?: string | null
           animal_id: string
           calving_due: string
+          calving_due_override?: string | null
           checkup_date?: string | null
           checkup_due: string
+          checkup_due_override?: string | null
           checkup_result?: string | null
           created_at?: string
           dry_off_date?: string | null
           dry_off_due: string
+          dry_off_due_override?: string | null
           id?: string
           notes?: string | null
           semen_batch?: string | null
@@ -830,6 +891,7 @@ export type Database = {
           technician?: string | null
           ultrasound_date?: string | null
           ultrasound_due: string
+          ultrasound_due_override?: string | null
           ultrasound_result?: string | null
           updated_at?: string
         }
@@ -837,12 +899,15 @@ export type Database = {
           abortion_date?: string | null
           animal_id?: string
           calving_due?: string
+          calving_due_override?: string | null
           checkup_date?: string | null
           checkup_due?: string
+          checkup_due_override?: string | null
           checkup_result?: string | null
           created_at?: string
           dry_off_date?: string | null
           dry_off_due?: string
+          dry_off_due_override?: string | null
           id?: string
           notes?: string | null
           semen_batch?: string | null
@@ -853,6 +918,7 @@ export type Database = {
           technician?: string | null
           ultrasound_date?: string | null
           ultrasound_due?: string
+          ultrasound_due_override?: string | null
           ultrasound_result?: string | null
           updated_at?: string
         }
@@ -1764,6 +1830,30 @@ export type Database = {
       milk_shift_history: { Args: never; Returns: { effective_from: string; noon_enabled: boolean }[] }
       set_noon_milk: { Args: { p_enabled: boolean }; Returns: boolean }
       herd_alerts: {
+        Args: { p_today: string }
+        Returns: {
+          alert_kind: string
+          animal_id: string
+          due_date: string
+          days_left: number
+          message: string
+          severity: string
+          tag: string
+        }[]
+      }
+      animal_breeding_alerts: {
+        Args: { p_today: string }
+        Returns: {
+          alert_kind: string
+          animal_id: string
+          due_date: string
+          days_left: number
+          message: string
+          severity: string
+          tag: string
+        }[]
+      }
+      animal_care_alerts: {
         Args: { p_today: string }
         Returns: {
           alert_kind: string

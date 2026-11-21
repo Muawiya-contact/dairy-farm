@@ -4,12 +4,15 @@ import { go, section, signIn, testId } from "./helpers";
 
 test("inactive customer report finds no-purchase customers and exports the filtered rows", async ({ page }, info) => {
   const name = testId(info, "No purchase");
+  const phone = info.project.name === "mobile" ? "03001234567" : "03007654321";
+  const internationalPhone = `+92${phone.slice(1)}`;
+  const localPhoneSearch = `${phone.slice(0, 4)} ${phone.slice(4, 7)} ${phone.slice(7)}`;
   await signIn(page);
   await go(page, "Khata");
   await page.getByRole("button", { name: "Customer", exact: true }).click();
   const form = section(page, "Naya customer");
   await form.getByRole("textbox", { name: "Naam" }).fill(name);
-  await form.getByRole("textbox", { name: "Phone" }).fill("03001234567");
+  await form.getByRole("textbox", { name: "Phone" }).fill(phone);
   await form.getByRole("button", { name: "Customer save karein", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "Customer save ho gaya." })).toBeVisible();
 
@@ -22,8 +25,8 @@ test("inactive customer report finds no-purchase customers and exports the filte
   await page.getByRole("searchbox", { name: "Inactive customer search" }).fill(name);
   const table = page.getByRole("table");
   await expect(table.getByRole("row")).toHaveCount(2);
-  await expect(table).toContainText("+923001234567");
-  await page.getByRole("searchbox", { name: "Inactive customer search" }).fill("0300 123 4567");
+  await expect(table).toContainText(internationalPhone);
+  await page.getByRole("searchbox", { name: "Inactive customer search" }).fill(localPhoneSearch);
   await expect(table.getByRole("row")).toHaveCount(2);
   await expect(table.getByRole("link", { name, exact: true })).toBeVisible();
 

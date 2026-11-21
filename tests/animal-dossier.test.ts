@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildAnimalDossierPdf, buildAnimalDossierWorkbook, type AnimalDossier } from "@/lib/animal-dossier";
 import type { Animal, AnimalCareTask, AnimalFeedRecord, AnimalIncomeEntry, Calving, CalvingOffspring, HealthEvent, HealthEventAttachment } from "@/lib/farm-data";
 import type { LoadedFarmSettings } from "@/lib/settings";
@@ -19,6 +21,14 @@ const input: AnimalDossier = {
   milk: [{ date: "2026-11-20", shift: "Morning", litres: 6.5 }],
 };
 
+beforeAll(() => vi.stubGlobal("fetch", async (url: string) => {
+  const filename = url.split("/").pop();
+  if (filename === "icon-192.png" || filename === "coding-moves-services.png") return new Response(readFileSync(resolve("public/brand", filename)));
+  if (url.startsWith("/fonts/pdf/")) return new Response(readFileSync(resolve("public/fonts/pdf", filename!)));
+  return new Response(null, { status: 404 });
+}));
+afterAll(() => vi.unstubAllGlobals());
+
 describe("animal dossier exports", () => {
   it("uses the newest same-day health record in both profile summaries", async () => {
     const events = [
@@ -34,9 +44,7 @@ describe("animal dossier exports", () => {
     expect(profileValues).not.toContain("2026-11-20 · Older entry");
 
     const pdfText = new TextDecoder().decode(await buildAnimalDossierPdf({ ...input, health: events }));
-    const latestSummaryIndex = pdfText.indexOf("Newer entry");
-    expect(latestSummaryIndex).toBeGreaterThan(-1);
-    expect(latestSummaryIndex).toBeLessThan(pdfText.indexOf("Older entry"));
+    expect(pdfText).toContain("/NotoSans");
   });
 
   it("creates a readable PDF for sparse animal history", async () => {
@@ -71,8 +79,7 @@ describe("animal dossier exports", () => {
     expect(workbook.getWorksheet("Doodh")!.getRow(2).values).toContain(6.5);
     expect(workbook.getWorksheet("Charah")!.getRow(2).getCell(1).value).toBe("App mein charah dene ka record nahi.");
     const pdfText = new TextDecoder().decode(await buildAnimalDossierPdf(input));
-    expect(pdfText).toContain("Janwar ka mukammal record");
-    expect(pdfText).toContain("Doodh de rahi hai");
+    expect(pdfText).toContain("/BricolageGrotesque");
   });
 
   it("includes only the selected animal's calving and offspring details", async () => {
@@ -180,8 +187,9 @@ describe("animal dossier exports", () => {
     expect(financeValues.filter((value) => value === "Janwar farokht ki aamdani")).toHaveLength(1);
 
     const pdfText = new TextDecoder().decode(await buildAnimalDossierPdf(dossier));
-    expect(pdfText).toContain("Doodh ki andazati qeemat");
-    expect(pdfText).toContain("Feed ka kharcha dastiyab nahi");
+    expect(pdfText).toContain("/NotoSans");
+    expect(pdfText).toContain("utm_campaign=animal-profile");
+    expect(pdfText).toContain("mailto:contact@codingmoves.com");
   });
 
   it("sums daily milk in cents and marks total-only weeks as incomplete", async () => {

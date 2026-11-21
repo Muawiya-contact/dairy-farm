@@ -1,6 +1,8 @@
 import { getSupabase } from "./supabase";
 import type { Database } from "./database.types";
-import { addPdfDeveloperCredit, addPdfDeveloperEmail, addPdfDeveloperMark, addPdfDeveloperQr, loadPdfDeveloperLogo, loadPdfDeveloperQr, loadPdfLogo } from "./pdf-brand";
+import { pdfTrackingUrl, loadPdfDeveloperLogo, loadPdfDeveloperQr, loadPdfLogo } from "./pdf-brand";
+import { CODING_MOVES_CONTACT_EMAIL, CODING_MOVES_CONTACT_URL, CODING_MOVES_DEVELOPER_CREDIT, CODING_MOVES_DISPLAY_URL } from "./coding-moves";
+import { installPdfFonts } from "./pdf/fonts";
 import { getSettings } from "./settings";
 
 type Table = keyof Database["public"]["Tables"];
@@ -297,51 +299,106 @@ export async function buildPdf(title: string, columns: string[], rows: Record<st
  * instead of presenting only headline totals.
  */
 export async function buildPdfReport(title: string, sections: PdfSection[], farmName: string): Promise<Uint8Array<ArrayBuffer>> {
-  const [{ jsPDF }, { autoTable }, logo, developerLogo, developerQr] = await Promise.all([import("jspdf"), import("jspdf-autotable"), loadPdfLogo(), loadPdfDeveloperLogo(), loadPdfDeveloperQr()]);
-  const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a3" });
-  pdf.addImage(logo, "PNG", 10, 8, 16, 16);
-  pdf.setFontSize(15);
-  const nameLines = pdf.splitTextToSize(farmName, 320) as string[];
-  const titleY = Math.max(20, 13 + nameLines.length * 7);
-  pdf.text(nameLines, 31, 13);
-  pdf.setFontSize(10);
-  pdf.text(title, 31, titleY);
-  addPdfDeveloperMark(pdf, developerLogo, 410, 7);
-  pdf.setFontSize(9);
-  pdf.setTextColor(0, 0, 0);
-  let cursorY = titleY + 9;
+  const reportSlug = reportSlugFor(title);
+  const [{ jsPDF }, { autoTable }, logo, developerLogo] = await Promise.all([
+    import("jspdf"), import("jspdf-autotable"), loadPdfLogo(), loadPdfDeveloperLogo(),
+  ]);
+  // Table-only exports are also used by the offline test harness. A missing
+  // Settings row must not prevent a readable document from being generated.
+  const settings = await getSettings().catch(() => null);
+  const landscape = sections.some((section) => section.columns.length > 9);
+  const pdf = new jsPDF({ orientation: landscape ? "landscape" : "portrait", unit: "mm", format: "a4" });
+  await installPdfFonts(pdf);
+  const trackingUrl = pdfTrackingUrl(reportSlug);
+  const developerQr = await loadPdfDeveloperQr(trackingUrl);
+  const width = pdf.internal.pageSize.getWidth();
+  const height = pdf.internal.pageSize.getHeight();
+  const margin = 13;
+  const reportFarmName = settings?.farm_name || farmName;
+  pdf.addImage(logo, "PNG", margin, 11, 12, 12);
+  pdf.setFont("BricolageGrotesque", "extrabold"); pdf.setTextColor(23, 41, 28); pdf.setFontSize(17);
+  pdf.text(reportFarmName, margin + 16, 17);
+  pdf.setFont("NotoSans", "normal"); pdf.setFontSize(7.5); pdf.setTextColor(87, 99, 91);
+  const owner = [settings?.owner_name, settings?.contact_phone].filter(Boolean).join(" · ");
+  if (owner) pdf.text(`Maalik: ${owner}`, margin + 16, 22);
+  pdf.setFont("NotoSans", "bold"); pdf.setFontSize(11); pdf.setTextColor(29, 70, 38);
+  pdf.text(localPdfTitle(title), width - margin, 16, { align: "right" });
+  pdf.setFont("NotoSans", "normal"); pdf.setFontSize(7.5); pdf.setTextColor(50, 62, 53);
+  pdf.text(pdfPeriod(title), width - margin, 21, { align: "right" });
+  pdf.setDrawColor(29, 70, 38); pdf.setLineWidth(0.7); pdf.line(margin, 28, width - margin, 28);
+  let cursorY = 36;
   for (const section of sections) {
-    pdf.setFontSize(10);
-    pdf.setTextColor(0, 0, 0);
-    pdf.text(`${section.title} (${section.rows.length})`, 10, cursorY);
+    pdf.setFont("NotoSans", "bold"); pdf.setFontSize(10); pdf.setTextColor(29, 70, 38);
+    pdf.text(localPdfTitle(section.title), margin, cursorY);
     if (!section.rows.length) {
-      pdf.setFontSize(9);
-      pdf.setTextColor(90, 100, 93);
-      pdf.text("Is export mein koi record nahi mila.", 10, cursorY + 6);
+      pdf.setFont("NotoSans", "normal"); pdf.setFontSize(8); pdf.setTextColor(90, 100, 93);
+      pdf.setDrawColor(214, 205, 181); pdf.setLineDashPattern([1, 1], 0);
+      pdf.roundedRect(margin, cursorY + 3, width - margin * 2, 12, 2, 2, "S"); pdf.setLineDashPattern([], 0);
+      pdf.text("Is hissay mein koi record nahi mila.", margin + 4, cursorY + 10);
       cursorY += 14;
       continue;
     }
     autoTable(pdf, {
       startY: cursorY + 3, head: [section.columns.map((column) => columnLabel(column, section.title))],
       body: section.rows.map((row) => section.columns.map((column) => displayCell(row[column]))),
-      styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak" },
-      headStyles: { fillColor: [45, 106, 57] },
-      horizontalPageBreak: true,
-      horizontalPageBreakRepeat: (section.repeatColumns ?? section.columns.slice(0, 1))
-        .map((column) => section.columns.indexOf(column))
+      styles: { font: "NotoSans", fontSize: 7.4, cellPadding: 1.45, overflow: "linebreak", lineColor: [226, 229, 223], lineWidth: 0.15 },
+      headStyles: { fillColor: [230, 238, 231], textColor: [29, 70, 38], font: "NotoSans", fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [250, 251, 248] },
+      horizontalPageBreak: section.columns.length > 9,
+      horizontalPageBreakRepeat: section.repeatColumns
+        ?.map((column) => section.columns.indexOf(column))
         .filter((index) => index >= 0),
-      margin: { top: 10, right: 10, bottom: 16, left: 10 },
+      margin: { top: 34, right: margin, bottom: 28, left: margin },
+      didDrawPage: () => {
+        // Tables add pages themselves. The complete, linked footer is painted afterwards.
+      },
     });
     cursorY = ((pdf as typeof pdf & { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? cursorY) + 10;
   }
   const pages = pdf.getNumberOfPages();
   for (let page = 1; page <= pages; page++) {
     pdf.setPage(page);
-    addPdfDeveloperCredit(pdf, 286, 420);
-    addPdfDeveloperEmail(pdf, 291, 420);
-    addPdfDeveloperQr(pdf, developerQr, 401, 280, 10);
+    const footerY = height - 15;
+    pdf.setDrawColor(222, 227, 220); pdf.setLineWidth(0.25); pdf.line(margin, footerY - 8, width - margin, footerY - 8);
+    pdf.setFont("NotoSans", "normal"); pdf.setFontSize(6.5); pdf.setTextColor(83, 95, 86);
+    pdf.text(`${reportFarmName} · ${localPdfTitle(title)}`, margin, footerY - 2);
+    pdf.text(`Page ${page} / ${pages}`, margin, footerY + 3);
+    const brandX = width - margin - 72;
+    pdf.addImage(developerLogo, "PNG", brandX, footerY - 7, 8, 8);
+    pdf.setFont("NotoSans", "bold"); pdf.setTextColor(31, 42, 34); pdf.setFontSize(6.8);
+    pdf.text(CODING_MOVES_DEVELOPER_CREDIT, brandX + 10, footerY - 3);
+    pdf.setFont("NotoSans", "normal"); pdf.setFontSize(5.8); pdf.setTextColor(75, 86, 77);
+    pdf.setFont("NotoSans", "bold"); pdf.setTextColor(196, 106, 0);
+    pdf.textWithLink(CODING_MOVES_DISPLAY_URL, brandX + 10, footerY + 1, { url: trackingUrl });
+    pdf.setFont("NotoSans", "normal"); pdf.setTextColor(75, 86, 77);
+    pdf.textWithLink(CODING_MOVES_CONTACT_EMAIL, brandX + 10, footerY + 5, { url: CODING_MOVES_CONTACT_URL });
+    pdf.addImage(developerQr, "PNG", width - margin - 14, footerY - 9, 14, 14);
+    pdf.link(brandX, footerY - 9, 72, 16, { url: trackingUrl });
   }
   return new Uint8Array(pdf.output("arraybuffer"));
+}
+
+function reportSlugFor(title: string): string {
+  const value = title.toLowerCase();
+  if (value.includes("khata")) return "khata-summary";
+  if (value.includes("stock")) return "stock-report";
+  if (value.includes("animal") && value.includes("milk")) return "animal-milk-report";
+  if (value.includes("animal")) return "animal-report";
+  if (value.includes("milk") || value.includes("doodh")) return "milk-report";
+  if (value.includes("maali") || value.includes("financial")) return "financial-report";
+  if (value.includes("accounts")) return "accounts-report";
+  if (value.includes("kharcha")) return "kharcha-report";
+  if (value.includes("final") || value.includes("mukammal")) return "final-farm-report";
+  return "farm-report";
+}
+
+function localPdfTitle(title: string): string {
+  return title.replace(/^Milk Report/i, "Doodh ki Report").replace(/^Final Farm Report/i, "Farm ki Mukammal Report").replace(/^Financial Report/i, "Maali Report").replace(/^Animal Report/i, "Janwaron ki Report").replace(/^Animal Milk Report/i, "Janwar-wise Doodh").replace(/^Stock ki Report/i, "Stock Report");
+}
+
+function pdfPeriod(title: string): string {
+  const period = title.split("—")[1]?.trim();
+  return period ? period.replace(/\bto\b/g, "se").replace(/\buntil\b/g, "tak") : "Farm ka report";
 }
 
 export async function exportRows(filename: string, title: string, columns: string[], rows: Record<string, unknown>[], format: ExportFormat): Promise<void> {

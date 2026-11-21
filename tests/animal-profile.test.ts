@@ -64,6 +64,13 @@ describe("animal profile overview", () => {
     ])).toBeNull();
   });
 
+  it("leaves milk average unrecorded without shifts but preserves a recorded zero", () => {
+    expect(sevenDayMilkAverage([], "2026-11-21", [])).toBeNull();
+    expect(sevenDayMilkAverage([{ date: "2026-11-21", litres: 0 }], "2026-11-21", [
+      { milk_date: "2026-11-21", mode: "per_animal" },
+    ])).toBe(0);
+  });
+
   it("lists only incomplete breeding tasks and the current health follow-ups", () => {
     const tasks = animalDueTasks({
       today: "2026-11-21", health: [health({ next_due_date: "2026-11-25" })], milking: true,

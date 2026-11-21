@@ -86,7 +86,7 @@ it("does not show a zero animal average for a total-only milk shift", () => {
     shifts: [{ id: "shift-total", milk_date: "2026-10-16", shift: "morning", total_litres: 20, mode: "total", notes: null, updated_at: "2026-10-16T06:00:00Z" }],
   }), error: null });
   renderWithQuery(<FarmAnimals />);
-  expect(screen.getByText("Total shift ke saath per-janwar ausat mukammal nahi")).toBeInTheDocument();
+  expect(screen.getByText("Saat din ka per-janwar doodh record mukammal nahi")).toBeInTheDocument();
 });
 
 it("keeps sparse legacy profiles readable and shows no-record states", () => {
@@ -100,6 +100,7 @@ it("keeps sparse legacy profiles readable and shows no-record states", () => {
   expect(screen.getByText("Doodh ka record nahi")).toBeInTheDocument();
   expect(screen.getAllByText("Sehat ka record nahi").length).toBeGreaterThan(0);
   expect(screen.getAllByText("Darj nahi").length).toBeGreaterThan(0);
+  expect(screen.getByText("Saat din ka per-janwar doodh record mukammal nahi")).toBeInTheDocument();
   route.id = "animal-1";
 });
 

@@ -10,6 +10,6 @@ describe("PDF section layout", () => {
   it("leaves a visible gap after an empty-section message box", () => {
     const sectionY = 36;
     const boxBottom = sectionY + 3 + 12;
-    expect(nextPdfSectionYAfterEmptyState(sectionY) - boxBottom).toBe(4);
+    expect(nextPdfSectionYAfterEmptyState(sectionY) - boxBottom).toBe(6);
   });
 });

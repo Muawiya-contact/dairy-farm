@@ -5,7 +5,7 @@ export const PDF_TABLE_SECTION_MINIMUM_HEIGHT_MM = 24;
 
 const EMPTY_STATE_TOP_GAP_MM = 3;
 const EMPTY_STATE_BOX_HEIGHT_MM = 12;
-const EMPTY_STATE_BOTTOM_GAP_MM = 4;
+const EMPTY_STATE_BOTTOM_GAP_MM = 6;
 
 export function needsPdfSectionPageBreak(cursorY: number, pageHeight: number, minimumHeight: number): boolean {
   return cursorY + minimumHeight > pageHeight - PDF_FOOTER_RESERVE_MM;

@@ -13,7 +13,7 @@ it("shows all nine report categories on the Reports landing page", () => {
     "Milk Report",
     "Khata Report",
     "Kharcha Report",
-    "Inventory Report",
+    "Stock ki Report",
     "Animal Report",
     "Maali Report",
     "Accounts Report",

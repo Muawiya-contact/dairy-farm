@@ -7,7 +7,7 @@ const REPORTS = [
   { label: "Milk Report", href: "/reports/milk/", Icon: CanIcon },
   { label: "Khata Report", href: "/reports/khata/", Icon: BookIcon },
   { label: "Kharcha Report", href: "/reports/kharcha/", Icon: WalletIcon },
-  { label: "Inventory Report", href: "/reports/inventory/", Icon: BoxesIcon },
+  { label: "Stock ki Report", href: "/reports/inventory/", Icon: BoxesIcon },
   { label: "Animal Report", href: "/reports/animal/", Icon: CowIcon },
   { label: "Maali Report", href: "/reports/financial/", Icon: ChartIcon },
   { label: "Accounts Report", href: "/reports/accounts/", Icon: BankIcon },

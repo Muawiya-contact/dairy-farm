@@ -778,13 +778,22 @@ export type Database = {
           animal_id: string
           cost: number
           created_at: string
+          current_condition: string | null
+          diagnosis: string | null
+          dosage: string | null
           event_date: string
           expense_id: string | null
           id: string
           kind: string
           medicine: string | null
+          medicine_type: string | null
           next_due_date: string | null
           notes: string | null
+          route: string | null
+          severity: string | null
+          symptoms: string | null
+          treatment_end_date: string | null
+          treatment_start_date: string | null
           title: string
           vet: string | null
         }
@@ -792,13 +801,22 @@ export type Database = {
           animal_id: string
           cost?: number
           created_at?: string
+          current_condition?: string | null
+          diagnosis?: string | null
+          dosage?: string | null
           event_date: string
           expense_id?: string | null
           id?: string
           kind: string
           medicine?: string | null
+          medicine_type?: string | null
           next_due_date?: string | null
           notes?: string | null
+          route?: string | null
+          severity?: string | null
+          symptoms?: string | null
+          treatment_end_date?: string | null
+          treatment_start_date?: string | null
           title: string
           vet?: string | null
         }
@@ -806,13 +824,22 @@ export type Database = {
           animal_id?: string
           cost?: number
           created_at?: string
+          current_condition?: string | null
+          diagnosis?: string | null
+          dosage?: string | null
           event_date?: string
           expense_id?: string | null
           id?: string
           kind?: string
           medicine?: string | null
+          medicine_type?: string | null
           next_due_date?: string | null
           notes?: string | null
+          route?: string | null
+          severity?: string | null
+          symptoms?: string | null
+          treatment_end_date?: string | null
+          treatment_start_date?: string | null
           title?: string
           vet?: string | null
         }
@@ -836,6 +863,44 @@ export type Database = {
             columns: ["expense_id"]
             isOneToOne: false
             referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      health_event_attachments: {
+        Row: {
+          content_type: string
+          created_at: string
+          file_name: string
+          health_event_id: string
+          id: string
+          size_bytes: number
+          storage_path: string
+        }
+        Insert: {
+          content_type: string
+          created_at?: string
+          file_name: string
+          health_event_id: string
+          id?: string
+          size_bytes: number
+          storage_path: string
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          file_name?: string
+          health_event_id?: string
+          id?: string
+          size_bytes?: number
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_event_attachments_health_event_id_fkey"
+            columns: ["health_event_id"]
+            isOneToOne: false
+            referencedRelation: "health_events"
             referencedColumns: ["id"]
           },
         ]
@@ -1922,6 +1987,31 @@ export type Database = {
           p_kind: string
           p_next_due_date: string
           p_title: string
+        }
+        Returns: string
+      }
+      record_detailed_health_event: {
+        Args: {
+          p_account_id: string
+          p_animal_id: string
+          p_category_id: string
+          p_cost: number
+          p_current_condition: string
+          p_diagnosis: string
+          p_dosage: string
+          p_event_date: string
+          p_kind: string
+          p_medicine: string
+          p_medicine_type: string
+          p_next_due_date: string
+          p_notes: string
+          p_route: string
+          p_severity: string
+          p_symptoms: string
+          p_title: string
+          p_treatment_end_date: string
+          p_treatment_start_date: string
+          p_vet: string
         }
         Returns: string
       }

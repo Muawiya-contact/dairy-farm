@@ -37,7 +37,7 @@ test("Inventory Report shows ledger balances, usage attribution, filters, and ex
   await page.getByRole("button", { name: "Yeh hafta", exact: true }).click();
   await expect(page.getByLabel("Stock report shuru ki tareekh")).toHaveValue(addDays(today, -6));
   await expect(page.getByLabel("Stock report aakhir ki tareekh")).toHaveValue(today);
-  await page.getByLabel("Stock item").selectOption(itemId!);
+  await page.getByLabel("Samaan").selectOption(itemId!);
 
   const summary = page.locator("section").filter({ has: page.getByRole("heading", { name: "Har samaan ka stock baqaya" }) });
   const itemRow = summary.getByRole("row").filter({ hasText: itemName });

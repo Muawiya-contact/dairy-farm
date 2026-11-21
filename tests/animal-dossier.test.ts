@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildAnimalDossierPdf, buildAnimalDossierWorkbook, type AnimalDossier } from "@/lib/animal-dossier";
-import type { Animal, Calving, CalvingOffspring } from "@/lib/farm-data";
+import type { Animal, Calving, CalvingOffspring, HealthEvent } from "@/lib/farm-data";
 import type { LoadedFarmSettings } from "@/lib/settings";
 
 const cow = (id: string, tag: string): Animal => ({
@@ -64,5 +64,22 @@ describe("animal dossier exports", () => {
     expect(calvingSheet.getRow(2).values).toContain("B-202");
     expect(calvingSheet.getRow(2).values).toContain(31.5);
     expect(calvingSheet.getRow(2).values).toContain("Routine calving · Healthy calf");
+  });
+
+  it("sums fractional health costs in paise for both dossier exports", async () => {
+    const health = [0.1, 0.2].map((cost, index) => ({
+      id: `health-${index + 1}`, animal_id: "animal-one", event_date: `2026-11-${19 + index}`,
+      kind: "treatment", title: `Treatment ${index + 1}`, medicine: null, vet: null, notes: null,
+      cost, next_due_date: null, expense_id: null,
+    } satisfies HealthEvent));
+    const dossier = { ...input, health };
+    const bytes = await buildAnimalDossierWorkbook(dossier);
+    const ExcelJS = (await import("exceljs")).default;
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(Buffer.from(bytes) as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+    expect(workbook.getWorksheet("Financial summary")!.getRow(2).values).toContain(0.3);
+
+    const pdfText = new TextDecoder().decode(await buildAnimalDossierPdf(dossier));
+    expect(pdfText).not.toContain("0.30000000000000004");
   });
 });

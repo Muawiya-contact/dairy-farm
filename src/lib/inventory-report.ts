@@ -4,9 +4,16 @@ import { columnLabel, type PdfSection } from "./export-data";
 
 export type InventoryReportPreset = "today" | "yesterday" | "week" | "month" | "year" | "custom";
 export const inventoryReportMovementLabel = (type: string) => ({
-  opening: "Initial stock", purchase: "Stock received / purchase", usage: "Usage / issue",
-  adjustment: "Stock adjustment", wastage: "Wastage",
+  opening: "Ibtidai stock", purchase: "Naya stock / kharid", usage: "Istemaal / diya",
+  adjustment: "Stock mein tabdeeli", wastage: "Zaya stock",
 }[type] ?? type);
+
+export const INVENTORY_REPORT_SECTIONS = {
+  details: "Report ki tafseel",
+  balances: "Har samaan ka stock baqaya",
+  usage: "Mulazim ke mutabiq istemal",
+  movements: "Stock ki harkat",
+} as const;
 
 export const INVENTORY_REPORT_SUMMARY_COLUMNS = [
   "item_name", "category_name", "stock_unit", "opening_stock", "opening_entries_in", "purchases_in",
@@ -35,19 +42,19 @@ export function inventoryReportExportSections(
   context?: InventoryReportExportContext,
 ): PdfSection[] {
   return [
-    ...(context ? [{ title: "Report details", columns: ["detail", "value"], rows: [
-      { detail: "Period (inclusive)", value: `${context.from} through ${context.to}` },
-      { detail: "Filters", value: context.filters.length ? context.filters.join(" · ") : "None" },
-      { detail: "Balance scope", value: context.balanceScope },
-      { detail: "Usage value", value: "Not estimated because stock issues do not record a reliable cost basis." },
+    ...(context ? [{ title: INVENTORY_REPORT_SECTIONS.details, columns: ["detail", "value"], rows: [
+      { detail: "Report ki muddat", value: `${context.from} se ${context.to} tak, dono tareekhein shamil` },
+      { detail: "Chhantne ke options", value: context.filters.length ? context.filters.join(" · ") : "Koi option nahin chuna" },
+      { detail: "Stock ka daaira", value: context.balanceScope },
+      { detail: "Istemaal ki qeemat", value: "Qeemat nahin nikali gayi kyun ke stock dete waqt bharosemand qeemat record nahin hoti." },
     ] }] : []),
-    { title: "Item-wise stock balances", columns: INVENTORY_REPORT_SUMMARY_COLUMNS,
-      rows: summary.map((row) => ({ ...row, current_status: row.current_out_of_stock ? "Out of stock" : row.current_low_stock ? "Low stock" : "In stock" })) },
-    { title: "Employee-wise usage", columns: INVENTORY_REPORT_USAGE_COLUMNS,
-      rows: usage.map((row) => ({ ...row, staff_name: row.staff_name ?? "General farm use" })) },
-    { title: "Inventory movements", columns: INVENTORY_REPORT_TRANSACTION_COLUMNS,
+    { title: INVENTORY_REPORT_SECTIONS.balances, columns: INVENTORY_REPORT_SUMMARY_COLUMNS,
+      rows: summary.map((row) => ({ ...row, current_status: row.current_out_of_stock ? "Stock khatam" : row.current_low_stock ? "Stock kam" : "Stock mojood" })) },
+    { title: INVENTORY_REPORT_SECTIONS.usage, columns: INVENTORY_REPORT_USAGE_COLUMNS,
+      rows: usage.map((row) => ({ ...row, staff_name: row.staff_name ?? "Farm ka aam istemal (mulazim ke baghair)" })) },
+    { title: INVENTORY_REPORT_SECTIONS.movements, columns: INVENTORY_REPORT_TRANSACTION_COLUMNS,
       rows: transactions.map((row) => ({ ...row, movement_type: inventoryReportMovementLabel(row.movement_type),
-        staff_name: row.staff_name ?? (row.movement_type === "usage" ? "General farm use" : "—") })) },
+        staff_name: row.staff_name ?? (row.movement_type === "usage" ? "Farm ka aam istemal (mulazim ke baghair)" : "—") })) },
   ];
 }
 
@@ -59,10 +66,10 @@ export async function buildInventoryReportWorkbook(
   const workbook = new ExcelJS.Workbook();
   const sections = inventoryReportExportSections(summary, usage, transactions, context);
   const sheets = [
-    ...(context ? [{ name: "Report details", columns: ["detail", "value"], rows: sections[0].rows }] : []),
-    { name: "Item balances", columns: INVENTORY_REPORT_SUMMARY_COLUMNS, rows: sections.find((section) => section.title === "Item-wise stock balances")!.rows },
-    { name: "Usage by employee", columns: INVENTORY_REPORT_USAGE_COLUMNS, rows: sections.find((section) => section.title === "Employee-wise usage")!.rows },
-    { name: "Movements", columns: INVENTORY_REPORT_TRANSACTION_COLUMNS, rows: sections.find((section) => section.title === "Inventory movements")!.rows },
+    ...(context ? [{ name: INVENTORY_REPORT_SECTIONS.details, columns: ["detail", "value"], rows: sections[0].rows }] : []),
+    { name: INVENTORY_REPORT_SECTIONS.balances, columns: INVENTORY_REPORT_SUMMARY_COLUMNS, rows: sections.find((section) => section.title === INVENTORY_REPORT_SECTIONS.balances)!.rows },
+    { name: INVENTORY_REPORT_SECTIONS.usage, columns: INVENTORY_REPORT_USAGE_COLUMNS, rows: sections.find((section) => section.title === INVENTORY_REPORT_SECTIONS.usage)!.rows },
+    { name: INVENTORY_REPORT_SECTIONS.movements, columns: INVENTORY_REPORT_TRANSACTION_COLUMNS, rows: sections.find((section) => section.title === INVENTORY_REPORT_SECTIONS.movements)!.rows },
   ];
   for (const entry of sheets) {
     const sheet = workbook.addWorksheet(entry.name);

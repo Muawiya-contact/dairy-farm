@@ -93,7 +93,8 @@ function dossierSheets(input: AnimalDossier) {
       calf: calving.calf_id ? animalName(input.animals.find((item) => item.id === calving.calf_id)) : "", sex: "", weight_kg: "", notes: calving.notes || "" });
   }
   const weights = relatedBirth?.birth_weight_kg == null ? [] : [{ date: birthCalving?.calving_date ?? "", event: "Birth weight", weight_kg: num(relatedBirth.birth_weight_kg), source: "Calving record" }];
-  const healthCosts = input.health.reduce((total, event) => total + Number(event.cost || 0), 0);
+  const healthCostPaise = input.health.reduce((total, event) => total + Math.round(Number(event.cost || 0) * 100), 0);
+  const healthCosts = healthCostPaise / 100;
   const financial = [
     ...(animal.purchase_price == null ? [] : [{ date: animal.purchase_date || "", kind: "Purchase", detail: animal.seller_name || animal.purchase_location || "", amount_rs: num(animal.purchase_price) }]),
     ...(animal.sale_price == null ? [] : [{ date: animal.exit_date || "", kind: "Sale", detail: animal.exit_reason || "", amount_rs: num(animal.sale_price) }]),

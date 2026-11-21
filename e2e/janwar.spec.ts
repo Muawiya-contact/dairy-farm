@@ -99,6 +99,8 @@ test("animal profile keeps statuses independent, manages private photos, and exp
   const privateFileLink = healthEntry.getByRole("link", { name: "File download karein" });
   await expect(privateFileLink).toBeVisible();
   await expect(privateFileLink).toHaveAttribute("href", /\/object\/sign\/health-records\//);
+  await healthEntry.getByRole("button", { name: "Naya private link" }).click();
+  await expect(privateFileLink).toHaveAttribute("href", /\/object\/sign\/health-records\//);
 
   await healthForm.getByLabel("Entry ka naam").fill("E2E FMD vaccine");
   await healthForm.getByLabel("Health record type").selectOption("vaccine");

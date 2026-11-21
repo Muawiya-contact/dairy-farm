@@ -49,7 +49,10 @@ function HealthAttachments({ event, attachments, busy, run }: {
     <h4 className="text-sm font-semibold">Prescription ya report ({ordered.length})</h4>
     {ordered.length > 0 && <ul className="mt-1 grid gap-1 text-sm">{ordered.map((attachment) => <li key={attachment.id} className="flex flex-wrap items-center justify-between gap-2">
       <span>{attachment.file_name} · {Math.max(1, Math.ceil(attachment.size_bytes / 1024))} KB</span>
-      {links[attachment.id] ? <a href={links[attachment.id]} target="_blank" rel="noreferrer" className="min-h-9 rounded-lg border border-line px-3 py-1 font-semibold underline">File download karein</a>
+      {links[attachment.id] ? <div className="flex flex-wrap gap-2">
+        <a href={links[attachment.id]} target="_blank" rel="noreferrer" className="min-h-9 rounded-lg border border-line px-3 py-1 font-semibold underline">File download karein</a>
+        <button type="button" disabled={openingId === attachment.id || busy} onClick={() => void openAttachment(attachment)} className="min-h-9 rounded-lg border border-line px-3 py-1 font-semibold disabled:opacity-50">{openingId === attachment.id ? "Naya link ban raha hai" : "Naya private link"}</button>
+      </div>
         : <button type="button" disabled={openingId === attachment.id || busy} onClick={() => void openAttachment(attachment)} className="min-h-9 rounded-lg border border-line px-3 py-1 font-semibold disabled:opacity-50">{openingId === attachment.id ? "File khul rahi hai" : "Private file dekhein"}</button>}
     </li>)}</ul>}
     <form onSubmit={upload} className="mt-2 flex flex-wrap items-center gap-2 print:hidden">

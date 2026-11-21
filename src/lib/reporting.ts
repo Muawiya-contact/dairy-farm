@@ -249,8 +249,9 @@ export async function loadKhataPeriodSummary(from: string, to: string): Promise<
 
 export async function loadInactiveCustomers(from: string, to: string): Promise<InactiveCustomer[]> {
   const supabase = getSupabase();
+  type CustomerRecord = Omit<InactiveCustomer, "customer_id"> & { id: string };
   type CustomerPage = {
-    range: (start: number, end: number) => Promise<{ data: InactiveCustomer[] | null; error: Error | null }>;
+    range: (start: number, end: number) => Promise<{ data: CustomerRecord[] | null; error: Error | null }>;
   };
   const loadCustomers = (start: number, end: number) => (supabase.from("customers")
     .select("id,name,phone,kind,active,sort_order")
@@ -259,10 +260,10 @@ export async function loadInactiveCustomers(from: string, to: string): Promise<I
     .order("name", { ascending: true })
     .order("id", { ascending: true }) as unknown as CustomerPage).range(start, end);
   const [customers, periodRows] = await Promise.all([
-    loadPagedRows<InactiveCustomer>(loadCustomers),
+    loadPagedRows<CustomerRecord>(loadCustomers),
     loadKhataPeriodSummary(from, to),
   ]);
-  return selectInactiveCustomers(customers, periodRows);
+  return selectInactiveCustomers(customers.map(({ id, ...customer }) => ({ ...customer, customer_id: id })), periodRows);
 }
 
 export async function loadKhataYearMonthSummary(year: number): Promise<KhataYearMonth[]> {

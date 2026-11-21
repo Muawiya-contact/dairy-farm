@@ -18,7 +18,10 @@ test("inactive customer report finds no-purchase customers and exports the filte
 
   await page.goto("/reports/customer/inactive/");
   await expect(page.getByRole("heading", { name: "Inactive Customers", exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name, exact: true })).toBeVisible();
+  const customerLink = page.getByRole("link", { name, exact: true });
+  await expect(customerLink).toBeVisible();
+  await expect(customerLink).toHaveAttribute("href", /\/reports\/customer\/\?id=[^&]+&from=/);
+  await expect(customerLink).not.toHaveAttribute("href", /undefined/);
 
   await page.getByLabel("No-purchase lookback").selectOption("90");
   await expect(page.getByRole("link", { name, exact: true })).toBeVisible();

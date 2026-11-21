@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import { renderWithQuery, supabaseMocks } from "./utils";
@@ -42,6 +42,26 @@ it("shows all ten animal report types inside the existing report destination", a
   expect(screen.getByRole("navigation", { name: "Animal report types" }).querySelectorAll("button")).toHaveLength(10);
   expect(screen.getByRole("button", { name: /Gaye ki report/ })).toHaveAttribute("aria-pressed", "false");
   expect(screen.getByRole("link", { name: "Wapas" })).toHaveAttribute("href", "/reports");
+});
+
+it("prints every report row even when the on-screen table is paginated", async () => {
+  const rows = Array.from({ length: 51 }, (_, index) => ({ tag: String(index + 1), name: `Animal ${index + 1}` }));
+  mocks.loadAnimalReport.mockResolvedValueOnce({
+    summary: [{ label: "Janwar", value: "51" }],
+    sections: [{ title: "Janwaron ki fehrist", columns: ["tag", "name"], rows }],
+  });
+
+  renderWithQuery(<AnimalReportPage />);
+  await screen.findByRole("heading", { name: "Janwaron ki fehrist" });
+
+  const screenTable = screen.getByRole("table", { name: "Janwaron ki fehrist (screen)" });
+  const printTable = screen.getByRole("table", { name: "Janwaron ki fehrist (print)" });
+  expect(within(screenTable).getAllByRole("row")).toHaveLength(51);
+  expect(within(printTable).getAllByRole("row")).toHaveLength(52);
+
+  await userEvent.setup().click(screen.getByRole("button", { name: "Agla" }));
+  expect(within(screenTable).getAllByRole("row")).toHaveLength(2);
+  expect(within(printTable).getAllByRole("row")).toHaveLength(52);
 });
 
 it("applies animal and date filters to the selected milk report", async () => {

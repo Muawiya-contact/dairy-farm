@@ -31,17 +31,19 @@ function ReportTable({ section }: { section: AnimalReportSection }) {
   const [page, setPage] = useState(0);
   const pageCount = Math.max(1, Math.ceil(section.rows.length / pageSize));
   const rows = section.rows.slice(page * pageSize, (page + 1) * pageSize);
+  const table = (tableRows: Record<string, unknown>[], label: string) => <div className="overflow-x-auto">
+    <table aria-label={label} className="w-full min-w-[760px] text-sm">
+      <thead><tr>{section.columns.map((column) => <th key={column} className="border-b border-line px-2 py-2 text-left">{columnLabel(column, section.title)}</th>)}</tr></thead>
+      <tbody>{tableRows.map((row, index) => <tr key={`${String(row.calving_id ?? row.animal_id ?? row.tag ?? "row")}-${index}`}>
+        {section.columns.map((column) => <td key={column} className="border-b border-line px-2 py-2 align-top">{formatReportValue(column, row[column])}</td>)}
+      </tr>)}</tbody>
+    </table>
+  </div>;
   return <Panel title={section.title}>
     {section.rows.length === 0 ? <p className="text-sm text-muted">Is hissa mein chuni hui report ke mutabiq koi record nahi mila.</p> : <>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[760px] text-sm">
-          <thead><tr>{section.columns.map((column) => <th key={column} className="border-b border-line px-2 py-2 text-left">{columnLabel(column, section.title)}</th>)}</tr></thead>
-          <tbody>{rows.map((row, index) => <tr key={`${String(row.calving_id ?? row.animal_id ?? row.tag ?? "row")}-${page * pageSize + index}`}>
-            {section.columns.map((column) => <td key={column} className="border-b border-line px-2 py-2 align-top">{formatReportValue(column, row[column])}</td>)}
-          </tr>)}</tbody>
-        </table>
-      </div>
-      {pageCount > 1 && <div className="mt-3 flex items-center justify-between gap-3 text-sm">
+      <div className="no-print">{table(rows, `${section.title} (screen)`)}</div>
+      <div className="hidden print:block">{table(section.rows, `${section.title} (print)`)}</div>
+      {pageCount > 1 && <div className="no-print mt-3 flex items-center justify-between gap-3 text-sm">
         <span className="text-muted">{section.rows.length.toLocaleString("en-IN")} records · Safha {page + 1} / {pageCount}</span>
         <div className="flex gap-2">
           <button type="button" disabled={page === 0} onClick={() => setPage((value) => Math.max(0, value - 1))} className="min-h-11 rounded-xl border border-line px-3 disabled:opacity-50">Pichla</button>

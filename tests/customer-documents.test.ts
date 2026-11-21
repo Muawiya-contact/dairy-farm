@@ -27,8 +27,8 @@ beforeAll(() => vi.stubGlobal("fetch", async (url: string) => {
   const filename = url.split("/").pop();
   if (filename === "icon-192.png") return new Response(readFileSync(resolve("public/brand", filename)));
   if (filename === "coding-moves-services.png") return new Response(readFileSync(resolve("public/brand", filename)));
-  if (filename !== "OpenSans-Regular.ttf" && filename !== "OpenSans-Bold.ttf") return new Response(null, { status: 404 });
-  return new Response(readFileSync(resolve("public/fonts", filename)));
+  if (!url.startsWith("/fonts/pdf/")) return new Response(null, { status: 404 });
+  return new Response(readFileSync(resolve("public/fonts/pdf", filename!)));
 }));
 beforeEach(() => vi.mocked(downloadBlob).mockClear());
 afterAll(() => vi.unstubAllGlobals());
@@ -71,14 +71,14 @@ it("generates separate readable statement and payment PDFs", async () => {
   expect(receipt.length).toBeGreaterThan(2000);
   expect(new TextDecoder().decode(statement)).toContain("/Subtype /Image");
   expect(new TextDecoder().decode(receipt)).toContain("/Subtype /Image");
-  // Customer PDFs embed Open Sans, so readable glyphs are encoded in the PDF stream.
+  // Customer PDFs embed the shared Unicode fonts, so readable glyphs are encoded in the PDF stream.
   // The referral target remains plain text in each clickable link annotation.
   const statementText = new TextDecoder().decode(statement);
   const receiptText = new TextDecoder().decode(receipt);
-  expect(statementText.match(/https:\/\/codingmoves\.com\//g)).toHaveLength(2);
-  expect(receiptText.match(/https:\/\/codingmoves\.com\//g)).toHaveLength(2);
-  expect(statementText.match(/mailto:contact@codingmoves\.com/g)).toHaveLength(1);
-  expect(receiptText.match(/mailto:contact@codingmoves\.com/g)).toHaveLength(1);
+  expect(statementText).toContain("/NotoSans");
+  expect(receiptText).toContain("/NotoSans");
+  expect(statementText).toContain("https://codingmoves.com/?utm_source=dairy-app");
+  expect(receiptText).toContain("https://codingmoves.com/?utm_source=dairy-app");
 });
 
 it("hands the receipt PDF to the phone's app chooser", async () => {

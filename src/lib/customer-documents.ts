@@ -2,8 +2,9 @@ import type { FarmData, Customer, CustomerReport, Payment } from "./farm-data";
 import type { FarmSettings } from "./settings";
 import { formatDay, formatMonth } from "./dates";
 import { downloadBlob } from "./export-data";
-import { installCustomerPdfFont } from "./customer-pdf-font";
-import { addPdfDeveloperCredit, addPdfDeveloperEmail, addPdfDeveloperMark, addPdfDeveloperQr, loadPdfDeveloperLogo, loadPdfDeveloperQr, loadPdfLogo } from "./pdf-brand";
+import { loadPdfDeveloperLogo, loadPdfDeveloperQr, loadPdfLogo, pdfTrackingUrl } from "./pdf-brand";
+import { installPdfFonts } from "./pdf/fonts";
+import { CODING_MOVES_DEVELOPER_CREDIT, CODING_MOVES_DISPLAY_URL } from "./coding-moves";
 import { SHIFT_LABELS } from "./milk-shifts";
 
 export type StatementLine = {
@@ -74,37 +75,37 @@ type Pdf = InstanceType<typeof import("jspdf").jsPDF>;
 /** Warm the PDF code and fonts so a later user click can reach the native share sheet promptly. */
 export async function prepareCustomerPdf(): Promise<void> {
   const [{ jsPDF }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
-  await Promise.all([installCustomerPdfFont(new jsPDF()), loadPdfLogo(), loadPdfDeveloperLogo(), loadPdfDeveloperQr()]);
+  await Promise.all([installPdfFonts(new jsPDF()), loadPdfLogo(), loadPdfDeveloperLogo(), loadPdfDeveloperQr()]);
 }
 
-function drawHeader(pdf: Pdf, farm: FarmSettings, documentTitle: string, logo: Uint8Array<ArrayBuffer>, developerLogo: Uint8Array<ArrayBuffer>): number {
-  pdf.setFont("OpenSans", "bold"); pdf.setFontSize(17);
+function drawHeader(pdf: Pdf, farm: FarmSettings, documentTitle: string, logo: Uint8Array<ArrayBuffer>): number {
+  pdf.addImage(logo, "PNG", 14, 10, 12, 12);
+  pdf.setFont("BricolageGrotesque", "extrabold"); pdf.setFontSize(17); pdf.setTextColor(23, 41, 28);
   const nameLines = pdf.splitTextToSize(farm.farm_name, 115) as string[];
-  const headerHeight = Math.max(34, 19 + nameLines.length * 7);
-  pdf.setFillColor(37, 94, 53);
-  pdf.rect(0, 0, 210, headerHeight, "F");
-  pdf.addImage(logo, "PNG", 14, 7, 20, 20);
-  pdf.setTextColor(255, 255, 255);
-  pdf.text(nameLines, 42, 14);
-  pdf.setFont("OpenSans", "normal"); pdf.setFontSize(9);
-  pdf.text(documentTitle, 42, headerHeight - 7);
-  addPdfDeveloperMark(pdf, developerLogo, 196, 7, true);
-  pdf.setTextColor(32, 42, 36);
-  let y = headerHeight + 8;
-  if (farm.owner_name) { pdf.text(`Maalik: ${farm.owner_name}`, 14, y); y += 5; }
-  if (farm.contact_phone) { pdf.text(`Rabtay ka number: ${farm.contact_phone}`, 14, y); y += 5; }
-  return y + 3;
+  pdf.text(nameLines, 30, 16);
+  pdf.setFont("NotoSans", "normal"); pdf.setFontSize(7.5); pdf.setTextColor(87, 99, 91);
+  const owner = [farm.owner_name, farm.contact_phone].filter(Boolean).join(" · ");
+  if (owner) pdf.text(`Maalik: ${owner}`, 30, 22);
+  pdf.setFont("NotoSans", "bold"); pdf.setFontSize(11); pdf.setTextColor(29, 70, 38);
+  pdf.text(documentTitle, 196, 16, { align: "right" });
+  pdf.setFont("NotoSans", "normal"); pdf.setFontSize(7.5); pdf.setTextColor(50, 62, 53);
+  pdf.text("Customer ka hisaab", 196, 21, { align: "right" });
+  pdf.setDrawColor(29, 70, 38); pdf.setLineWidth(0.7); pdf.line(14, 28, 196, 28);
+  return 37;
 }
 
-function addFooters(pdf: Pdf, farmName: string, developerQr: string) {
+function addFooters(pdf: Pdf, farmName: string, developerLogo: Uint8Array<ArrayBuffer>, developerQr: string, trackingUrl: string) {
   const pages = pdf.getNumberOfPages();
   for (let page = 1; page <= pages; page++) {
-    pdf.setPage(page); pdf.setFontSize(8); pdf.setTextColor(90, 100, 93);
-    pdf.text(farmName, 14, 288);
-    addPdfDeveloperQr(pdf, developerQr, 14, 274, 10);
-    addPdfDeveloperCredit(pdf, 284, 210);
-    addPdfDeveloperEmail(pdf, 292, 210);
-    pdf.text(`Page ${page}/${pages}`, 196, 288, { align: "right" });
+    pdf.setPage(page); pdf.setDrawColor(222, 227, 220); pdf.setLineWidth(0.25); pdf.line(14, 270, 196, 270);
+    pdf.setFont("NotoSans", "normal"); pdf.setFontSize(6.5); pdf.setTextColor(83, 95, 86);
+    pdf.text(farmName, 14, 276); pdf.text(`Page ${page} / ${pages}`, 14, 281);
+    pdf.addImage(developerLogo, "PNG", 124, 271, 8, 8);
+    pdf.setFont("NotoSans", "bold"); pdf.setFontSize(6.8); pdf.setTextColor(31, 42, 34);
+    pdf.text(CODING_MOVES_DEVELOPER_CREDIT, 134, 275);
+    pdf.setFont("NotoSans", "normal"); pdf.setFontSize(5.8); pdf.setTextColor(75, 86, 77);
+    pdf.textWithLink(CODING_MOVES_DISPLAY_URL, 134, 280, { url: trackingUrl });
+    pdf.addImage(developerQr, "PNG", 182, 271, 12, 12); pdf.link(124, 270, 72, 14, { url: trackingUrl });
   }
 }
 
@@ -113,12 +114,13 @@ export async function buildCustomerStatementPdf(input: {
 }): Promise<Uint8Array<ArrayBuffer>> {
   const [{ jsPDF }, { autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
-  const [, logo, developerLogo, developerQr] = await Promise.all([installCustomerPdfFont(pdf), loadPdfLogo(), loadPdfDeveloperLogo(), loadPdfDeveloperQr()]);
+  const trackingUrl = pdfTrackingUrl("customer-bill");
+  const [, logo, developerLogo, developerQr] = await Promise.all([installPdfFonts(pdf), loadPdfLogo(), loadPdfDeveloperLogo(), loadPdfDeveloperQr(trackingUrl)]);
   pdf.setProperties({ title: `${input.customer.name} - ${input.month} ka bill` });
-  let y = drawHeader(pdf, input.farm, "Customer ka maheena - tafseeli bill", logo, developerLogo);
-  pdf.setFontSize(11); pdf.setFont("OpenSans", "bold");
+  let y = drawHeader(pdf, input.farm, "Customer ka maheena - tafseeli bill", logo);
+  pdf.setFontSize(11); pdf.setFont("NotoSans", "bold");
   pdf.text(`Customer: ${input.customer.name}`, 14, y); y += 6;
-  pdf.setFont("OpenSans", "normal"); pdf.setFontSize(9);
+  pdf.setFont("NotoSans", "normal"); pdf.setFontSize(9);
   if (input.customer.phone) { pdf.text(`Customer phone: ${input.customer.phone}`, 14, y); y += 5; }
   pdf.text(`Maheena: ${formatMonth(`${input.month}-01`)}`, 14, y); y += 7;
   autoTable(pdf, {
@@ -128,8 +130,8 @@ export async function buildCustomerStatementPdf(input: {
       line.date, line.detail, line.litres == null ? "" : decimal(line.litres),
       line.charge ? pdfMoney(line.charge) : "", line.credit ? pdfMoney(line.credit) : "",
     ]) : [["", "Is maheene koi entry nahi", "", "", ""]],
-    styles: { font: "OpenSans", fontSize: 8, cellPadding: 2, overflow: "linebreak" },
-    headStyles: { fillColor: [37, 94, 53] },
+    styles: { font: "NotoSans", fontSize: 8, cellPadding: 2, overflow: "linebreak" },
+    headStyles: { fillColor: [230, 238, 231], textColor: [29, 70, 38], font: "NotoSans", fontStyle: "bold" },
     columnStyles: { 0: { cellWidth: 22 }, 1: { cellWidth: 72 }, 2: { cellWidth: 22 }, 3: { cellWidth: 33 }, 4: { cellWidth: 33 } },
   });
   const lastTable = pdf as Pdf & { lastAutoTable?: { finalY: number } };
@@ -142,22 +144,22 @@ export async function buildCustomerStatementPdf(input: {
     ["Riayat", numeric(input.report.discount)],
     ["Advance wapas", numeric(input.report.refund)],
   ];
-  pdf.setFontSize(10); pdf.setFont("OpenSans", "normal");
+  pdf.setFontSize(10); pdf.setFont("NotoSans", "normal");
   for (const [label, value] of summary) {
     pdf.text(label, 105, y); pdf.text(pdfMoney(value), 195, y, { align: "right" }); y += 7;
   }
   pdf.setDrawColor(37, 94, 53); pdf.line(105, y - 2, 195, y - 2);
-  pdf.setFont("OpenSans", "bold");
+  pdf.setFont("NotoSans", "bold");
   const balance = numeric(input.report.balance);
   pdf.text(balance < 0 ? "Customer ka advance" : "Kul baqi", 105, y + 5);
   pdf.text(pdfMoney(Math.abs(balance)), 195, y + 5, { align: "right" });
   if (input.farm.whatsapp_footer) {
     const footerLines = pdf.splitTextToSize(input.farm.whatsapp_footer, 175) as string[];
     const footerY = Math.min(y + 19, 275);
-    pdf.setFont("OpenSans", "normal"); pdf.setFontSize(8);
+    pdf.setFont("NotoSans", "normal"); pdf.setFontSize(8);
     pdf.text(footerLines, 14, footerY);
   }
-  addFooters(pdf, input.farm.farm_name, developerQr);
+  addFooters(pdf, input.farm.farm_name, developerLogo, developerQr, trackingUrl);
   return new Uint8Array(pdf.output("arraybuffer"));
 }
 
@@ -166,23 +168,24 @@ export async function buildPaymentReceiptPdf(input: {
 }): Promise<Uint8Array<ArrayBuffer>> {
   const { jsPDF } = await import("jspdf");
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
-  const [, logo, developerLogo, developerQr] = await Promise.all([installCustomerPdfFont(pdf), loadPdfLogo(), loadPdfDeveloperLogo(), loadPdfDeveloperQr()]);
+  const trackingUrl = pdfTrackingUrl("customer-receipt");
+  const [, logo, developerLogo, developerQr] = await Promise.all([installPdfFonts(pdf), loadPdfLogo(), loadPdfDeveloperLogo(), loadPdfDeveloperQr(trackingUrl)]);
   pdf.setProperties({ title: `${input.customer.name} - wusooli receipt` });
-  let y = drawHeader(pdf, input.farm, "Wusooli ki receipt", logo, developerLogo);
-  pdf.setFont("OpenSans", "normal"); pdf.setFontSize(10);
+  let y = drawHeader(pdf, input.farm, "Wusooli ki receipt", logo);
+  pdf.setFont("NotoSans", "normal"); pdf.setFontSize(10);
   pdf.text(`Customer: ${input.customer.name}`, 14, y); y += 8;
   if (input.customer.phone) { pdf.text(`Customer phone: ${input.customer.phone}`, 14, y); y += 8; }
   pdf.text(`Wusooli ki tareekh: ${formatDay(input.payment.payment_date)}`, 14, y); y += 8;
   pdf.text(`Tareeqa: ${input.payment.method ?? "Darj nahi"}`, 14, y); y += 12;
   pdf.setFillColor(235, 246, 236); pdf.roundedRect(14, y, 182, 27, 3, 3, "F");
-  pdf.setTextColor(37, 94, 53); pdf.setFont("OpenSans", "bold"); pdf.setFontSize(12);
+  pdf.setTextColor(37, 94, 53); pdf.setFont("NotoSans", "bold"); pdf.setFontSize(12);
   pdf.text("Mili hui raqam", 20, y + 10);
   pdf.setFontSize(20); pdf.text(`Rs ${decimal(numeric(input.payment.amount))}`, 190, y + 18, { align: "right" });
-  y += 39; pdf.setTextColor(32, 42, 36); pdf.setFont("OpenSans", "normal"); pdf.setFontSize(9);
+  y += 39; pdf.setTextColor(32, 42, 36); pdf.setFont("NotoSans", "normal"); pdf.setFontSize(9);
   pdf.text(`Receipt reference: ${input.payment.id}`, 14, y); y += 10;
   pdf.text("Yeh receipt sirf upar likhi hui wusooli ki tasdeeq hai.", 14, y);
   if (input.farm.whatsapp_footer) pdf.text(pdf.splitTextToSize(input.farm.whatsapp_footer, 180), 14, y + 12);
-  addFooters(pdf, input.farm.farm_name, developerQr);
+  addFooters(pdf, input.farm.farm_name, developerLogo, developerQr, trackingUrl);
   return new Uint8Array(pdf.output("arraybuffer"));
 }
 

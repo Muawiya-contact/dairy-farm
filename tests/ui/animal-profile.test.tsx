@@ -110,8 +110,25 @@ it("prints the profile from its explicit print action", async () => {
   Object.defineProperty(window, "print", { configurable: true, value: print });
   farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({
     animals: [{ ...fixtures.cow, photo_path: null }], settings: { farm_name: "Farm" }, animalStatus: [],
+    inseminations: [{ id: "cycle-print", animal_id: fixtures.cow.id, service_date: "2026-10-01", semen_type: "normal",
+      status: "pregnant", ultrasound_due: "2026-10-30", checkup_due: "2026-12-15", dry_off_due: "2027-05-01",
+      calving_due: "2027-06-28", technician: null }],
+    calvings: [{ id: "calving-print", animal_id: fixtures.cow.id, calving_date: "2026-10-10", outcome: "twins", calf_id: null }],
+    calvingOffspring: [{ id: "offspring-print", calving_id: "calving-print", animal_id: null, tag_at_birth: "CALF-A",
+      sex: "female", birth_weight_kg: 30.5, outcome: "alive", birth_order: 1 }],
+    health: [{ id: "health-print", animal_id: fixtures.cow.id, event_date: "2026-10-12", kind: "vaccine", title: "FMD shot",
+      medicine: null, vet: null, notes: null, cost: 0, next_due_date: null, expense_id: null }],
   }), error: null });
   renderWithQuery(<FarmAnimals />);
+  const printDetails = screen.getByText("Nasl kashi ka record").closest("section")!;
+  expect(printDetails).toHaveTextContent("Gaabhan");
+  expect(printDetails).toHaveTextContent("Joray");
+  expect(printDetails).toHaveTextContent("Mada");
+  expect(printDetails).toHaveTextContent("Vaccine");
+  expect(printDetails).not.toHaveTextContent("pregnant");
+  expect(printDetails).not.toHaveTextContent("twins");
+  expect(printDetails).not.toHaveTextContent("female");
+  expect(printDetails).not.toHaveTextContent("vaccine");
   await user.click(screen.getByRole("button", { name: "Print karein" }));
   expect(print).toHaveBeenCalledOnce();
   Object.defineProperty(window, "print", { configurable: true, value: undefined });

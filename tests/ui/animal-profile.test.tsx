@@ -6,10 +6,15 @@ import FarmAnimals from "@/components/FarmAnimals";
 import { longDate } from "@/lib/farm-data";
 
 const route = vi.hoisted(() => ({ id: "animal-1" }));
-const documentMocks = vi.hoisted(() => ({ sharePdfFile: vi.fn(), downloadBlob: vi.fn() }));
+const documentMocks = vi.hoisted(() => ({ sharePdfFile: vi.fn(), downloadBlob: vi.fn(), buildDossierPdf: vi.fn(), buildDossierWorkbook: vi.fn() }));
 const feedMocks = vi.hoisted(() => ({ loadAnimalFeedOptions: vi.fn() }));
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(route.id ? `id=${route.id}` : "") }));
 vi.mock("@/lib/pdf-share", () => ({ sharePdfFile: documentMocks.sharePdfFile }));
+vi.mock("@/lib/animal-dossier", async (original) => ({
+  ...(await original<typeof import("@/lib/animal-dossier")>()),
+  buildAnimalDossierPdf: documentMocks.buildDossierPdf,
+  buildAnimalDossierWorkbook: documentMocks.buildDossierWorkbook,
+}));
 vi.mock("@/lib/export-data", async (original) => ({
   ...(await original<typeof import("@/lib/export-data")>()), downloadBlob: documentMocks.downloadBlob,
 }));
@@ -19,6 +24,8 @@ vi.mock("@/lib/animal-feeding", async (original) => ({
 
 beforeEach(() => {
   feedMocks.loadAnimalFeedOptions.mockResolvedValue([]);
+  documentMocks.buildDossierPdf.mockResolvedValue(new Uint8Array([37, 80, 68, 70]));
+  documentMocks.buildDossierWorkbook.mockResolvedValue(new Uint8Array([80, 75, 3, 4]));
   supabaseMocks.getSupabase.mockReturnValue({
     rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
   } as never);

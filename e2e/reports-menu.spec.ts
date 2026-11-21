@@ -26,6 +26,10 @@ test("Reports menu groups all nine categories and routes each group to its exist
     await group.getByRole("link", { name: reportLink, exact: true }).click();
     await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Wapas", exact: true }).click();
+    if (reportLink === "Inactive Customers") {
+      await expect(page.getByRole("heading", { name: "Customer Report", exact: true })).toBeVisible();
+      await go(page, "Reports");
+    }
     await expect(menu.getByRole("heading", { name: groupName, exact: true })).toBeVisible();
   }
 

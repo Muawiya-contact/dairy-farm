@@ -14,7 +14,7 @@ The table below remains a plan for fuller workflows and launch readiness.
 | 5. Doodh | [Daily production and deliveries](steps/step-5-milk.md) | 2, 4 |
 | 6. Wusooli / galla | Payments, bills, account transfers | 5 |
 | 7. Kharcha | Expenses, salary, other income | 6 |
-| 8. Reports / launch | Dashboard, month close controls, import dry run, connection and release checks | Earlier steps |
+| 8. Reports / launch | [Dashboard, month close, import preparation, and Final Farm Performance Report](steps/step-8-final-report.md) | Earlier steps |
 | 9. Release hardening | [Corrections, scoped reads, manual copy, and annual access](steps/step-9-final-hardening.md) | 1–8 |
 
 The supplied files only describe Step 1 in detail; later step documents,
@@ -34,6 +34,8 @@ real-data project stays owner restricted until a planned live-data release.
 
 [Step 8 launch work](steps/step-8-launch.md) documents month closing,
 CSV/Excel import preparation, checks, and the remaining real-data cutover.
+The [Final Farm Performance Report](steps/step-8-final-report.md) documents
+the consolidated report sources and their database calculations.
 The separate [historical workbook archive](HISTORICAL-IMPORT.md) keeps older
 source records view-only without changing live balances.
 Settings offers a manual farm-data download. It does not add a backup service

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { signIn } from "./helpers";
 
@@ -9,6 +10,12 @@ test("Final Report updates its selected period and fits the viewport", async ({ 
   await expect(page.getByRole("heading", { name: "Customer Khata ka maahana hisaab" })).toBeVisible();
   await expect(page.getByRole("button", { name: "PDF download" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Excel download" })).toBeVisible();
+  const [pdf] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "PDF download" }).click(),
+  ]);
+  expect(pdf.suggestedFilename()).toMatch(/\.pdf$/i);
+  expect(readFileSync(await pdf.path()).subarray(0, 5).toString()).toBe("%PDF-");
 
   const previousMonth = page.getByRole("button", { name: "Pichla maheena" });
   await previousMonth.click();

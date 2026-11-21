@@ -37,7 +37,7 @@ function row(index: number): InactiveCustomer {
   return {
     customer_id: "customer-" + index,
     name: "Inactive " + String(index).padStart(2, "0"),
-    phone: index === 1 ? "03001234567" : null,
+    phone: index === 1 ? "+923001234567" : null,
     kind: index % 2 ? "regular" : "company",
     active: true,
     sort_order: index,
@@ -72,10 +72,16 @@ it("loads the chosen lookback and supports search, sorting, paging, and customer
   const table = screen.getByRole("table");
   expect(within(table).getAllByRole("link")[0]).toHaveTextContent("Inactive 27");
 
-  await user.type(screen.getByRole("searchbox", { name: "Inactive customer search" }), "inactive 26");
+  const search = screen.getByRole("searchbox", { name: "Inactive customer search" });
+  await user.type(search, "inactive 26");
   expect(within(table).getByRole("link", { name: "Inactive 26" })).toBeInTheDocument();
   expect(within(table).queryByRole("link", { name: "Inactive 01" })).not.toBeInTheDocument();
   expect(screen.getByRole("status")).toHaveTextContent("1 customers · Safha 1 / 1");
+
+  await user.clear(search);
+  await user.type(search, "0300 123 4567");
+  expect(within(table).getByRole("link", { name: "Inactive 01" })).toBeInTheDocument();
+  expect(within(table).queryByRole("link", { name: "Inactive 02" })).not.toBeInTheDocument();
 });
 
 it("exports all filtered inactive customers in PDF, CSV, and Excel and prepares print", async () => {

@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { selectInactiveCustomers, type InactiveCustomer } from "@/lib/inactive-customers";
+import { inactiveCustomerMatchesSearch, selectInactiveCustomers, type InactiveCustomer } from "@/lib/inactive-customers";
 
 const customers: InactiveCustomer[] = [
   { customer_id: "recent", name: "Recent Buyer", phone: null, kind: "regular", active: true, sort_order: 3 },
@@ -23,4 +23,14 @@ it("lists active paying customers without period sales, excluding buyers, closed
 it("returns all eligible customers in stable display order when the period has no sales", () => {
   const result = selectInactiveCustomers(customers, []);
   expect(result.map((customer) => customer.customer_id)).toEqual(["company", "inactive", "recent", "zero-charge"]);
+});
+
+it("matches customer phones across local and international Pakistan formats", () => {
+  const customer = { ...customers[1], phone: "+923001234567" };
+
+  expect(inactiveCustomerMatchesSearch(customer, "0300 123 4567")).toBe(true);
+  expect(inactiveCustomerMatchesSearch(customer, "+92 (300) 123-4567")).toBe(true);
+  expect(inactiveCustomerMatchesSearch(customer, "3001234")).toBe(true);
+  expect(inactiveCustomerMatchesSearch(customer, "03101234567")).toBe(false);
+  expect(inactiveCustomerMatchesSearch(customer, "No Recent")).toBe(true);
 });

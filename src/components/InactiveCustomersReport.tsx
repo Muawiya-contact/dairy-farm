@@ -9,6 +9,7 @@ import { friendlyError } from "@/lib/errors";
 import { buildPdfReport, buildXlsx, downloadBlob, downloadFile, toCsv } from "@/lib/export-data";
 import { getSettings } from "@/lib/settings";
 import { loadInactiveCustomers } from "@/lib/reporting";
+import { inactiveCustomerMatchesSearch } from "@/lib/inactive-customers";
 
 const PAGE_SIZE = 25;
 const columns = ["name", "phone", "kind"];
@@ -29,11 +30,7 @@ export default function InactiveCustomersReport() {
     queryFn: () => loadInactiveCustomers(from, today),
   });
   const filteredRows = useMemo(() => {
-    const needle = search.trim().toLocaleLowerCase();
-    return (report.data ?? []).filter((row) => !needle
-      || row.name.toLocaleLowerCase().includes(needle)
-      || row.kind.toLocaleLowerCase().includes(needle)
-      || row.phone?.toLocaleLowerCase().includes(needle))
+    return (report.data ?? []).filter((row) => inactiveCustomerMatchesSearch(row, search))
       .slice().sort((left, right) => {
         const primary = left[sortKey].localeCompare(right[sortKey], undefined, { sensitivity: "base" });
         return (descending ? -primary : primary) || left.name.localeCompare(right.name, undefined, { sensitivity: "base" });

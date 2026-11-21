@@ -9,6 +9,13 @@ queries run, and the selected range is included in PDF, Excel, print, and
 user-initiated PDF sharing. Sharing never sends a file automatically; devices
 without file sharing get a download instead.
 
+Farm Analytics also compares daily buckets for ranges under 90 days and monthly
+buckets for longer ranges. It ranks billed customers, animal-level milk records,
+and saved expense categories. Average animal production divides recorded
+animal litres by recorded animal-days; it does not allocate total-only shifts.
+Cost and profit per litre remain unavailable until feed costs can be traced to
+milk production without estimates.
+
 The report brings together milk production and destinations, stock variance,
 Khata balances, local cash sales, expense categories, Financial Report P&L,
 account cash flow, and owner deposits/withdrawals. Links open the related

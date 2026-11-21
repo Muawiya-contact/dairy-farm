@@ -4,12 +4,12 @@ import Link from "next/link";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Body, PageHeader, Panel } from "./ui";
-import { formatDay, monthStart, todayPK } from "@/lib/dates";
+import { formatDay, formatMonth, monthStart, todayPK } from "@/lib/dates";
 import { friendlyError } from "@/lib/errors";
 import { litres, rs } from "@/lib/format";
 import { isReportDateRange } from "@/lib/reporting";
 import {
-  finalReportExportSections, finalReportRange, loadFinalReport, milkReconciliationVariance, milkShiftProduction,
+  buildFinalReportAnalytics, finalReportExportSections, finalReportRange, loadFinalReport, milkReconciliationVariance, milkShiftProduction,
   type FinalReportPreset,
 } from "@/lib/final-report";
 import { buildPdfReport, buildXlsx, downloadBlob, type PdfSection } from "@/lib/export-data";
@@ -47,6 +47,10 @@ export default function FinalReport() {
     queryFn: () => loadFinalReport(from, to),
   });
   const data = validRange ? report.data : undefined;
+  const analytics = data ? buildFinalReportAnalytics(data, from, to) : undefined;
+  const trendRows = analytics?.trends ?? [];
+  const trendLitreScale = Math.max(1, ...trendRows.map((row) => row.produced_litres));
+  const trendMoneyScale = Math.max(1, ...trendRows.flatMap((row) => [row.total_income, row.farm_expenses]));
   const financial = data?.financial;
   const summary = financial?.period.summary;
   const milk = data?.milk;
@@ -54,6 +58,8 @@ export default function FinalReport() {
   const customerTotals = data?.khata.find((row) => row.is_grand_total);
   const receivables = { due: customerTotals?.receivables_due ?? 0, customerCredits: customerTotals?.customer_credits ?? 0 };
   const expenseGroups = data?.expenses.filter((row) => row.is_farm_cost) ?? [];
+  const rankedExpenseGroups = expenseGroups.slice().sort((left, right) => right.amount - left.amount
+    || left.category.localeCompare(right.category, undefined, { sensitivity: "base" }));
   const shiftTotals = milk ? milkShiftProduction(milk.shifts) : { morning: 0, noon: 0, evening: 0 };
   const cashBankClosing = data?.cashPosition.closing_cash_bank_balance ?? null;
   const milkVariance = milk ? milkReconciliationVariance({
@@ -153,6 +159,76 @@ export default function FinalReport() {
           <p className="mt-3 text-xs text-muted">Billing saved sales ko dikhati hai; wasooli asal payment date par hai. Cash sale Galla receipt sirf us linked payment ko dikhati hai jo Farm Cash account mein darj hai.</p>
         </Panel>
 
+        {analytics && <>
+          <Panel title={analytics.trendBucket === "month" ? "Maahwar farm trend" : "Rozana farm trend"}>
+            <p className="mb-3 text-sm text-muted">Milk ki paidawar saved shifts se hai. Income aur farm kharchay database ke financial report se hain. Chuni muddat 90 din se chhoti ho to rozana, warna maahwar dikhai jati hai.</p>
+            {analytics.trends.length > 0 ? <ul className="space-y-4">
+              {analytics.trends.map((row) => {
+                const label = analytics.trendBucket === "month" ? formatMonth(row.bucket_start) : formatDay(row.bucket_start);
+                const bar = (name: string, value: number, scale: number, color: string, formatted: string) => <div key={name} className="grid gap-1 sm:grid-cols-[13rem_minmax(0,1fr)] sm:items-center">
+                  <div className="flex justify-between gap-2 text-sm"><span>{name}</span><strong className="text-right">{formatted}</strong></div>
+                  <div aria-hidden="true" className="h-3 overflow-hidden rounded-full bg-ground"><div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(100, Math.max(0, value / scale * 100))}%` }} /></div>
+                </div>;
+                return <li key={row.bucket_start} className="rounded-xl border border-line p-3">
+                  <h3 className="mb-2 font-semibold">{label}</h3>
+                  <div className="space-y-2">
+                    {bar("Milk paidawar", row.produced_litres, trendLitreScale, "bg-berseem", litres(row.produced_litres))}
+                    {bar("Milk sold", row.sold_litres, trendLitreScale, "bg-berseem/50", litres(row.sold_litres))}
+                    {bar("Total income", row.total_income, trendMoneyScale, "bg-sky-600", rs(row.total_income))}
+                    {bar("Farm kharchay", row.farm_expenses, trendMoneyScale, "bg-udhaar", rs(row.farm_expenses))}
+                    <p className="text-sm">Net munafa / nuqsan: <strong>{rs(row.net_profit)}</strong></p>
+                  </div>
+                </li>;
+              })}
+            </ul> : <p className="text-sm text-muted">Is muddat ka trend data nahi mila.</p>}
+          </Panel>
+
+          <div className="grid gap-4 lg:grid-cols-3 [&>*]:min-w-0">
+            <Panel title="Sab se zyada billed customers">
+              <p className="mb-3 text-sm text-muted">Selected muddat mein saved bill ke mutabiq, asal payment ke mutabiq nahi.</p>
+              {analytics.topCustomers.length ? <ol className="space-y-3">{analytics.topCustomers.map((row, index) => {
+                const maximum = Math.max(1, analytics.topCustomers[0].charges);
+                return <li key={row.customer_id}>
+                  <div className="flex items-center justify-between gap-2 text-sm"><Link className="min-w-0 truncate font-semibold text-berseem underline" href={`/reports/customer/?id=${encodeURIComponent(row.customer_id)}&from=${from}&to=${to}`}>{index + 1}. {row.name}</Link><strong>{rs(row.charges)}</strong></div>
+                  <p className="text-xs text-muted">{litres(row.litres)} · billed</p>
+                  <div aria-hidden="true" className="mt-1 h-2 overflow-hidden rounded-full bg-ground"><div className="h-full rounded-full bg-berseem" style={{ width: `${Math.min(100, row.charges / maximum * 100)}%` }} /></div>
+                </li>;
+              })}</ol> : <p className="text-sm text-muted">Is muddat mein customer billing nahi mili.</p>}
+            </Panel>
+
+            <Panel title="Sab se zyada recorded milk dene walay janwar">
+              <p className="mb-3 text-sm text-muted">Sirf janwar-wise saved shifts. Total-only shifts ko kisi janwar se mansoob nahi kiya.</p>
+              {analytics.topAnimals.length ? <>
+                {analytics.averageRecordedAnimalDayLitres !== null && <p className="mb-3 rounded-xl bg-ground p-3 text-sm">Average per recorded animal-day: <strong>{litres(analytics.averageRecordedAnimalDayLitres)}</strong> · {analytics.recordedAnimalDays} recorded animal-days</p>}
+                <ol className="space-y-3">{analytics.topAnimals.map((row, index) => {
+                  const maximum = Math.max(1, analytics.topAnimals[0].total_litres);
+                  return <li key={row.animal_id ?? row.tag}>
+                    <div className="flex items-center justify-between gap-2 text-sm"><span className="min-w-0 truncate font-semibold">{index + 1}. {row.tag}{row.name ? ` · ${row.name}` : ""}</span><strong>{litres(row.total_litres)}</strong></div>
+                    <p className="text-xs text-muted">{row.recorded_days} recorded days</p>
+                    <div aria-hidden="true" className="mt-1 h-2 overflow-hidden rounded-full bg-ground"><div className="h-full rounded-full bg-berseem" style={{ width: `${Math.min(100, row.total_litres / maximum * 100)}%` }} /></div>
+                  </li>;
+                })}</ol>
+              </> : <p className="text-sm text-muted">Is muddat mein janwar-wise milk record nahi mila.</p>}
+              <Link href="/reports/animal/milk/" className="mt-3 inline-flex min-h-11 items-center font-semibold text-berseem underline">Animal Milk Report kholein →</Link>
+            </Panel>
+
+            <Panel title="Sab se baray expense categories">
+              <p className="mb-3 text-sm text-muted">Saved expense totals; Farm aur ghar/zaati classification alag hai.</p>
+              {analytics.topExpenseCategories.length ? <ol className="space-y-3">{analytics.topExpenseCategories.map((row, index) => {
+                const maximum = Math.max(1, analytics.topExpenseCategories[0].amount);
+                return <li key={`${row.category}-${row.is_farm_cost}`}>
+                  <div className="flex items-center justify-between gap-2 text-sm"><span className="min-w-0 truncate font-semibold">{index + 1}. {row.category}</span><strong>{rs(row.amount)}</strong></div>
+                  <p className="text-xs text-muted">{row.is_farm_cost ? "Farm" : "Ghar / zaati"} · {row.entries} entries</p>
+                  <div aria-hidden="true" className="mt-1 h-2 overflow-hidden rounded-full bg-ground"><div className="h-full rounded-full bg-udhaar" style={{ width: `${Math.min(100, row.amount / maximum * 100)}%` }} /></div>
+                </li>;
+              })}</ol> : <p className="text-sm text-muted">Is muddat mein koi expense nahi mila.</p>}
+              <Link href="/reports/kharcha/" className="mt-3 inline-flex min-h-11 items-center font-semibold text-berseem underline">Kharcha Report kholein →</Link>
+            </Panel>
+          </div>
+
+          <p className="rounded-xl border border-line p-3 text-sm text-muted">Cost aur munafa per litre abhi available nahi: feed stock ki cost har janwar aur milk output se auditable tareeqay se linked nahi. Yeh report andaza nahi lagati.</p>
+        </>}
+
         <Panel title="PDF, Excel, print aur share" className="no-print">
           <div className="flex flex-wrap gap-2">
             {(["pdf", "excel", "share", "print"] as const).map((action) => <button key={action} type="button" disabled={busy !== null} onClick={() => void runExport(action)}
@@ -239,7 +315,7 @@ export default function FinalReport() {
           <Panel title="Farm kharchay aur category">
             <p className="mb-3 text-sm text-muted">Category totals saved Kharcha rows se hain. Inventory purchase aur salary-linked costs ledger mein aik hi martaba shamil hain.</p>
             <div className="overflow-x-auto"><table className="w-full min-w-[500px] text-sm"><thead><tr>{["Category", "Entries", "Raqam"].map((label) => <th key={label} className="border-b border-line px-2 py-2 text-left last:text-right">{label}</th>)}</tr></thead><tbody>
-              {expenseGroups.map((row) => <tr key={row.category}><td className="border-b border-line px-2 py-2">{row.category}</td><td className="border-b border-line px-2 py-2">{row.entries}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.amount)}</td></tr>)}
+              {rankedExpenseGroups.map((row) => <tr key={row.category}><td className="border-b border-line px-2 py-2">{row.category}</td><td className="border-b border-line px-2 py-2">{row.entries}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.amount)}</td></tr>)}
             </tbody></table></div>
             {!expenseGroups.length && <p className="mt-2 text-sm text-muted">Is muddat mein farm kharcha darj nahi hua.</p>}
             <div className="mt-3 flex flex-wrap gap-4 text-sm"><strong>Farm kharchay: {rs(summary!.farm_expenses)}</strong><span>Ghar / zaati alag: {rs(summary!.home_expenses)}</span></div>

@@ -1,8 +1,8 @@
-import { addDays, monthStart } from "./dates";
+import { addDays, daysBetween, monthStart } from "./dates";
 import { loadFinancialReport, type FinancialReportData } from "./financial-report";
 import {
-  loadMilkReportDistributionDaily, loadMilkReportDistributionShifts, loadMilkReportDistributionTotals,
-  type MilkReportDistributionDaily, type MilkReportDistributionShift, type MilkReportDistributionTotals,
+  loadMilkReportAnimalSummary, loadMilkReportDistributionDaily, loadMilkReportDistributionShifts, loadMilkReportDistributionTotals,
+  type MilkReportAnimalSummary, type MilkReportDistributionDaily, type MilkReportDistributionShift, type MilkReportDistributionTotals,
 } from "./reporting";
 import { getOwnerTransferSummary, type OwnerTransferSummary } from "./owner-account-report";
 import { getSupabase } from "./supabase";
@@ -19,12 +19,69 @@ export type FinalReportCashPosition = { closing_cash_bank_balance: number | null
 export type FinalReportExpenseCategory = { category: string; is_farm_cost: boolean; entries: number; amount: number };
 export type FinalReportData = {
   financial: FinancialReportData;
-  milk: { daily: MilkReportDistributionDaily[]; shifts: MilkReportDistributionShift[]; totals: MilkReportDistributionTotals };
+  milk: { daily: MilkReportDistributionDaily[]; shifts: MilkReportDistributionShift[]; totals: MilkReportDistributionTotals; animals: MilkReportAnimalSummary[] };
   ownerTransfers: OwnerTransferSummary;
   khata: FinalReportKhataRow[];
   cashPosition: FinalReportCashPosition;
   expenses: FinalReportExpenseCategory[];
 };
+
+export type FinalReportTrend = {
+  bucket_start: string;
+  produced_litres: number;
+  sold_litres: number;
+  total_income: number;
+  farm_expenses: number;
+  net_profit: number;
+};
+
+export function buildFinalReportAnalytics(data: FinalReportData, from: string, to: string) {
+  const monthly = daysBetween(from, to) >= 90;
+  const buckets = new Map<string, FinalReportTrend>();
+  const getBucket = (day: string) => {
+    const key = monthly ? `${day.slice(0, 7)}-01` : day;
+    let row = buckets.get(key);
+    if (!row) {
+      row = { bucket_start: key, produced_litres: 0, sold_litres: 0, total_income: 0, farm_expenses: 0, net_profit: 0 };
+      buckets.set(key, row);
+    }
+    return row;
+  };
+
+  for (const row of data.financial.trends) {
+    const bucket = getBucket(row.bucket_start);
+    bucket.total_income = Number(row.total_income ?? 0);
+    bucket.farm_expenses = Number(row.farm_expenses ?? 0);
+    bucket.net_profit = Number(row.net_profit ?? 0);
+  }
+  for (const row of data.milk.daily) {
+    const bucket = getBucket(row.report_date);
+    bucket.produced_litres += Number(row.produced_litres ?? 0);
+    bucket.sold_litres += Number(row.khata_litres ?? 0) + Number(row.cash_litres ?? 0);
+  }
+
+  const recordedAnimals = data.milk.animals.filter((row) => !row.is_grand_total && row.recorded_days > 0);
+  const animals = recordedAnimals.filter((row) => row.total_litres > 0)
+    .slice().sort((left, right) => right.total_litres - left.total_litres
+      || left.tag.localeCompare(right.tag, undefined, { sensitivity: "base" }));
+  const recordedAnimalDays = recordedAnimals.reduce((sum, row) => sum + row.recorded_days, 0);
+  const recordedAnimalLitres = recordedAnimals.reduce((sum, row) => sum + row.total_litres, 0);
+
+  return {
+    trendBucket: monthly ? "month" as const : "day" as const,
+    trends: [...buckets.values()].sort((left, right) => left.bucket_start.localeCompare(right.bucket_start)),
+    topAnimals: animals.slice(0, 5),
+    averageRecordedAnimalDayLitres: recordedAnimalDays ? recordedAnimalLitres / recordedAnimalDays : null,
+    recordedAnimalDays,
+    topCustomers: data.khata.filter((row): row is FinalReportKhataRow & { customer_id: string } =>
+      !row.is_grand_total && row.customer_id !== null && row.charges > 0)
+      .slice().sort((left, right) => right.charges - left.charges
+        || left.name.localeCompare(right.name, undefined, { sensitivity: "base" })).slice(0, 5),
+    topExpenseCategories: data.expenses.filter((row) => row.amount > 0)
+      .slice().sort((left, right) => right.amount - left.amount
+        || left.category.localeCompare(right.category, undefined, { sensitivity: "base" })).slice(0, 5),
+  };
+}
 
 export function finalReportRange(preset: FinalReportPreset, today: string): [string, string] {
   if (preset === "previous") {
@@ -93,17 +150,18 @@ export async function loadFinalReportExpenseCategories(from: string, to: string)
 }
 
 export async function loadFinalReport(from: string, to: string): Promise<FinalReportData> {
-  const [financial, daily, shifts, totals, ownerTransfers, khata, cashPosition, expenses] = await Promise.all([
+  const [financial, daily, shifts, totals, animals, ownerTransfers, khata, cashPosition, expenses] = await Promise.all([
     loadFinancialReport(from, to),
     loadMilkReportDistributionDaily(from, to),
     loadMilkReportDistributionShifts(from, to),
     loadMilkReportDistributionTotals(from, to),
+    loadMilkReportAnimalSummary(from, to, null),
     getOwnerTransferSummary(from, to),
     loadFinalReportKhata(from, to),
     loadFinalReportCashPosition(from, to),
     loadFinalReportExpenseCategories(from, to),
   ]);
-  return { financial, milk: { daily, shifts, totals }, ownerTransfers, khata, cashPosition, expenses };
+  return { financial, milk: { daily, shifts, totals, animals }, ownerTransfers, khata, cashPosition, expenses };
 }
 
 const milkDailyColumns = [
@@ -113,6 +171,7 @@ const milkDailyColumns = [
 ];
 
 export function finalReportExportSections(data: FinalReportData, from: string, to: string, generatedAt: string): PdfSection[] {
+  const analytics = buildFinalReportAnalytics(data, from, to);
   const summary = data.financial.period.summary;
   const cashBankBalance = data.cashPosition.closing_cash_bank_balance;
   const customerRows = data.khata.filter((row) => !row.is_grand_total);
@@ -206,5 +265,10 @@ export function finalReportExportSections(data: FinalReportData, from: string, t
     { title: "Kharchay ki tafseel", columns: ["expense_date", "category", "is_farm_cost", "account", "amount", "note"], rows: data.financial.period.expenses.map((row) => ({
       ...row, is_farm_cost: row.is_farm_cost ? "Farm" : "Ghar / zaati",
     })) },
+    { title: analytics.trendBucket === "month" ? "Maahwar farm trend" : "Rozana farm trend", columns: ["bucket_start", "produced_litres", "sold_litres", "total_income", "farm_expenses", "net_profit"], rows: analytics.trends },
+    { title: "Sab se zyada doodh dene walay janwar", columns: ["tag", "name", "litres", "recorded_days"], rows: analytics.topAnimals.map((row) => ({ tag: row.tag, name: row.name, litres: row.total_litres, recorded_days: row.recorded_days })) },
+    { title: "Sab se zyada billed customers", columns: ["customer", "litres", "charges"], rows: analytics.topCustomers.map((row) => ({ customer: row.name, litres: row.litres, charges: row.charges })) },
+    { title: "Sab se baray expense categories", columns: ["category", "classification", "entries", "amount_rs"], rows: analytics.topExpenseCategories.map((row) => ({ category: row.category, classification: row.is_farm_cost ? "Farm" : "Home / personal", entries: row.entries, amount_rs: row.amount })) },
+    { title: "Cost per litre ki availability", columns: ["item", "value"], rows: [{ item: "Feed cost per litre", value: "Unavailable: feed usage is not linked to an auditable per-animal stock cost." }] },
   ];
 }

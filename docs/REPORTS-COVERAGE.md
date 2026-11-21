@@ -15,7 +15,7 @@ leaves it unknown or unavailable instead of inventing a figure.
 | Financial Reports | `/reports/financial/` and `/reports/kharcha/`: database-calculated billed income, other income, farm/personal expenses, receivables, and profit/loss. | No balance sheet or asset/liability valuation; the app does not maintain a complete double-entry accounting model. |
 | Animal Reports | `/reports/animal/` and `/reports/animal/milk/`: herd, animal status, health, breeding, calving, and recorded milk. | Health history records owner-entered information; it is not veterinary diagnosis. |
 | Feed & Inventory Reports | `/reports/inventory/` shows stock, purchases, general/staff usage, adjustments, wastage, and low stock. The `/janwar/` animal list opens per-animal feed history. | Feed cost remains unavailable without traceable stock valuation. Inventory use is not silently assigned to an animal. |
-| Farm Analytics | `/reports/final/` and `/reports/financial/`: selected-period milk, balances, cash position, expenses, and saved profit/loss. | Analytics use available saved records only; unsupported or missing inputs are not replaced with demo estimates. |
+| Farm Analytics | `/reports/final/`: selected-period production and sales trends, top billed customers, top animals from animal-level shifts, expense categories, balances, cash position, and saved profit/loss. | Per-litre cost/profit is unavailable without traceable feed-cost attribution. Total-only milk shifts are not assigned to individual animals. |
 
 ## Delivery phases
 
@@ -28,8 +28,10 @@ leaves it unknown or unavailable instead of inventing a figure.
 - **Phase 3 — Animal, Feed, and Inventory:** implemented for animal reports,
   inventory movements, and per-animal feed history. Feed-cost valuation is not
   claimed until an auditable inventory-cost source exists.
-- **Phase 4 — Farm Analytics:** the Final Report combines available saved data
-  for a selected period. It does not produce unsupported forecasts or figures.
+- **Phase 4 — Farm Analytics:** the Final Report compares saved production and
+  financial buckets and ranks customers, recorded animal-level production, and
+  expense categories. Per-animal averages use only saved animal-day records;
+  total-only shifts and untraceable feed costs are excluded rather than guessed.
 
 The menu links related categories to the same authoritative screen where their
 records overlap. For example, Milk and Sales both point to Milk Report; this is

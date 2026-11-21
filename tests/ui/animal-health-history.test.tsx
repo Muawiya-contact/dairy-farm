@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { expect, it, vi } from "vitest";
-import { farmMocks, renderWithQuery } from "./utils";
+import { beforeEach, expect, it, vi } from "vitest";
+import { farmMocks, renderWithQuery, supabaseMocks } from "./utils";
 import { AnimalHealthHistory } from "@/components/AnimalHealthHistory";
 import type { HealthEvent } from "@/lib/farm-data";
 
@@ -11,6 +11,12 @@ const event = (overrides: Partial<HealthEvent> = {}): HealthEvent => ({
   symptoms: "Limping", diagnosis: "Hoof check by vet", severity: "moderate", current_condition: "Recovering",
   medicine_type: "Topical", dosage: "Vet recorded dose", route: "Topical", treatment_start_date: "2026-10-20", treatment_end_date: null,
   ...overrides,
+});
+
+beforeEach(() => {
+  supabaseMocks.getSupabase.mockReturnValue({
+    rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
+  } as never);
 });
 
 it("filters vaccine/deworming records and shows the full veterinary history and recorded cost total", async () => {
@@ -61,6 +67,31 @@ it("records optional vet details and one linked health expense through the atomi
     treatmentStartDate: null, treatmentEndDate: null,
   }));
   expect(run).toHaveBeenCalledTimes(1);
+});
+
+it("lets an editor save the shared health event while hiding private clinical fields", async () => {
+  const user = userEvent.setup();
+  const rpc = vi.fn().mockResolvedValue({ data: false, error: null });
+  supabaseMocks.getSupabase.mockReturnValue({ rpc } as never);
+  farmMocks.recordHealthEvent.mockReset().mockResolvedValue(undefined);
+  const run = vi.fn(async (task: () => Promise<void>) => task());
+  renderWithQuery(<AnimalHealthHistory animalId="animal-1" events={[]} attachments={[]} categories={[]} accounts={[]} today="2026-10-20" active busy={false} run={run} />);
+
+  expect(await screen.findByText(/sirf farm malik darj kar sakta hai/)).toBeInTheDocument();
+  expect(screen.queryByLabelText("Symptoms / nishaniyan")).not.toBeInTheDocument();
+  await user.type(screen.getByLabelText("Entry ka naam"), "FMD vaccination");
+  await user.type(screen.getByLabelText("Medicine / vaccine product"), "Vaccine batch 4");
+  await user.type(screen.getByLabelText("Veterinarian"), "Dr. Farm");
+  await user.type(screen.getByLabelText("Notes"), "Routine vaccination");
+  fireEvent.submit(screen.getByRole("button", { name: "Health entry save" }).closest("form")!);
+
+  await waitFor(() => expect(farmMocks.recordHealthEvent).toHaveBeenCalledWith(expect.objectContaining({
+    animalId: "animal-1", title: "FMD vaccination", medicine: "Vaccine batch 4", veterinarian: "Dr. Farm",
+    notes: "Routine vaccination", symptoms: null, diagnosis: null, severity: null, currentCondition: null,
+    medicineType: null, dosage: null, route: null, treatmentStartDate: null, treatmentEndDate: null,
+  })));
+  expect(run).toHaveBeenCalledOnce();
+  expect(rpc).toHaveBeenCalledWith("can_manage_veterinary_details");
 });
 
 it("explains invalid treatment ranges and follow-up dates before saving", async () => {

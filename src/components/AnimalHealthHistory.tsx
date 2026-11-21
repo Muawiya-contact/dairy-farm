@@ -1,7 +1,8 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
-import { money, recordHealthEvent, shortDate, type Account, type ExpenseCategory, type HealthEvent, type HealthEventAttachment } from "@/lib/farm-data";
+import { canManageVeterinaryDetails, money, recordHealthEvent, shortDate, type Account, type ExpenseCategory, type HealthEvent, type HealthEventAttachment } from "@/lib/farm-data";
 import { parseAmount } from "@/lib/format";
 import { friendlyError } from "@/lib/errors";
 import { signedHealthAttachmentUrl, uploadHealthAttachment, validateHealthAttachment } from "@/lib/animal-health-attachments";
@@ -78,6 +79,12 @@ export function AnimalHealthHistory({ animalId, events, attachments, categories,
   const [cost, setCost] = useState(0);
   const [validationMessage, setValidationMessage] = useState("");
   const [filter, setFilter] = useState<HealthFilter>("all");
+  const veterinaryDetailsAccess = useQuery({
+    queryKey: ["veterinary-details-access"],
+    queryFn: canManageVeterinaryDetails,
+    refetchOnMount: "always",
+  });
+  const canManagePrivateDetails = veterinaryDetailsAccess.data === true && !veterinaryDetailsAccess.isFetching;
   const history = [...events].filter((event) => filter === "all" || event.kind === filter)
     .sort((a, b) => b.event_date.localeCompare(a.event_date) || b.created_at.localeCompare(a.created_at));
   const totalCost = events.reduce((sum, event) => sum + Number(event.cost || 0), 0);
@@ -116,15 +123,15 @@ export function AnimalHealthHistory({ animalId, events, attachments, categories,
         medicine: String(values.get("medicine") || "").trim() || null,
         veterinarian: String(values.get("vet") || "").trim() || null,
         notes: String(values.get("notes") || "").trim() || null,
-        symptoms: String(values.get("symptoms") || "").trim() || null,
-        diagnosis: String(values.get("diagnosis") || "").trim() || null,
-        severity: String(values.get("severity") || "") || null,
-        currentCondition: String(values.get("current_condition") || "").trim() || null,
-        medicineType: String(values.get("medicine_type") || "").trim() || null,
-        dosage: String(values.get("dosage") || "").trim() || null,
-        route: String(values.get("route") || "").trim() || null,
-        treatmentStartDate: start,
-        treatmentEndDate: end,
+        symptoms: canManagePrivateDetails ? String(values.get("symptoms") || "").trim() || null : null,
+        diagnosis: canManagePrivateDetails ? String(values.get("diagnosis") || "").trim() || null : null,
+        severity: canManagePrivateDetails ? String(values.get("severity") || "") || null : null,
+        currentCondition: canManagePrivateDetails ? String(values.get("current_condition") || "").trim() || null : null,
+        medicineType: canManagePrivateDetails ? String(values.get("medicine_type") || "").trim() || null : null,
+        dosage: canManagePrivateDetails ? String(values.get("dosage") || "").trim() || null : null,
+        route: canManagePrivateDetails ? String(values.get("route") || "").trim() || null : null,
+        treatmentStartDate: canManagePrivateDetails ? start : null,
+        treatmentEndDate: canManagePrivateDetails ? end : null,
       });
       form.reset();
       setCost(0);
@@ -147,16 +154,25 @@ export function AnimalHealthHistory({ animalId, events, attachments, categories,
       <label className="text-sm font-semibold">Entry ka naam<input name="title" required maxLength={180} placeholder="Misal: FMD vaccination" className={field} disabled={busy} /></label>
       <label className="text-sm font-semibold">Entry ki qism<select name="kind" aria-label="Health record type" className={field} disabled={busy}>{Object.entries(kindLabel).map(([kind, label]) => <option value={kind} key={kind}>{label}</option>)}</select></label>
       <label className="text-sm font-semibold">Tareekh<input name="date" type="date" required max={today} defaultValue={today} className={field} disabled={busy} /></label>
-      <label className="text-sm font-semibold">Symptoms / nishaniyan<textarea name="symptoms" maxLength={1000} className={field} rows={2} disabled={busy} /></label>
-      <label className="text-sm font-semibold">Vet ki likhi tashkhees<input name="diagnosis" maxLength={300} className={field} disabled={busy} /></label>
-      <label className="text-sm font-semibold">Shiddat (optional)<select name="severity" defaultValue="" className={field} disabled={busy}><option value="">Darj nahi</option><option value="mild">Halki</option><option value="moderate">Darmiyani</option><option value="severe">Zyada</option></select></label>
-      <label className="text-sm font-semibold">Maujooda haalat<input name="current_condition" maxLength={300} placeholder="Vet/owner ke notes" className={field} disabled={busy} /></label>
+      {canManagePrivateDetails ? <fieldset className="grid gap-2 rounded-lg border border-line p-3 sm:col-span-2 lg:col-span-3 sm:grid-cols-2 lg:grid-cols-3">
+        <legend className="px-1 text-sm font-semibold">Malik ki private vet tafseel</legend>
+        <label className="text-sm font-semibold">Symptoms / nishaniyan<textarea name="symptoms" maxLength={1000} className={field} rows={2} disabled={busy} /></label>
+        <label className="text-sm font-semibold">Vet ki likhi tashkhees<input name="diagnosis" maxLength={300} className={field} disabled={busy} /></label>
+        <label className="text-sm font-semibold">Shiddat (optional)<select name="severity" defaultValue="" className={field} disabled={busy}><option value="">Darj nahi</option><option value="mild">Halki</option><option value="moderate">Darmiyani</option><option value="severe">Zyada</option></select></label>
+        <label className="text-sm font-semibold">Maujooda haalat<input name="current_condition" maxLength={300} placeholder="Vet/owner ke notes" className={field} disabled={busy} /></label>
+        <label className="text-sm font-semibold">Medicine ki qisam<input name="medicine_type" maxLength={120} placeholder="Vet ke mutabiq" className={field} disabled={busy} /></label>
+        <label className="text-sm font-semibold">Dose<input name="dosage" maxLength={120} placeholder="Vet ke likhay mutabiq" className={field} disabled={busy} /></label>
+        <label className="text-sm font-semibold">Dene ka tareeqa<input name="route" maxLength={120} placeholder="Agar maloom ho" className={field} disabled={busy} /></label>
+        <label className="text-sm font-semibold">Treatment start<input name="treatment_start_date" type="date" className={field} disabled={busy} /></label>
+        <label className="text-sm font-semibold">Treatment end<input name="treatment_end_date" type="date" className={field} disabled={busy} /></label>
+      </fieldset> : <p className="text-xs text-muted sm:col-span-2 lg:col-span-3">
+        {veterinaryDetailsAccess.isError
+          ? "Private vet tafseel ka access nahi mila; aam health record save kar sakte hain."
+          : veterinaryDetailsAccess.isPending || veterinaryDetailsAccess.isFetching
+            ? "Private vet tafseel ka access check ho raha hai."
+            : "Nishaniyan, tashkhees aur dose sirf farm malik darj kar sakta hai. Authorized editor aam health record save kar sakte hain."}
+      </p>}
       <label className="text-sm font-semibold">Medicine / vaccine product<input name="medicine" maxLength={180} placeholder="Product ka naam" className={field} disabled={busy} /></label>
-      <label className="text-sm font-semibold">Medicine ki qisam<input name="medicine_type" maxLength={120} placeholder="Vet ke mutabiq" className={field} disabled={busy} /></label>
-      <label className="text-sm font-semibold">Dose<input name="dosage" maxLength={120} placeholder="Vet ke likhay mutabiq" className={field} disabled={busy} /></label>
-      <label className="text-sm font-semibold">Dene ka tareeqa<input name="route" maxLength={120} placeholder="Agar maloom ho" className={field} disabled={busy} /></label>
-      <label className="text-sm font-semibold">Treatment start<input name="treatment_start_date" type="date" className={field} disabled={busy} /></label>
-      <label className="text-sm font-semibold">Treatment end<input name="treatment_end_date" type="date" className={field} disabled={busy} /></label>
       <label className="text-sm font-semibold">Veterinarian<input name="vet" maxLength={180} className={field} disabled={busy} /></label>
       <label className="text-sm font-semibold">Agli due tareekh<input name="next_due_date" type="date" className={field} disabled={busy} /></label>
       <label className="text-sm font-semibold">Kharcha Rs<input name="cost" type="number" min="0" step="0.01" aria-label="Kharcha" className={field} onChange={(event) => setCost(Number(event.target.value) || 0)} disabled={busy} /></label>

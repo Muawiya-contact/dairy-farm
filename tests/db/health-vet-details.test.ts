@@ -21,6 +21,13 @@ beforeAll(async () => {
 afterAll(async () => { await db?.close(); await demoDb?.close(); });
 beforeEach(async () => { await db.exec("reset role; reset request.jwt.claim.sub"); });
 
+async function setOwner(owner: string) {
+  await db.exec(`insert into auth.users(id) values('${owner}') on conflict do nothing;
+    insert into private.app_owner(singleton,user_id) values(true,'${owner}')
+      on conflict (singleton) do update set user_id=excluded.user_id;
+    set role authenticated; set request.jwt.claim.sub='${owner}';`);
+}
+
 test("owner-only migration preserves veterinary details already recorded", async () => {
   const migrationDb = await freshFarmDb({ farmDay: "2026-10-20", stopAfterMigration: "20261121000009_health_attachment_demo_owner_guard.sql" });
   try {
@@ -45,6 +52,7 @@ test("owner-only migration preserves veterinary details already recorded", async
 });
 
 test("detailed veterinary history links its cost once and keeps unknown details optional", async () => {
+  await setOwner("11111111-1111-4111-8111-111111111111");
   const { rows } = await db.query<{ id: string }>(`select public.record_detailed_health_event(
     $1,$2,'treatment','Hoof check',175,$3,$4,$5,'Oxytetracycline','Dr. Farm','Keep dry',
     'Limping after the walk','Hoof injury','moderate','Under treatment','Antibiotic','As prescribed',
@@ -80,20 +88,59 @@ test("a failed detailed health insert rolls back its expense as well", async () 
   expect((await db.query<{ count: number }>("select count(*)::int as count from expenses")).rows[0].count).toBe(before);
 });
 
+test("an editor can save the shared event and expense while private details stay owner-only", async () => {
+  const owner = "11111111-1111-4111-8111-111111111111";
+  const editor = "22222222-2222-4222-8222-222222222222";
+  await db.exec(`insert into auth.users(id) values('${owner}'),('${editor}') on conflict do nothing;
+    insert into private.app_owner(singleton,user_id) values(true,'${owner}')
+      on conflict (singleton) do update set user_id=excluded.user_id;
+    insert into private.app_editors(user_id) values('${editor}') on conflict do nothing;
+    set role authenticated; set request.jwt.claim.sub='${editor}';`);
+  expect((await db.query("select public.can_manage_veterinary_details() as allowed")).rows).toEqual([{ allowed: false }]);
+
+  const { rows } = await db.query<{ id: string }>(`select public.record_detailed_health_event(
+    $1,'2026-10-20','treatment','Editor hoof check',85,null,$2,$3,'Medicine','Dr. Farm','Shared note',
+    'Private symptoms','Private diagnosis','moderate','Private condition','Private medicine type','Private dose',
+    'Private route','2026-10-18','2026-10-22') as id`, [animal, category, account]);
+  const eventId = rows[0].id;
+  expect((await db.query(`select h.title,h.cost,h.expense_id,e.amount
+    from public.health_events h join public.expenses e on e.id=h.expense_id where h.id=$1`, [eventId])).rows[0])
+    .toMatchObject({ title: "Editor hoof check", cost: "85.00", expense_id: expect.any(String), amount: "85.00" });
+  expect((await db.query("select health_event_id from public.health_event_details where health_event_id=$1", [eventId])).rows).toEqual([]);
+
+  await db.exec("reset role; set role authenticated; set request.jwt.claim.sub='11111111-1111-4111-8111-111111111111';");
+  expect((await db.query("select public.can_manage_veterinary_details() as allowed")).rows).toEqual([{ allowed: true }]);
+  expect((await db.query("select health_event_id from public.health_event_details where health_event_id=$1", [eventId])).rows).toEqual([]);
+});
+
+test("the private detail access check is anonymous only in an explicitly enabled demo", async () => {
+  await db.exec("set role anon");
+  await expect(db.query("select public.can_manage_veterinary_details()"))
+    .rejects.toThrow(/permission denied/);
+  await db.exec("reset role");
+  await demoDb.exec("set role anon");
+  expect((await demoDb.query("select public.can_manage_veterinary_details() as allowed")).rows)
+    .toEqual([{ allowed: true }]);
+  await demoDb.exec("reset role");
+});
+
 test("attachment records and private objects are visible only to the designated farm owner", async () => {
+  await setOwner("11111111-1111-4111-8111-111111111111");
   const { rows } = await db.query<{ id: string }>(`select public.record_detailed_health_event(
     $1,'2026-10-20','vaccine','FMD',0,null,null,null,'Product','Vet',null,'Clinical symptoms','Vet diagnosis',
     'mild',null,'Vaccine',null,null,null,null) as id`, [animal]);
   const eventId = rows[0].id;
+  await db.exec("reset role");
   expect((await db.query<{ public: boolean; file_size_limit: number; allowed_mime_types: string[] }>(
     "select public,file_size_limit,allowed_mime_types from storage.buckets where id='health-records'",
   )).rows[0]).toEqual({ public: false, file_size_limit: 10485760, allowed_mime_types: ["application/pdf", "image/jpeg", "image/png"] });
   const attachmentId = "33333333-3333-4333-8333-333333333333";
   const owner = "11111111-1111-4111-8111-111111111111";
   const stranger = "22222222-2222-4222-8222-222222222222";
-  await db.exec(`insert into auth.users(id) values('${owner}'),('${stranger}');
-    insert into private.app_editors(user_id) values('${stranger}');
-    insert into private.app_owner(user_id) values('${owner}');
+  await db.exec(`insert into auth.users(id) values('${owner}'),('${stranger}') on conflict do nothing;
+    insert into private.app_editors(user_id) values('${stranger}') on conflict do nothing;
+    insert into private.app_owner(singleton,user_id) values(true,'${owner}')
+      on conflict (singleton) do update set user_id=excluded.user_id;
     set role authenticated; set request.jwt.claim.sub='${owner}';`);
   await db.query(`insert into storage.objects(bucket_id,name) values('health-records',$1)`,
     [`${eventId}/${attachmentId}.pdf`]);

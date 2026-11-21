@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { expect, it, vi } from "vitest";
-import { fixtures, farmMocks, makeFarmData, renderWithQuery } from "./utils";
+import { beforeEach, expect, it, vi } from "vitest";
+import { fixtures, farmMocks, makeFarmData, renderWithQuery, supabaseMocks } from "./utils";
 import FarmAnimals from "@/components/FarmAnimals";
 
 const route = vi.hoisted(() => ({ id: "animal-1" }));
@@ -11,6 +11,12 @@ vi.mock("@/lib/pdf-share", () => ({ sharePdfFile: documentMocks.sharePdfFile }))
 vi.mock("@/lib/export-data", async (original) => ({
   ...(await original<typeof import("@/lib/export-data")>()), downloadBlob: documentMocks.downloadBlob,
 }));
+
+beforeEach(() => {
+  supabaseMocks.getSupabase.mockReturnValue({
+    rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
+  } as never);
+});
 
 it("shows life, production, breeding, and health as separate dimensions", () => {
   farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({

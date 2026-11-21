@@ -433,3 +433,9 @@ export async function recordHealthEvent(input: {
   const { error } = await getSupabase().rpc("record_detailed_health_event", args as unknown as Database["public"]["Functions"]["record_detailed_health_event"]["Args"]);
   if (error) throw error;
 }
+
+export async function canManageVeterinaryDetails(): Promise<boolean> {
+  const { data, error } = await getSupabase().rpc("can_manage_veterinary_details");
+  if (error) throw error;
+  return data;
+}

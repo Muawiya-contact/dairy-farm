@@ -1690,6 +1690,10 @@ export type Database = {
           opening: number
         }[]
       }
+      can_manage_veterinary_details: {
+        Args: never
+        Returns: boolean
+      }
       galla_daily_closing: {
         Args: { p_account: string; p_date: string }
         Returns: {

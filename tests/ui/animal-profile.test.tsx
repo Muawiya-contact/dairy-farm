@@ -64,6 +64,23 @@ it("keeps an exited animal's health history without showing actionable due tasks
   expect(container.querySelector(".animal-profile-print")).toHaveTextContent("Hoof care");
 });
 
+it("uses creation time and ID to label the latest same-day health entry", () => {
+  farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({
+    animalStatus: [],
+    health: [
+      { id: "health-a", animal_id: fixtures.cow.id, event_date: "2026-10-15", created_at: "2026-10-15T10:00:00Z",
+        kind: "treatment", title: "Older entry", medicine: null, vet: null, notes: null, cost: 0, next_due_date: null, expense_id: null },
+      { id: "health-b", animal_id: fixtures.cow.id, event_date: "2026-10-15", created_at: "2026-10-15T11:00:00Z",
+        kind: "treatment", title: "Latest entry", medicine: null, vet: null, notes: null, cost: 0, next_due_date: null, expense_id: null },
+    ],
+  }), error: null });
+  renderWithQuery(<FarmAnimals />);
+
+  const latestHealth = screen.getByText("Aakhri sehat entry").parentElement;
+  expect(latestHealth).toHaveTextContent("Latest entry");
+  expect(latestHealth).not.toHaveTextContent("Older entry");
+});
+
 it("does not show a zero animal average for a total-only milk shift", () => {
   farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({
     animalStatus: [],

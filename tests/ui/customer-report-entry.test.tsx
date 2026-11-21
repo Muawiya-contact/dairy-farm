@@ -3,7 +3,6 @@ import { expect, it, vi } from "vitest";
 import { renderWithQuery } from "./utils";
 import CustomerReportEntry from "@/components/CustomerReportEntry";
 
-vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(window.location.search) }));
 vi.mock("@/components/FarmCustomers", () => ({ default: () => <h1>Customer statement detail</h1> }));
 vi.mock("@/components/KhataSummaryReport", () => ({ default: ({ title }: { title: string }) => <h1>{title} summary page</h1> }));
 

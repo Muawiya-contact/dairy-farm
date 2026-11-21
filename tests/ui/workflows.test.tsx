@@ -111,6 +111,39 @@ it("requires a reason before correcting a saved milk shift and sends one audited
   expect(farmMocks.saveMilkEntry).not.toHaveBeenCalled();
 });
 
+it("keeps an explicitly saved zero per-animal row when correcting a shift", async () => {
+  const user = userEvent.setup();
+  farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({
+    shifts: [{ id: "shift-1", milk_date: fixtures.today, shift: "morning", total_litres: 0, mode: "per_animal", notes: null, updated_at: "2026-10-16T12:00:00Z" }],
+    animalMilk: [{ id: "animal-milk-1", shift_id: "shift-1", animal_id: fixtures.cow.id, litres: 0 }],
+  }), error: null });
+  renderWithQuery(<FarmMilk />);
+  expect(screen.getByRole("spinbutton", { name: "101 litres" })).toHaveValue(0);
+  await user.type(screen.getByRole("textbox", { name: "Miktar durust karne ki wajah" }), "Zero was checked");
+  await user.click(screen.getByRole("button", { name: "Durust entry save karein" }));
+  await waitFor(() => expect(farmMocks.correctMilkEntry).toHaveBeenCalledWith(expect.objectContaining({
+    mode: "per_animal", total: 0, animals: [{ animal_id: fixtures.cow.id, litres: 0 }], reason: "Zero was checked",
+  })));
+});
+
+it("keeps a zero milk reading when the animal decrement reaches zero", async () => {
+  const user = userEvent.setup();
+  const secondCow = { ...fixtures.cow, id: "animal-2", tag: "102", name: "Gaye 102" };
+  farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({ animals: [fixtures.cow, secondCow] }), error: null });
+  renderWithQuery(<FarmMilk />);
+
+  await user.click(screen.getByRole("button", { name: "Har janwar" }));
+  await user.click(screen.getByRole("button", { name: "101 zyada" }));
+  await user.click(screen.getByRole("button", { name: "101 kam" }));
+  expect(screen.getByRole("spinbutton", { name: "101 litres" })).toHaveValue(0);
+  expect(screen.getByRole("spinbutton", { name: "102 litres" })).toHaveValue(null);
+
+  await user.click(screen.getByRole("button", { name: "Entry save karein" }));
+  await waitFor(() => expect(farmMocks.saveMilkEntry).toHaveBeenCalledWith(expect.objectContaining({
+    mode: "per_animal", total: 0, animals: [{ animal_id: fixtures.cow.id, litres: 0 }],
+  })));
+});
+
 it("shows the noon tab and prefills the customer's noon default", async () => {
   const user = userEvent.setup();
   farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({ customers: [{ ...fixtures.customer,

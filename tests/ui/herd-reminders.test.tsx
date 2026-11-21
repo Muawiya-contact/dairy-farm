@@ -28,3 +28,26 @@ it("moves the reminder banner aside while the list is open and restores it for d
   await user.click(screen.getByRole("button", { name: "Theek hai" }));
   expect(screen.queryByRole("status")).not.toBeInTheDocument();
 });
+
+it("shows and locally acknowledges a production-drop alert without a milk write", async () => {
+  const user = userEvent.setup();
+  const rpc = vi.fn().mockResolvedValue({
+    data: [{ animal_id: "cow-1", alert_kind: "milk_drop_morning", due_date: "2026-10-20",
+      tag: "101", message: "101: subah ka doodh 7 din ke ausat se kam — ausat 10.00 L, aaj 8.00 L; 2.00 L (20.0%) kam — 20 Oct",
+      days_left: 0, severity: "today" }],
+    error: null,
+  });
+  supabaseMocks.getSupabase.mockReturnValue({ rpc });
+  renderWithQuery(<HerdReminders />);
+
+  expect(await screen.findByRole("status")).toHaveTextContent("1 aaj");
+  await user.click(screen.getByRole("button", { name: "Dekhein" }));
+  expect(screen.getByRole("region", { name: "Nasl aur sehat ki yaad-dihaniyan" }))
+    .toHaveTextContent("ausat 10.00 L, aaj 8.00 L; 2.00 L (20.0%) kam");
+  await user.click(screen.getByRole("button", { name: "1 yaad-dihaniyan" }));
+  await user.click(screen.getByRole("button", { name: "Theek hai" }));
+
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  expect(rpc).toHaveBeenCalledTimes(1);
+  expect(rpc).toHaveBeenCalledWith("herd_alerts", { p_today: expect.any(String) });
+});

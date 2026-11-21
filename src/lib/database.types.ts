@@ -1275,6 +1275,7 @@ export type Database = {
         Row: {
           reminder_days: number
           calving_reminder_days: number
+          milk_drop_threshold_percent: number
           calving_days: number
           checkup_days: number
           contact_phone: string
@@ -1295,6 +1296,7 @@ export type Database = {
         Insert: {
           reminder_days?: number
           calving_reminder_days?: number
+          milk_drop_threshold_percent?: number
           calving_days?: number
           checkup_days?: number
           contact_phone?: string
@@ -1315,6 +1317,7 @@ export type Database = {
         Update: {
           reminder_days?: number
           calving_reminder_days?: number
+          milk_drop_threshold_percent?: number
           calving_days?: number
           checkup_days?: number
           contact_phone?: string

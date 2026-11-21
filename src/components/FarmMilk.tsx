@@ -90,8 +90,8 @@ function ShiftForm({ data, date, shift }: { data: FarmData; date: string; shift:
   const [mode, setMode] = useState<"total" | "per_animal">(existing?.mode ?? "total");
   const [total, setTotal] = useState(existing ? String(existing.total_litres) : "");
   const [perAnimal, setPerAnimal] = useState<Record<string, string>>(() => Object.fromEntries(milkers.map((a) => {
-    const litres = amount(data.animalMilk.find((x) => x.shift_id === existing?.id && x.animal_id === a.id)?.litres);
-    return [a.id, litres ? String(litres) : ""];
+    const saved = data.animalMilk.find((x) => x.shift_id === existing?.id && x.animal_id === a.id);
+    return [a.id, saved ? String(amount(saved.litres)) : ""];
   })));
   const [qty, setQty] = useState<Record<string, string>>(() => Object.fromEntries(visibleCustomers.map((c) => {
     const litres = amount(data.deliveries.find((x) => x.delivery_date === date && x.shift === shift && x.customer_id === c.id)?.litres ?? (existing ? 0 : shift === "morning" ? c.default_morning : shift === "noon" ? c.default_noon : c.default_evening));
@@ -141,7 +141,7 @@ function ShiftForm({ data, date, shift }: { data: FarmData; date: string; shift:
   const step = (id: string, change: number, animal = false) => {
     if (animal) setPerAnimal((current) => {
       const next = Math.min(60, Math.max(0, Math.round(((Number(current[id]) || 0) + change) * 100) / 100));
-      return { ...current, [id]: next ? String(next) : "" };
+      return { ...current, [id]: next ? String(next) : current[id]?.trim() ? "0" : "" };
     });
     else setQty((current) => {
       const next = Math.min(3000, Math.max(0, Math.round(((Number(current[id]) || 0) + change) * 100) / 100));

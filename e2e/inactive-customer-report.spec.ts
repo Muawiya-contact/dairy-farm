@@ -23,6 +23,9 @@ test("inactive customer report finds no-purchase customers and exports the filte
   const table = page.getByRole("table");
   await expect(table.getByRole("row")).toHaveCount(2);
   await expect(table).toContainText("+923001234567");
+  await page.getByRole("searchbox", { name: "Inactive customer search" }).fill("0300 123 4567");
+  await expect(table.getByRole("row")).toHaveCount(2);
+  await expect(table.getByRole("link", { name, exact: true })).toBeVisible();
 
   const [pdf] = await Promise.all([
     page.waitForEvent("download"),

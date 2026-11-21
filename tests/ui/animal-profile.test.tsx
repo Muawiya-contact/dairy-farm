@@ -130,7 +130,7 @@ it("prints the profile from its explicit print action", async () => {
   expect(printDetails).toHaveTextContent("Gaabhan");
   expect(printDetails).toHaveTextContent("Joray");
   expect(printDetails).toHaveTextContent("Mada");
-  expect(printDetails).toHaveTextContent("Vaccine");
+  expect(printDetails).toHaveTextContent("Teeka");
   expect(printDetails).not.toHaveTextContent("pregnant");
   expect(printDetails).not.toHaveTextContent("twins");
   expect(printDetails).not.toHaveTextContent("female");

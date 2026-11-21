@@ -65,6 +65,7 @@ test("attachment records and private objects are visible only to the designated 
   const owner = "11111111-1111-4111-8111-111111111111";
   const stranger = "22222222-2222-4222-8222-222222222222";
   await db.exec(`insert into auth.users(id) values('${owner}'),('${stranger}');
+    insert into private.app_editors(user_id) values('${stranger}');
     insert into private.app_owner(user_id) values('${owner}');
     set role authenticated; set request.jwt.claim.sub='${owner}';`);
   await db.query(`insert into storage.objects(bucket_id,name) values('health-records',$1)`,
@@ -79,6 +80,8 @@ test("attachment records and private objects are visible only to the designated 
   expect((await db.query("select id from public.health_event_attachments")).rows).toEqual([]);
   expect((await db.query("select name from storage.objects where bucket_id='health-records'")).rows).toEqual([]);
   expect((await db.query("delete from storage.objects where bucket_id='health-records' returning name")).rows).toEqual([]);
+  await expect(db.query("insert into storage.objects(bucket_id,name) values('health-records',$1)",
+    [`${eventId}/77777777-7777-4777-8777-777777777777.pdf`])).rejects.toThrow();
   await expect(db.query(`insert into public.health_event_attachments(health_event_id,storage_path,file_name,content_type,size_bytes)
     values($1,$2,'private.pdf','application/pdf',900)`, [eventId, `${eventId}/44444444-4444-4444-8444-444444444444.pdf`]))
     .rejects.toThrow();
@@ -112,8 +115,30 @@ test("explicit staging demo access permits its synthetic anonymous health attach
   await demoDb.query("insert into storage.objects(bucket_id,name) values('health-records',$1)", [objectPath]);
   await demoDb.query(`insert into public.health_event_attachments(health_event_id,storage_path,file_name,content_type,size_bytes)
     values($1,$2,'demo-report.pdf','application/pdf',900)`, [eventId, objectPath]);
-  expect((await demoDb.query("select id from public.health_event_attachments")).rows).toHaveLength(1);
+  expect((await demoDb.query("select id from public.health_event_attachments where health_event_id=$1", [eventId])).rows).toHaveLength(1);
   expect((await demoDb.query("select name from storage.objects where bucket_id='health-records'")).rows).toEqual([{ name: objectPath }]);
+});
+
+test("demo attachments stay anonymous and are hidden from authenticated non-owners", async () => {
+  const demoAnimal = (await demoDb.query<{ id: string }>("insert into animals(tag,arrival_date) values('DEMO-PRIVATE','2025-01-01') returning id")).rows[0].id;
+  const eventId = (await demoDb.query<{ id: string }>(`select public.record_detailed_health_event(
+    $1,'2026-10-20','vaccine','Private demo vaccine',0,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null) as id`,
+  [demoAnimal])).rows[0].id;
+  const objectPath = `${eventId}/77777777-7777-4777-8777-777777777777.pdf`;
+  await demoDb.exec("set role anon;");
+  await demoDb.query("insert into storage.objects(bucket_id,name) values('health-records',$1)", [objectPath]);
+  await demoDb.query(`insert into public.health_event_attachments(health_event_id,storage_path,file_name,content_type,size_bytes)
+    values($1,$2,'demo-private.pdf','application/pdf',900)`, [eventId, objectPath]);
+  expect((await demoDb.query("select id from public.health_event_attachments where health_event_id=$1", [eventId])).rows).toHaveLength(1);
+
+  const stranger = "88888888-8888-4888-8888-888888888888";
+  await demoDb.exec(`reset role; insert into auth.users(id) values('${stranger}');
+    set role authenticated; set request.jwt.claim.sub='${stranger}';`);
+  expect((await demoDb.query("select id from public.health_event_attachments")).rows).toEqual([]);
+  expect((await demoDb.query("select name from storage.objects where bucket_id='health-records'")).rows).toEqual([]);
+  await expect(demoDb.query(`insert into public.health_event_attachments(health_event_id,storage_path,file_name,content_type,size_bytes)
+    values($1,$2,'private.pdf','application/pdf',900)`,
+  [eventId, `${eventId}/99999999-9999-4999-8999-999999999999.pdf`])).rejects.toThrow();
 });
 
 test("expired subscriptions block new attachment metadata for the farm owner", async () => {

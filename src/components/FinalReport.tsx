@@ -161,7 +161,7 @@ export default function FinalReport() {
 
         {analytics && <>
           <Panel title={analytics.trendBucket === "month" ? "Maahwar farm trend" : "Rozana farm trend"}>
-            <p className="mb-3 text-sm text-muted">Milk ki paidawar saved shifts se hai. Income aur farm kharchay database ke financial report se hain. Chuni muddat 90 din se chhoti ho to rozana, warna maahwar dikhai jati hai.</p>
+            <p className="mb-3 text-sm text-muted">Milk ki paidawar saved shifts se hai. Income aur farm kharchay database ke financial report se hain. Pehli aur aakhri tareekh ka farq 90 din se kam ho to trend rozana, warna maahwar dikhaya jata hai.</p>
             {analytics.trends.length > 0 ? <ul className="space-y-4">
               {analytics.trends.map((row) => {
                 const label = analytics.trendBucket === "month" ? formatMonth(row.bucket_start) : formatDay(row.bucket_start);

@@ -98,3 +98,10 @@ it("keeps short-range financial trend buckets daily and handles missing animal-l
   expect(analytics.averageRecordedAnimalDayLitres).toBeNull();
   expect(analytics.topAnimals).toEqual([]);
 });
+
+it("switches the trend bucket at a 90-day date difference", () => {
+  const data = { financial: { trends: [] }, milk: { daily: [], animals: [] }, khata: [], expenses: [] } as unknown as FinalReportData;
+
+  expect(buildFinalReportAnalytics(data, "2026-01-01", "2026-03-31").trendBucket).toBe("day");
+  expect(buildFinalReportAnalytics(data, "2026-01-01", "2026-04-01").trendBucket).toBe("month");
+});

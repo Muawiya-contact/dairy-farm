@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildAnimalDossierPdf, buildAnimalDossierWorkbook, type AnimalDossier } from "@/lib/animal-dossier";
-import type { Animal, AnimalCareTask, Calving, CalvingOffspring, HealthEvent, HealthEventAttachment } from "@/lib/farm-data";
+import type { Animal, AnimalCareTask, AnimalFeedRecord, AnimalIncomeEntry, Calving, CalvingOffspring, HealthEvent, HealthEventAttachment } from "@/lib/farm-data";
 import type { LoadedFarmSettings } from "@/lib/settings";
 
 const cow = (id: string, tag: string): Animal => ({
@@ -13,9 +13,9 @@ const cow = (id: string, tag: string): Animal => ({
 
 const input: AnimalDossier = {
   animal: cow("animal-one", "A-101"), animals: [cow("animal-one", "A-101"), cow("other", "B-202")],
-  farm: { id: 1, farm_name: "Test Farm", owner_name: "Farm Owner", contact_phone: "+923001234567", go_live_date: "2026-01-01" } as LoadedFarmSettings,
+  farm: { id: 1, farm_name: "Test Farm", owner_name: "Farm Owner", contact_phone: "+923001234567", go_live_date: "2026-01-01", default_milk_rate: 150 } as LoadedFarmSettings,
   today: "2026-11-21", status: { life: "active", production: "milking", breeding: "open", health: "no-record", healthDueDate: null },
-  health: [], healthAttachments: [], activeAlerts: [], inseminations: [], calvings: [], offspring: [], animalWeights: [], dueTasks: [], milkShifts: [], careTasks: [],
+  health: [], healthAttachments: [], activeAlerts: [], inseminations: [], calvings: [], offspring: [], animalWeights: [], animalFeed: [], animalIncome: [], dueTasks: [], milkShifts: [], careTasks: [],
   milk: [{ date: "2026-11-20", shift: "Morning", litres: 6.5 }],
 };
 
@@ -132,19 +132,56 @@ describe("animal dossier exports", () => {
 
   it("sums fractional health costs in paise for both dossier exports", async () => {
     const health = [0.1, 0.2].map((cost, index) => ({
-      id: `health-${index + 1}`, animal_id: "animal-one", event_date: `2026-11-${19 + index}`,
+      id: `health-${index + 1}`, animal_id: "animal-one", expense_id: `expense-${index + 1}`, event_date: `2026-11-${19 + index}`,
       kind: "treatment", title: `Treatment ${index + 1}`, medicine: null, vet: null, notes: null,
-      cost, next_due_date: null, expense_id: null, created_at: `2026-11-${19 + index}T00:00:00Z`,
+      cost, next_due_date: null, created_at: `2026-11-${19 + index}T00:00:00Z`,
     } satisfies HealthEvent));
     const dossier = { ...input, health };
     const bytes = await buildAnimalDossierWorkbook(dossier);
     const ExcelJS = (await import("exceljs")).default;
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(Buffer.from(bytes) as unknown as Parameters<typeof workbook.xlsx.load>[0]);
-    expect(workbook.getWorksheet("Maali khulasa")!.getRow(2).values).toContain(0.3);
+    const financialRows = workbook.getWorksheet("Maali khulasa")!.getSheetValues().slice(1) as unknown[][];
+    const includedCosts = financialRows.filter((row) => row[5] === "Darj kharcha" && row[6] === "Haan").map((row) => Number(row[4]));
+    expect(includedCosts.reduce((sum, amount) => sum + Math.round(amount * 100), 0)).toBe(30);
 
     const pdfText = new TextDecoder().decode(await buildAnimalDossierPdf(dossier));
     expect(pdfText).not.toContain("0.30000000000000004");
+  });
+
+  it("exports audited feed history and recorded versus estimated animal finance", async () => {
+    const animal = { ...cow("animal-one", "A-101"), purchase_date: "2025-01-01", purchase_price: 1000,
+      life_status: "sold", exit_date: "2026-11-20", sale_price: 2000 } as Animal;
+    const feed = (overrides: Partial<AnimalFeedRecord>): AnimalFeedRecord => ({
+      id: "feed-one", animal_id: animal.id, inventory_item_id: "item-one", feed_date: "2026-11-19", quantity: 2,
+      unit: "kg", stock_quantity: 2, stock_unit: "kg", note: null, stock_movement_id: "movement-one",
+      request_id: "request-one", request_payload: {}, supersedes_id: null, created_at: "2026-11-19T10:00:00Z",
+      item_name: "Wanda", category_name: "Animal feed & fodder", item_base_unit: "kg", superseded_by: null, ...overrides,
+    });
+    const health = [{ id: "health-one", animal_id: animal.id, event_date: "2026-11-01", kind: "treatment",
+      title: "Vet visit", cost: 100, expense_id: "expense-one", created_at: "2026-11-01T10:00:00Z" } as HealthEvent];
+    const sale = { id: "income-one", animal_id: animal.id, income_date: "2026-11-20", kind: "animal_sale",
+      amount: 2000, account_id: "account-one", note: "Sale", created_at: "2026-11-20T10:00:00Z" } as AnimalIncomeEntry;
+    const dossier = { ...input, animal, health, animalIncome: [sale], milk: [{ date: "2026-11-20", shift: "Morning", litres: 6.5 }],
+      animalFeed: [feed({ id: "feed-one", superseded_by: "feed-two" }), feed({ id: "feed-two", quantity: 1.5,
+        stock_quantity: 1.5, supersedes_id: "feed-one", created_at: "2026-11-20T10:00:00Z", note: "Corrected" })] };
+
+    const bytes = await buildAnimalDossierWorkbook(dossier);
+    const ExcelJS = (await import("exceljs")).default;
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(Buffer.from(bytes) as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+    const feedValues = workbook.getWorksheet("Charah")!.getSheetValues().flat().map(String);
+    expect(feedValues).toEqual(expect.arrayContaining(["Wanda · Animal feed & fodder", "Purani entry, durustgi mojood", "Durust ki hui entry", "1.5"]));
+    const financeValues = workbook.getWorksheet("Maali khulasa")!.getSheetValues().flat().map(String);
+    expect(financeValues).toEqual(expect.arrayContaining([
+      "Kharid ki qeemat", "Sehat ka kharcha", "Janwar farokht ki aamdani", "Doodh ki andazati qeemat",
+      "Feed ka kharcha dastiyab nahi", "975", "1000", "100", "2000", "Nahi",
+    ]));
+    expect(financeValues.filter((value) => value === "Janwar farokht ki aamdani")).toHaveLength(1);
+
+    const pdfText = new TextDecoder().decode(await buildAnimalDossierPdf(dossier));
+    expect(pdfText).toContain("Doodh ki andazati qeemat");
+    expect(pdfText).toContain("Feed ka kharcha dastiyab nahi");
   });
 
   it("sums daily milk in cents and marks total-only weeks as incomplete", async () => {

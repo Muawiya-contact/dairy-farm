@@ -1,4 +1,4 @@
-import type { Animal, AnimalCareTask, AnimalWeightRecord, Calving, CalvingOffspring, HealthEvent, HealthEventAttachment, HerdAlert, Insemination, MilkShift } from "./farm-data";
+import type { Animal, AnimalCareTask, AnimalFeedRecord, AnimalIncomeEntry, AnimalMilk, AnimalWeightRecord, Calving, CalvingOffspring, HealthEvent, HealthEventAttachment, HerdAlert, Insemination, MilkShift } from "./farm-data";
 import type { LoadedFarmSettings } from "./settings";
 import { formatDay } from "./dates";
 import { animalAge } from "./animal-life";
@@ -6,6 +6,7 @@ import { latestHealthEvent, sevenDayMilkAverage, type AnimalProfileStatuses } fr
 import { breedingDueDate } from "./breeding-register";
 import { sumMilkLitres } from "./milk-entry";
 import { animalWeightChange, animalWeightHistory } from "./animal-weight-history";
+import { animalFinancialSummary } from "./animal-finance";
 
 export type AnimalDossier = {
   animal: Animal;
@@ -20,6 +21,8 @@ export type AnimalDossier = {
   calvings: Calving[];
   offspring: CalvingOffspring[];
   animalWeights: AnimalWeightRecord[];
+  animalFeed: AnimalFeedRecord[];
+  animalIncome: AnimalIncomeEntry[];
   milkShifts: Pick<MilkShift, "milk_date" | "mode">[];
   milk: { date: string; shift: string; litres: number }[];
   dueTasks: { date: string; label: string; overdue: boolean }[];
@@ -64,6 +67,8 @@ const columnNames: Record<string, string> = {
   cost_rs: "Kharcha (Rs)", next_due_date: "Agli due tareekh", attachments: "File links", role: "Rishtah", outcome: "Nateeja",
   birth_order: "Paidaish ka number", calf: "Bacha", sex: "Jins", weight_kg: "Wazan (kg)", event: "Record", source: "Zariya",
   feed: "Charah", quantity: "Miqdar", unit: "Miqdar ki unit", detail: "Tafseel", amount_rs: "Raqam (Rs)",
+  category_name: "Feed category", stock_quantity: "Stock unit mein miqdar", stock_unit: "Stock unit", record_status: "Record ki haisiyat",
+  treatment: "Maali haisaab", included_in_recorded_total: "Recorded total mein shamil",
 };
 const enumNames: Record<string, Record<string, string>> = {
   species: { cow: "Gaye", buffalo: "Bhains" }, sex: { female: "Mada", male: "Nar" },
@@ -72,7 +77,18 @@ const enumNames: Record<string, Record<string, string>> = {
   status: { active: "Chalu", sold: "Farokht", dead: "Wafat", removed: "Farm se nikala", pending: "Nateeja baqi", pregnant: "Gaabhan", empty: "Khuli", aborted: "Hamla zaya", calved: "Bachha de chuki", open: "Khuli", inseminated: "Nateeja baqi", fresh: "Nayi bachhi", na: "Laagu nahi", unknown: "Darj nahi", scheduled: "Muqarrar", overdue: "Due tareekh guzar gayi", completed: "Mukammal", Active: "Jari", Completed: "Mukammal" },
   production: { milking: "Doodh de rahi hai", dry: "Doodh band hai", none: "Doodh nahi de rahi" },
   breeding: { open: "Khuli", pregnant: "Gaabhan", pending: "Nateeja baqi", empty: "Khuli", aborted: "Hamla zaya", calved: "Bachha de chuki" },
-  kind: { vaccine: "Teeka", treatment: "Ilaj", deworming: "Deworming", checkup: "Vet check-up", other: "Doosra", Purchase: "Kharid", Sale: "Farokht", "Recorded health costs": "Darj sehat ka kharcha" },
+  kind: {
+    vaccine: "Teeka", treatment: "Ilaj", deworming: "Deworming", checkup: "Vet check-up", other: "Doosra",
+    Purchase: "Kharid", Sale: "Farokht", "Recorded health costs": "Darj sehat ka kharcha",
+    "Purchase price": "Kharid ki qeemat", "Medical expense": "Sehat ka kharcha",
+    "Health cost (unlinked)": "Sehat ka ghair-mansub kharcha", "Animal sale proceeds": "Janwar farokht ki aamdani",
+    "Manure income": "Gobar ki aamdani", "Other linked income": "Juri hui aamdani", "Linked income": "Juri hui aamdani",
+    "Milk production value estimate": "Doodh ki andazati qeemat", "Milk value estimate unavailable": "Doodh ki andazati qeemat dastiyab nahi",
+    "Feed cost unavailable": "Feed ka kharcha dastiyab nahi", "Medical cost data incomplete": "Sehat kharchay ka record na-mukammal",
+    "Sale ledger transaction unavailable": "Farokht ki ledger entry dastiyab nahi",
+  },
+  treatment: { "recorded cost": "Darj kharcha", "recorded revenue": "Darj aamdani", "estimate only": "Sirf taqmeena", "excluded / unavailable": "Shamil nahi / dastiyab nahi" },
+  included_in_recorded_total: { Yes: "Haan", No: "Nahi" },
   severity: { mild: "Halki", moderate: "Darmiyani", severe: "Zyada" },
   role: { Dam: "Maa", "Birth record": "Paidaish ka record" },
   outcome: { alive: "Zinda", dead: "Murdah", twins: "Joray", normal: "Mamool ke mutabiq", stillborn: "Murdah paida" },
@@ -86,6 +102,7 @@ const plainValues: Record<string, string> = {
   "No vaccination or deworming records for this animal.": "Teekay ya deworming ka record nahi.", "No calving or offspring records for this animal.": "Paidaish ya bachon ka record nahi.",
   "No weight history recorded for this animal.": "Is janwar ka wazan record nahi.", "No feed history is recorded in the app.": "App mein charah dene ka record nahi.",
   "No animal purchase, sale, or health costs recorded.": "Kharid, farokht ya sehat ke kharchay ka record nahi.",
+  "Current entry": "Maujooda entry", Correction: "Durust ki hui entry", Superseded: "Purani entry, durustgi mojood",
   "No active production alerts": "Koi qareebi production reminder nahi.", "No milk record": "Doodh ka record nahi", "No health record": "Sehat ka record nahi",
   "No open breeding cycle": "Nasl kashi ka khula record nahi", "Incomplete: total-only shift in last seven days": "Saat din ka per-janwar doodh record mukammal nahi",
   "No recorded due tasks": "Koi due kaam darj nahi", "No photo": "Tasveer nahi", "Unavailable at export time": "Export ke waqt tasveer dastiyab nahi thi",
@@ -204,18 +221,22 @@ function dossierSheets(input: AnimalDossier) {
   const weights = weightHistory.map((row) => ({ date: row.weight_date,
     event: row.source === "birth" ? "Paidaish par wazan" : "Wazan ki entry", weight_kg: num(row.weight_kg),
     source: row.source === "birth" ? "Paidaish ka record" : "Farm ki entry", notes: row.notes || "" }));
-  const healthCostPaise = input.health.reduce((total, event) => total + Math.round(Number(event.cost || 0) * 100), 0);
-  const healthCosts = healthCostPaise / 100;
+  const feedRows = input.animalFeed.map((entry) => ({ date: entry.feed_date,
+    feed: `${entry.item_name} · ${entry.category_name}`, quantity: num(entry.quantity), unit: entry.unit,
+    stock_quantity: num(entry.stock_quantity), stock_unit: entry.stock_unit, notes: entry.note || "",
+    record_status: entry.superseded_by ? "Superseded" : entry.supersedes_id ? "Correction" : "Current entry" }));
+  const financialMilk: AnimalMilk[] = input.milk.map((row, index) => ({
+    id: `dossier-milk-${index}`, animal_id: animal.id, shift_id: `dossier-shift-${row.date}-${index}`, litres: row.litres,
+  }));
+  const finance = animalFinancialSummary({ animal, health: input.health, income: input.animalIncome, milk: financialMilk,
+    feed: input.animalFeed, currentMilkRate: farm.default_milk_rate });
+  const financial = finance.lines.map((line) => ({ date: line.date, kind: line.kind, detail: line.detail,
+    amount_rs: line.amount_rs, treatment: line.treatment, included_in_recorded_total: line.included_in_recorded_total ? "Yes" : "No" }));
   const careTasks = [...input.careTasks].sort((a, b) => (a.completed_date ?? "9999-12-31").localeCompare(b.completed_date ?? "9999-12-31") || a.due_date.localeCompare(b.due_date)).map((task) => ({
     title: task.title, category: task.category, due_date: task.due_date, notes: task.notes || "",
     status: task.completed_date ? "Completed" : "Active", completed_date: task.completed_date || "",
     completion_notes: task.completion_notes || "",
   }));
-  const financial = [
-    ...(animal.purchase_price == null ? [] : [{ date: animal.purchase_date || "", kind: "Purchase", detail: animal.seller_name || animal.purchase_location || "", amount_rs: num(animal.purchase_price) }]),
-    ...(animal.sale_price == null ? [] : [{ date: animal.exit_date || "", kind: "Sale", detail: animal.exit_reason || "", amount_rs: num(animal.sale_price) }]),
-    ...(healthCosts ? [{ date: "", kind: "Recorded health costs", detail: "Sum of health event costs", amount_rs: healthCosts }] : []),
-  ];
   return [
     sheet("Profile", ["field", "value"], profile, "No profile data recorded."),
     sheet("Milk", ["date", "shift", "litres"], milk, "No milk records for this animal."),
@@ -225,8 +246,8 @@ function dossierSheets(input: AnimalDossier) {
     sheet("Vaccinations", ["date", "kind", "title", "symptoms", "diagnosis", "severity", "current_condition", "medicine", "medicine_type", "dosage", "route", "treatment_start_date", "treatment_end_date", "veterinarian", "next_due_date", "cost_rs", "attachments", "notes"], vaccines, "No vaccination or deworming records for this animal."),
     sheet("Calving & offspring", ["date", "role", "outcome", "birth_order", "calf", "sex", "weight_kg", "notes"], calvingRows, "No calving or offspring records for this animal."),
     sheet("Weight", ["date", "event", "weight_kg", "source", "notes"], weights, "No weight history recorded for this animal."),
-    sheet("Feed", ["date", "feed", "quantity", "unit", "notes"], [], "No feed history is recorded in the app."),
-    sheet("Financial summary", ["date", "kind", "detail", "amount_rs"], financial, "No animal purchase, sale, or health costs recorded."),
+    sheet("Feed", ["date", "feed", "quantity", "unit", "stock_quantity", "stock_unit", "record_status", "notes"], feedRows, "No feed history is recorded in the app."),
+    sheet("Financial summary", ["date", "kind", "detail", "amount_rs", "treatment", "included_in_recorded_total"], financial, "No animal purchase, sale, or health costs recorded."),
   ];
 }
 
@@ -339,8 +360,8 @@ export async function buildAnimalDossierPdf(input: AnimalDossier): Promise<Uint8
     Vaccinations: ["date", "kind", "title", "symptoms", "diagnosis", "severity", "current_condition", "medicine", "medicine_type", "dosage", "route", "treatment_start_date", "treatment_end_date", "veterinarian", "next_due_date", "attachments", "cost_rs", "notes"],
     "Calving & offspring": ["date", "role", "outcome", "calf", "sex", "weight_kg", "notes"],
     Weight: ["date", "event", "weight_kg", "source", "notes"],
-    Feed: ["date", "feed", "quantity", "unit", "notes"],
-    "Financial summary": ["date", "kind", "detail", "amount_rs"],
+    Feed: ["date", "feed", "quantity", "unit", "stock_quantity", "stock_unit", "record_status", "notes"],
+    "Financial summary": ["date", "kind", "detail", "amount_rs", "treatment", "included_in_recorded_total"],
   };
   for (const name of ["Milk", "Breeding", "Care reminders", "Health", "Vaccinations", "Calving & offspring", "Weight", "Feed", "Financial summary"]) {
     const section = tableFor(name);

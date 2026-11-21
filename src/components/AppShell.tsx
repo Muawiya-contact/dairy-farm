@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import { BackIcon, BookIcon, CanIcon, CoinsIcon, CowIcon, HomeIcon, ReportIcon, SettingsIcon, SignOutIcon, WalletIcon } from "./icons";
+import { BackIcon, BookIcon, BoxesIcon, CanIcon, CoinsIcon, CowIcon, HomeIcon, ReportIcon, SettingsIcon, SignOutIcon, WalletIcon } from "./icons";
 import { useQuery } from "@tanstack/react-query";
 import { getSettings } from "@/lib/settings";
 import { getSupabase } from "@/lib/supabase";
@@ -18,6 +18,7 @@ const NAV = [
   { href: "/khata/", label: "Khata", Icon: BookIcon },
   { href: "/galla/", label: "Galla", Icon: CoinsIcon },
   { href: "/kharcha/", label: "Kharcha", Icon: WalletIcon },
+  { href: "/inventory/", label: "Inventory", Icon: BoxesIcon },
   { href: "/reports/", label: "Reports", Icon: ReportIcon },
 ];
 
@@ -86,7 +87,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       {/* Phone: bottom menu */}
       <nav
         aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-7 border-t border-line bg-paper/95 px-1 pt-1 pb-[max(10px,env(safe-area-inset-bottom))] backdrop-blur lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-8 border-t border-line bg-paper/95 px-0.5 pt-1 pb-[max(10px,env(safe-area-inset-bottom))] backdrop-blur lg:hidden"
       >
         {NAV.map(({ href, label, Icon }) => {
           const on = isActive(path, href);
@@ -94,13 +95,15 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <Link
               key={href}
               href={href}
+              aria-label={label === "Inventory" ? "Farm Inventory" : label}
+              title={label === "Inventory" ? "Farm Inventory" : undefined}
               aria-current={on ? "page" : undefined}
-              className={`flex min-h-[54px] flex-col items-center justify-center gap-0.5 text-[12px] font-semibold ${on ? "text-berseem" : "text-muted"}`}
+              className={`flex min-h-[54px] min-w-0 flex-col items-center justify-center gap-0.5 text-[10px] font-semibold ${on ? "text-berseem" : "text-muted"}`}
             >
-              <span className={`flex h-7 w-12 items-center justify-center rounded-full ${on ? "bg-berseem-soft" : ""}`}>
+              <span className={`flex h-7 w-9 items-center justify-center rounded-full ${on ? "bg-berseem-soft" : ""}`}>
                 <Icon className="nav-icon" width={21} height={21} />
               </span>
-              {label}
+              <span className="truncate">{label === "Inventory" ? "Stock" : label}</span>
             </Link>
           );
         })}

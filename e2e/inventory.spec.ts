@@ -1,0 +1,90 @@
+import { expect, test } from "@playwright/test";
+import { addDays } from "../src/lib/dates";
+import { signIn, testId, todayPK } from "./helpers";
+
+test("farm stock adds unit-aware items, records stock movements, and filters history", async ({ page }, info) => {
+  await signIn(page);
+  await page.goto("/inventory/");
+  await expect(page.getByRole("heading", { name: "Farm ka Stock", exact: true })).toBeVisible();
+
+  const today = todayPK();
+  const itemName = testId(info, "inventory-feed");
+  await page.getByRole("button", { name: "Samaan add karein", exact: true }).first().click();
+  const itemForm = page.locator("form").last();
+  await itemForm.getByLabel("Samaan ka naam").fill(itemName);
+  await itemForm.locator('select[name="category"]').selectOption({ label: "Janwaron ka chara" });
+  await itemForm.locator('select[name="unit"]').selectOption("bag");
+  await itemForm.locator('input[name="minimum"]').fill("3");
+  await itemForm.locator('input[name="opening"]').fill("0");
+  await page.getByRole("button", { name: "Samaan add karein", exact: true }).last().click();
+  await expect(page.getByText("Samaan add ho gaya.", { exact: true })).toBeVisible();
+  const itemRow = page.locator("li").filter({ hasText: itemName });
+
+  await page.getByRole("button", { name: "Stock andar karein", exact: true }).click();
+  const purchaseForm = page.locator("form").filter({ has: page.getByRole("heading", { name: "Khareed / stock andar" }) });
+  const itemSelect = purchaseForm.locator('select[name="item"]');
+  const itemId = await itemSelect.locator("option").filter({ hasText: itemName }).getAttribute("value");
+  expect(itemId).toBeTruthy();
+  await itemSelect.selectOption(itemId!);
+  await expect(purchaseForm.locator('select[name="unit"]')).toHaveValue("bag");
+  await purchaseForm.getByLabel("Khareed ki tareekh").fill(today);
+  await purchaseForm.getByLabel("Miktar").fill("2");
+  await purchaseForm.getByLabel("Chuni hui unit ka rate (Rs)").fill("100");
+  await purchaseForm.getByLabel("Ada ki gayi kul raqam (Rs)").fill("200");
+  await purchaseForm.getByLabel("Farm Galla se ada karein").selectOption({ index: 1 });
+  await purchaseForm.getByLabel("Kharcha ki qism").selectOption({ index: 1 });
+  await purchaseForm.getByLabel("Dukandaar (ikhtiyari)").fill("E2E QA supplier");
+  await purchaseForm.getByLabel("Bill / hawala (ikhtiyari)").fill(itemName);
+  await purchaseForm.getByLabel("Batch ka code (ikhtiyari)").fill("E2E-BATCH-1");
+  await purchaseForm.getByLabel("Miyaad ki tareekh (ikhtiyari)").fill(addDays(today, 30));
+  await purchaseForm.getByRole("button", { name: "Khareed mehfooz karein" }).click();
+  await expect(page.getByText("Khareed stock aur Kharcha mein darj hui; chune hue Galla account se raqam kati.", { exact: true })).toBeVisible();
+  await expect(itemRow.getByText("2 thaila", { exact: true })).toBeVisible();
+  await expect(page.getByText("Stock kam", { exact: true }).last()).toBeVisible();
+
+  await page.getByRole("button", { name: "Stock jari karein", exact: true }).click();
+  const usageForm = page.locator("form").filter({ has: page.getByRole("heading", { name: "Stock jari / istemal darj karein" }) });
+  await usageForm.locator('select[name="item"]').selectOption(itemId!);
+  await expect(usageForm.locator('select[name="unit"]')).toHaveValue("bag");
+  await usageForm.getByLabel("Stock jari karne ki tareekh").fill(today);
+  await usageForm.getByLabel("Miktar").fill("3");
+  await usageForm.getByLabel("Maqsad").fill("E2E stock guard");
+  await usageForm.getByRole("button", { name: "Stock jari karein" }).click();
+  await expect(page.locator("p[role='alert']")).toContainText("stock zero se kam ho jayega");
+  await expect(itemRow.getByText("2 thaila", { exact: true })).toBeVisible();
+
+  await usageForm.getByLabel("Miktar").fill("1");
+  await usageForm.getByRole("button", { name: "Stock jari karein" }).click();
+  await expect(page.getByText("Stock jari ho gaya. Naya Kharcha ya Galla record nahi bana.", { exact: true })).toBeVisible();
+  await expect(itemRow.getByText("1 thaila", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Stock durust karein", exact: true }).click();
+  const adjustmentForm = page.locator("form").filter({ has: page.getByRole("heading", { name: "Stock ki durustgi / zaya" }) });
+  await adjustmentForm.locator('select[name="item"]').selectOption(itemId!);
+  await expect(adjustmentForm.locator('select[name="unit"]')).toHaveValue("bag");
+  await adjustmentForm.getByLabel("Tareekh").fill(today);
+  await adjustmentForm.getByLabel("Tabdeeli").selectOption("1");
+  await adjustmentForm.getByLabel("Miktar").fill("1");
+  await adjustmentForm.getByLabel("Wajah (lazmi)").fill("E2E physical count");
+  await adjustmentForm.getByRole("button", { name: "Durustgi mehfooz karein" }).click();
+  await expect(page.getByText("Stock ki durustgi wajah aur audit record ke sath mehfooz ho gayi.", { exact: true })).toBeVisible();
+  await expect(itemRow.getByText("2 thaila", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: new RegExp(itemName) }).first().click();
+  const history = page.locator("section").filter({ has: page.getByRole("heading", { name: "Stock ka tareekh-war record" }) });
+  await expect(history).toBeVisible();
+  await expect(history.getByText("Khareed", { exact: true })).toBeVisible();
+  await expect(history.getByText("Istemal / jari", { exact: true })).toBeVisible();
+  await expect(history.getByText("Durustgi", { exact: true })).toBeVisible();
+  await expect(history.getByText(/Batch: E2E-BATCH-1/)).toBeVisible();
+  await expect(history.getByText(/Kharcha se jura/)).toBeVisible();
+  await history.getByLabel("Shuru").fill(today);
+  await history.getByLabel("Aakhir").fill(today);
+  await expect(history.getByText("Khareed", { exact: true })).toBeVisible();
+  await history.getByLabel("Shuru").fill(addDays(today, -1));
+  await history.getByLabel("Aakhir").fill(addDays(today, -1));
+  await expect(history.getByText("Is tareekh ki muddat mein koi movement nahi.", { exact: true })).toBeVisible();
+  await expect(history.getByText(/Abhi dastiyab: 2 thaila/)).toBeVisible();
+  const viewportWidth = page.viewportSize()?.width ?? 360;
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewportWidth);
+});

@@ -53,6 +53,7 @@ describe("CSV exports", () => {
   it("exports Inventory Report headings in Roman Urdu", () => {
     expect(columnLabel("opening_stock", "Har samaan ka stock baqaya")).toBe("Shuru ka stock");
     expect(columnLabel("movement_date", "Stock ki harkat")).toBe("Harkat ki tareekh");
+    expect(columnLabel("account_name", "Stock ki harkat")).toBe("Galla account");
     expect(toCsv(["opening_stock", "movement_date"], [], "Inventory Report"))
       .toBe('\uFEFF"Shuru ka stock","Harkat ki tareekh"\r\n');
   });

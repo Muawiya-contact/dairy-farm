@@ -167,8 +167,9 @@ begin
   end if;
   select i.base_unit into v_stock_unit from public.inventory_items i where i.id = p_item_id;
   v_stock_quantity := public.inventory_convert_quantity(p_quantity, p_unit, v_stock_unit);
-  select * into v_old_item from public.inventory_items where id = v_old.inventory_item_id for update;
-  perform 1 from public.inventory_items where id = p_item_id for update;
+  perform i.id from public.inventory_items i
+    where i.id in (v_old.inventory_item_id, p_item_id) order by i.id for update;
+  select * into v_old_item from public.inventory_items where id = v_old.inventory_item_id;
 
   -- The original stock issue remains immutable. Post a positive adjustment and
   -- the replacement usage today; the corrected feed history retains its actual

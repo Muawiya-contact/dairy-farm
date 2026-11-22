@@ -33,6 +33,7 @@ it("matches customer phones across local and international Pakistan formats", ()
   expect(inactiveCustomerMatchesSearch(customer, "3001234")).toBe(true);
   expect(inactiveCustomerMatchesSearch(customer, "03101234567")).toBe(false);
   expect(inactiveCustomerMatchesSearch(customer, "No Recent")).toBe(true);
+  expect(inactiveCustomerMatchesSearch(customer, "Aam")).toBe(true);
 });
 
 it("shows readable customer-kind labels instead of stored enum values", () => {

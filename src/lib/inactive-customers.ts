@@ -33,7 +33,10 @@ function phoneSearchForms(value: string): string[] {
 export function inactiveCustomerMatchesSearch(customer: InactiveCustomer, search: string): boolean {
   const needle = search.trim().toLocaleLowerCase();
   if (!needle) return true;
-  if (customer.name.toLocaleLowerCase().includes(needle) || customer.kind.toLocaleLowerCase().includes(needle)) return true;
+  const kindLabel = inactiveCustomerKindLabel(customer.kind).toLocaleLowerCase();
+  if (customer.name.toLocaleLowerCase().includes(needle)
+    || customer.kind.toLocaleLowerCase().includes(needle)
+    || kindLabel.includes(needle)) return true;
 
   const phoneDigits = search.replace(/\D/g, "");
   if (phoneDigits.length < 4 || !customer.phone) return false;

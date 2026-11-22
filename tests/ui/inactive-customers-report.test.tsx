@@ -83,6 +83,10 @@ it("loads the chosen lookback and supports search, sorting, paging, and customer
   await user.type(search, "0300 123 4567");
   expect(within(table).getByRole("link", { name: "Inactive 01" })).toBeInTheDocument();
   expect(within(table).queryByRole("link", { name: "Inactive 02" })).not.toBeInTheDocument();
+
+  await user.clear(search);
+  await user.type(search, "Aam");
+  expect(within(table).getByRole("link", { name: "Inactive 01" })).toBeInTheDocument();
 });
 
 it("exports all filtered inactive customers in PDF, CSV, and Excel and prepares print", async () => {

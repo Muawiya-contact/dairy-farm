@@ -9,7 +9,7 @@ import { friendlyError } from "@/lib/errors";
 import { buildPdfReport, buildXlsx, downloadBlob, downloadFile, toCsv } from "@/lib/export-data";
 import { getSettings } from "@/lib/settings";
 import { loadInactiveCustomers } from "@/lib/reporting";
-import { inactiveCustomerMatchesSearch } from "@/lib/inactive-customers";
+import { inactiveCustomerKindLabel, inactiveCustomerMatchesSearch } from "@/lib/inactive-customers";
 
 const PAGE_SIZE = 25;
 const columns = ["name", "phone", "kind"];
@@ -118,7 +118,7 @@ export default function InactiveCustomersReport() {
               <tbody>{visibleRows.map((row) => <tr key={row.customer_id}>
                 <td className="border-b border-line px-2 py-2 font-semibold"><Link className="text-berseem underline" href={`/reports/customer/?id=${encodeURIComponent(row.customer_id)}&from=${from}&to=${today}`}>{row.name}</Link></td>
                 <td className="border-b border-line px-2 py-2">{row.phone || "Phone darj nahi"}</td>
-                <td className="border-b border-line px-2 py-2">{row.kind}</td>
+                <td className="border-b border-line px-2 py-2">{inactiveCustomerKindLabel(row.kind)}</td>
               </tr>)}</tbody>
             </table>
           </div>

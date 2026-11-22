@@ -63,6 +63,7 @@ it("loads the chosen lookback and supports search, sorting, paging, and customer
   expect(screen.getByText(/Sales ki jaanch/)).toHaveTextContent(formatDay(addDays(today, -29)));
   expect(screen.getByRole("status")).toHaveTextContent("27 customers · Safha 1 / 2");
   expect(screen.getByRole("link", { name: "Inactive 01" }).getAttribute("href")).toContain("customer-1");
+  expect(within(screen.getByRole("table")).getByRole("row", { name: /Inactive 01/ })).toHaveTextContent("Aam");
 
   await user.selectOptions(screen.getByRole("combobox", { name: "No-purchase lookback" }), "90");
   await waitFor(() => expect(mocks.load).toHaveBeenLastCalledWith(addDays(today, -89), today));

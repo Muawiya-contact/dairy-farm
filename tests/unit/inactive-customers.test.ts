@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { inactiveCustomerMatchesSearch, selectInactiveCustomers, type InactiveCustomer } from "@/lib/inactive-customers";
+import { inactiveCustomerKindLabel, inactiveCustomerMatchesSearch, selectInactiveCustomers, type InactiveCustomer } from "@/lib/inactive-customers";
 
 const customers: InactiveCustomer[] = [
   { customer_id: "recent", name: "Recent Buyer", phone: null, kind: "regular", active: true, sort_order: 3 },
@@ -33,4 +33,13 @@ it("matches customer phones across local and international Pakistan formats", ()
   expect(inactiveCustomerMatchesSearch(customer, "3001234")).toBe(true);
   expect(inactiveCustomerMatchesSearch(customer, "03101234567")).toBe(false);
   expect(inactiveCustomerMatchesSearch(customer, "No Recent")).toBe(true);
+});
+
+it("shows readable customer-kind labels instead of stored enum values", () => {
+  expect(inactiveCustomerKindLabel("regular")).toBe("Aam");
+  expect(inactiveCustomerKindLabel("contractor")).toBe("Thekedaar");
+  expect(inactiveCustomerKindLabel("company")).toBe("Company");
+  expect(inactiveCustomerKindLabel("cash")).toBe("Naqd");
+  expect(inactiveCustomerKindLabel("free")).toBe("Muft");
+  expect(inactiveCustomerKindLabel("future_kind")).toBe("Doosri qism");
 });

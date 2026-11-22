@@ -9,6 +9,18 @@ export type InactiveCustomer = {
 
 type CustomerPurchaseSummary = { customer_id: string; litres: number; charges: number };
 
+const CUSTOMER_KIND_LABELS: Record<string, string> = {
+  regular: "Aam",
+  contractor: "Thekedaar",
+  company: "Company",
+  cash: "Naqd",
+  free: "Muft",
+};
+
+export function inactiveCustomerKindLabel(kind: string): string {
+  return CUSTOMER_KIND_LABELS[kind] ?? "Doosri qism";
+}
+
 function phoneSearchForms(value: string): string[] {
   const digits = value.replace(/\D/g, "");
   if (!digits) return [];

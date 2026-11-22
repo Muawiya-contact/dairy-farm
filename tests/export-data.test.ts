@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import ExcelJS from "exceljs";
 import { buildPdf, buildPdfReport, buildXlsx, columnLabel, DATASETS, displayCell, offspringSummary, toCsv } from "../src/lib/export-data";
+import { inventoryReportExportSections } from "../src/lib/inventory-report";
 
 beforeAll(() => vi.stubGlobal("fetch", async (url: string) => {
   if (url === "/brand/icon-192.png" || url === "/brand/coding-moves-services.png") {
@@ -52,6 +53,12 @@ describe("CSV exports", () => {
     expect(columnLabel("galla_cash_received")).toBe("Cash sale Galla credit (Rs)");
     expect(displayCell({ amount: 10, method: "cash" })).toBe('{"amount":10,"method":"cash"}');
     expect(toCsv(["before_row"], [{ before_row: { amount: 10 } }])).toContain('{""amount"":10}');
+  });
+
+  it("uses clear Roman Urdu headings for final-report PDF sections", () => {
+    expect(columnLabel("metric")).toBe("Hisaab ki mad");
+    expect(columnLabel("item")).toBe("Tafseel");
+    expect(columnLabel("variance_litres")).toBe("Milan ka farq (L)");
   });
 
   it("exports Inventory Report headings in Roman Urdu", () => {
@@ -109,4 +116,10 @@ it("repeats row identifiers when a PDF table continues on another horizontal pag
   ], "Saim Dairy Farm");
   const text = new TextDecoder().decode(pdf);
   expect(text).toMatch(/\/Count [2-9][0-9]*/);
+});
+
+it("repeats item and movement identifiers in wide inventory export tables", () => {
+  const sections = inventoryReportExportSections([], [], []);
+  expect(sections.find((section) => section.title === "Har samaan ka stock baqaya")?.repeatColumns).toEqual(["item_name"]);
+  expect(sections.find((section) => section.title === "Stock ki harkat")?.repeatColumns).toEqual(["movement_date", "movement_type", "item_name"]);
 });

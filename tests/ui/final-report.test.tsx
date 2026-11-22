@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import { renderWithQuery } from "./utils";
@@ -39,7 +39,9 @@ const reportData = {
     accounts: [{ account_id: "cash-1", account_name: "Farm cash", account_kind: "cash", opening_balance: 400,
       money_received: 900, money_paid: 300, transfers_in: 0, transfers_out: 0, closing_balance: 1000,
       opening_date: "2026-11-01", opening_amount: 400 }],
-    salaryPayables: [], otherIncome: [], trends: [],
+      salaryPayables: [], otherIncome: [], trends: [{ bucket_start: "2026-11-10", milk_income: 1800, other_income: 0,
+        customer_collections: 900, farm_expenses: 500, home_expenses: 50, total_income: 1800,
+        net_profit: 1300, cash_received: 900, cash_paid: 300 }],
   },
   milk: {
     daily: [{ report_date: "2026-11-10", opening_litres: 5, produced_litres: 20, available_litres: 25,
@@ -51,6 +53,11 @@ const reportData = {
       cash_litres: 5, free_litres: 1, farm_use_litres: 2, wasted_litres: 1, allocated_litres: 21,
       remaining_litres: 4, khata_delivery_amount: 300, cash_sale_amount: 250, cash_received: 250,
       galla_cash_received: 250, free_details: [], farm_use_details: [], waste_details: [] }],
+    animals: [
+      { animal_id: "animal-1", tag: "COW-1", name: "Gori", morning_litres: 10, noon_litres: 0, evening_litres: 5, total_litres: 15, recorded_days: 2, is_grand_total: false },
+      { animal_id: "animal-2", tag: "COW-2", name: "Moti", morning_litres: 20, noon_litres: 0, evening_litres: 10, total_litres: 30, recorded_days: 3, is_grand_total: false },
+      { animal_id: null, tag: "—", name: "Grand Total", morning_litres: 30, noon_litres: 0, evening_litres: 15, total_litres: 45, recorded_days: 3, is_grand_total: true },
+    ],
     totals: { opening_litres: 5, produced_litres: 20, available_litres: 25, khata_litres: 12,
       cash_litres: 5, free_litres: 1, farm_use_litres: 2, wasted_litres: 1, allocated_litres: 21,
       closing_litres: 4, khata_delivery_amount: 300, company_bill_amount: 0, khata_amount: 300,
@@ -86,7 +93,7 @@ it("combines saved milk, Khata, expense, profit, and account balances", async ()
   expect(screen.getByText("Local / cash milk sales", { selector: "dt" }).closest("div")).toHaveTextContent("Rs 250");
   expect(screen.getByText("Customer se lena baqi").closest("div")).toHaveTextContent("Rs 700");
   expect(screen.getByText("Cash / bank closing").closest("div")).toHaveTextContent("Rs 1,000");
-  expect(screen.getByRole("link", { name: /Milk Report kholein/ })).toHaveAttribute("href", "/reports/milk");
+  expect(screen.getByRole("link", { name: "Milk Report kholein →" })).toHaveAttribute("href", "/reports/milk");
   expect(screen.getByText(/Chuni hui muddat ka doodh balance mil raha hai/)).toBeInTheDocument();
 });
 
@@ -117,4 +124,32 @@ it("exports the selected consolidated report and gives a download fallback when 
   await user.click(screen.getByRole("button", { name: "PDF share karein" }));
   await waitFor(() => expect(mocks.sharePdfFile).toHaveBeenCalledOnce());
   expect(await screen.findByText("Is device par PDF share nahi ho saki; file download ho gayi.")).toBeInTheDocument();
+});
+
+it("shows database-backed farm trends and ranked customer, animal, and expense insights", async () => {
+  mocks.loadFinalReport.mockResolvedValueOnce({
+    ...reportData,
+    khata: [
+      ...reportData.khata,
+      { ...reportData.khata[0], customer_id: "customer-2", name: "Babar", charges: 1400, litres: 70 },
+    ],
+    expenses: [
+      ...reportData.expenses,
+      { category: "Home bill", is_farm_cost: false, entries: 1, amount: 700 },
+    ],
+  });
+  renderWithQuery(<FinalReport />);
+
+  expect(await screen.findByRole("heading", { name: "Rozana farm trend" })).toBeInTheDocument();
+  expect(screen.getByText("Total income").parentElement).toHaveTextContent("Rs 1,800");
+  const customers = screen.getByRole("heading", { name: "Sab se zyada billed customers" }).closest("section");
+  expect(customers).toHaveTextContent("Babar");
+  expect(within(customers!).getByRole("link", { name: /1\. Babar/ }).getAttribute("href")).toContain("customer-2");
+  const animals = screen.getByRole("heading", { name: "Sab se zyada recorded milk dene walay janwar" }).closest("section");
+  expect(animals).toHaveTextContent("COW-2");
+  expect(animals).toHaveTextContent("Average per recorded animal-day: 9 L");
+  const categories = screen.getByRole("heading", { name: "Sab se baray expense categories" }).closest("section");
+  expect(categories).toHaveTextContent("Home bill");
+  expect(categories).toHaveTextContent("Farm");
+  expect(screen.getByText(/Cost aur munafa per litre abhi available nahi/)).toBeInTheDocument();
 });

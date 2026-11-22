@@ -20,10 +20,11 @@ it("shows the nine dairy report groups with links to existing reports", () => {
     "Farm Analytics",
   ]);
   const links = Array.from(menu.querySelectorAll("a"));
-  expect(links).toHaveLength(18);
+  expect(links).toHaveLength(19);
   expect(links.map((link) => [link.textContent?.trim(), link.getAttribute("href")?.replace(/\/$/, "")])).toEqual([
     ["Customer Report", "/reports/customer"],
     ["Khata Report", "/reports/khata"],
+    ["Inactive Customers", "/reports/customer/inactive"],
     ["Milk Report", "/reports/milk"],
     ["Animal-wise Milk Report", "/reports/animal/milk"],
     ["Stock ki Report", "/reports/inventory"],

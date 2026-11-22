@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Body, PageHeader, Panel } from "./ui";
 import { buildPdfReport, buildXlsx, downloadBlob, downloadFile, toCsv, type PdfSection } from "@/lib/export-data";
@@ -221,7 +222,7 @@ export default function KhataSummaryReport({ title = "Khata Summary" }: { title?
           <div className="hidden print:block">{table(matchingRows)}</div>
           {!rows.length && <p className="mt-3 text-sm text-muted">Is muddat mein koi customer baqaya ya record nahi hai.</p>}
           {rows.length > 0 && !matchingRows.length && <p className="mt-3 text-sm text-muted">Is naam ke mutabiq koi customer nahi mila.</p>}
-          <p className="no-print mt-3 text-sm text-muted">Zero-baakaya aur koi activity na rakhne walay customers is Khata summary mein nahi aate; inactivity ki muddat wali alag report abhi available nahi.</p>
+          <p className="no-print mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-muted"><span>Inactive customers ki muddat wali report:</span><Link href="/reports/customer/inactive/" className="min-h-11 inline-flex items-center font-semibold text-berseem underline">Inactive Customers kholein →</Link></p>
 
           <div className="no-print mt-3 flex flex-wrap items-center justify-between gap-2">
             <p role="status" className="text-sm text-muted">Safha {currentPage} / {pageCount} · {matchingRows.length} customers</p>

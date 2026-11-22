@@ -7,9 +7,10 @@ test("Reports menu groups all nine categories and routes each group to its exist
 
   const menu = page.getByRole("navigation", { name: "Report categories" });
   await expect(menu.locator("section")).toHaveCount(9);
-  await expect(menu.getByRole("link")).toHaveCount(18);
+  await expect(menu.getByRole("link")).toHaveCount(19);
   const destinations = [
     ["Customer Reports", "Customer Report", "Customer Report"],
+    ["Customer Reports", "Inactive Customers", "Inactive Customers"],
     ["Milk Reports", "Milk Report", "Milk Report"],
     ["Purchase Reports", "Stock ki Report", "Stock ki Report"],
     ["Sales Reports", "Milk Report", "Milk Report"],
@@ -25,6 +26,10 @@ test("Reports menu groups all nine categories and routes each group to its exist
     await group.getByRole("link", { name: reportLink, exact: true }).click();
     await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Wapas", exact: true }).click();
+    if (reportLink === "Inactive Customers") {
+      await expect(page.getByRole("heading", { name: "Customer Report", exact: true })).toBeVisible();
+      await go(page, "Reports");
+    }
     await expect(menu.getByRole("heading", { name: groupName, exact: true })).toBeVisible();
   }
 

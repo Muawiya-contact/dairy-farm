@@ -48,11 +48,12 @@ export function inventoryReportExportSections(
       { detail: "Stock ka daaira", value: context.balanceScope },
       { detail: "Istemaal ki qeemat", value: "Qeemat nahin nikali gayi kyun ke stock dete waqt bharosemand qeemat record nahin hoti." },
     ] }] : []),
-    { title: INVENTORY_REPORT_SECTIONS.balances, columns: INVENTORY_REPORT_SUMMARY_COLUMNS,
+    { title: INVENTORY_REPORT_SECTIONS.balances, columns: INVENTORY_REPORT_SUMMARY_COLUMNS, repeatColumns: ["item_name"],
       rows: summary.map((row) => ({ ...row, current_status: row.current_out_of_stock ? "Stock khatam" : row.current_low_stock ? "Stock kam" : "Stock mojood" })) },
     { title: INVENTORY_REPORT_SECTIONS.usage, columns: INVENTORY_REPORT_USAGE_COLUMNS,
       rows: usage.map((row) => ({ ...row, staff_name: row.staff_name ?? "Farm ka aam istemal (mulazim ke baghair)" })) },
     { title: INVENTORY_REPORT_SECTIONS.movements, columns: INVENTORY_REPORT_TRANSACTION_COLUMNS,
+      repeatColumns: ["movement_date", "movement_type", "item_name"],
       rows: transactions.map((row) => ({ ...row, movement_type: inventoryReportMovementLabel(row.movement_type),
         staff_name: row.staff_name ?? (row.movement_type === "usage" ? "Farm ka aam istemal (mulazim ke baghair)" : "—") })) },
   ];

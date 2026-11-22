@@ -3,6 +3,10 @@ import type { Database } from "./database.types";
 import { pdfTrackingUrl, loadPdfDeveloperLogo, loadPdfDeveloperQr, loadPdfLogo } from "./pdf-brand";
 import { CODING_MOVES_CONTACT_EMAIL, CODING_MOVES_CONTACT_URL, CODING_MOVES_DEVELOPER_CREDIT, CODING_MOVES_DISPLAY_URL } from "./coding-moves";
 import { installPdfFonts } from "./pdf/fonts";
+import {
+  needsPdfSectionPageBreak, nextPdfSectionYAfterEmptyState,
+  PDF_EMPTY_SECTION_MINIMUM_HEIGHT_MM, PDF_PAGE_CONTENT_TOP_MM, PDF_TABLE_SECTION_MINIMUM_HEIGHT_MM,
+} from "./pdf/layout";
 import { getSettings } from "./settings";
 
 type Table = keyof Database["public"]["Tables"];
@@ -51,7 +55,7 @@ export const BREEDING_COLUMNS = ["tag", "name", "service_date", "semen_type", "s
 
 const COLUMN_LABELS: Record<string, string> = {
   section: "Report ka hissa", farm_name: "Farm ka naam", generated_at: "Tayyar karne ki tareekh",
-  metric: "Mad", amount_rs: "Raqam (Rs)", source: "Zariya", classification: "Farm ya ghar / zaati",
+  metric: "Hisaab ki mad", amount_rs: "Raqam (Rs)", source: "Zariya", classification: "Farm ya ghar / zaati",
   entries: "Entries ki tadaad", line: "Hisaab ki mad", treatment: "Hisaab ka tareeqa",
   account_name: "Account ka naam", account_kind: "Account ki qism", opening_balance: "Shuru ka baqaya (Rs)",
   money_received: "Wasooli (Rs)", money_paid: "Adaigi (Rs)", transfers_in: "Andar transfer (Rs)",
@@ -69,6 +73,7 @@ const COLUMN_LABELS: Record<string, string> = {
   farm_debit_rs: "Farm kharcha (Rs)", home_debit_rs: "Ghar kharcha (Rs)", daily_credit_rs: "Roz ki aamdani (Rs)",
   flags: "Jaanch ke nishan", imported_at: "Import ka waqt",
   id: "ID", tag: "Tag", name: "Naam", animal_id: "Janwar ID", animal_name: "Janwar ka naam", customer_id: "Customer ID",
+  phone: "Phone",
   arrival_date: "Farm par aane ki tareekh", purchase_date: "Kharid ki tareekh", seller_name: "Bechne wala", purchase_location: "Kharid ki jagah",
   life_status: "Farm ki haalat", milking_status: "Doodh ki haalat", transaction_date: "Len-den ki tareekh", transaction_kind: "Len-den ki qism",
   counterparty: "Doosri taraf", transaction_reason: "Wajah", event_date: "Waqia ki tareekh", title: "Waqia", vet: "Vet",
@@ -98,6 +103,7 @@ const COLUMN_LABELS: Record<string, string> = {
   wasted_litres: "Zaya doodh (L)", waste_reason: "Waste ki wajah", closing_litres: "Aakhir balance (L)",
   milk_shift: "Shift", khata_litres: "Khata sale (L)", cash_litres: "Cash sale (L)",
   allocated_litres: "Kul allocated (L)", remaining_litres: "Baqi doodh (L)",
+  variance_litres: "Milan ka farq (L)",
   khata_delivery_amount: "Khata delivery (Rs)", company_bill_amount: "Company bill (Rs)",
   khata_amount: "Khata billed (Rs)", cash_sale_amount: "Cash sale (Rs)", total_sales_amount: "Kul milk sales (Rs)",
   cash_received: "Wasooli ki tareekh par received (Rs)", galla_cash_received: "Cash sale Galla credit (Rs)",
@@ -128,7 +134,7 @@ const COLUMN_LABELS: Record<string, string> = {
   owner_account_name: "Maalik ka account", farm_account_name: "Farm account",
   transfer_date: "Tareekh", recorded_by: "Darj karne wala user ID",
   is_local: "Local customer", active: "Chalu",
-  item: "Mad", value: "Raqam", period_balance_change: "Baqaya farq (Rs)",
+  item: "Tafseel", value: "Raqam", period_balance_change: "Baqaya farq (Rs)",
   expense_date: "Kharcha ki tareekh", account: "Paisa kis account se nikla", received_by: "Raqam lene wala",
   description: "Tafseel", expense_type: "Kharcha ki qism", recipient: "Naam / recipient",
   entry_count: "Entries ki tadaad", total_expenses: "Kul kharcha (Rs)", home_expenses: "Ghar ka kharcha (Rs)",
@@ -326,8 +332,15 @@ export async function buildPdfReport(title: string, sections: PdfSection[], farm
   pdf.setFont("NotoSans", "normal"); pdf.setFontSize(7.5); pdf.setTextColor(50, 62, 53);
   pdf.text(pdfPeriod(title), width - margin, 21, { align: "right" });
   pdf.setDrawColor(29, 70, 38); pdf.setLineWidth(0.7); pdf.line(margin, 28, width - margin, 28);
-  let cursorY = 36;
+  let cursorY = PDF_PAGE_CONTENT_TOP_MM;
   for (const section of sections) {
+    const minimumSectionHeight = section.rows.length
+      ? PDF_TABLE_SECTION_MINIMUM_HEIGHT_MM
+      : PDF_EMPTY_SECTION_MINIMUM_HEIGHT_MM;
+    if (needsPdfSectionPageBreak(cursorY, height, minimumSectionHeight)) {
+      pdf.addPage();
+      cursorY = PDF_PAGE_CONTENT_TOP_MM;
+    }
     pdf.setFont("NotoSans", "bold"); pdf.setFontSize(10); pdf.setTextColor(29, 70, 38);
     pdf.text(localPdfTitle(section.title), margin, cursorY);
     if (!section.rows.length) {
@@ -335,7 +348,7 @@ export async function buildPdfReport(title: string, sections: PdfSection[], farm
       pdf.setDrawColor(214, 205, 181); pdf.setLineDashPattern([1, 1], 0);
       pdf.roundedRect(margin, cursorY + 3, width - margin * 2, 12, 2, 2, "S"); pdf.setLineDashPattern([], 0);
       pdf.text("Is hissay mein koi record nahi mila.", margin + 4, cursorY + 10);
-      cursorY += 14;
+      cursorY = nextPdfSectionYAfterEmptyState(cursorY);
       continue;
     }
     autoTable(pdf, {

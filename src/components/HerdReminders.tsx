@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { BellIcon } from "./icons";
 import { todayPK } from "@/lib/dates";
@@ -16,6 +17,7 @@ const serverSnapshot = () => false;
 
 export function HerdReminders() {
   const date = todayPK();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const ready = useSyncExternalStore(subscribeHydration, clientSnapshot, serverSnapshot);
   const [localDismissal, setLocalDismissal] = useState<{ date: string; ids: string[] } | null>(null);
@@ -34,6 +36,9 @@ export function HerdReminders() {
     try { writeDismissed(date, ids, window.localStorage); }
     catch { /* The current visit can still dismiss the banner. */ }
   };
+  // The reminder list lives in the shared app shell. Close it when the page
+  // changes so it cannot cover the screen the owner has just opened.
+  useEffect(() => { setOpen(false); }, [pathname]);
   return <div className="px-4 pt-2 lg:px-8"><div className="flex justify-end"><div className="relative">
       <button type="button" aria-label={`${alerts.length} yaad-dihaniyan`} aria-expanded={open} aria-controls="herd-reminder-list"
         onClick={() => setOpen((value) => !value)} className="relative flex min-h-11 min-w-11 items-center justify-center rounded-full border border-line bg-paper text-berseem">

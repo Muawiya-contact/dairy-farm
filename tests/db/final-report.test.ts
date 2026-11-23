@@ -111,7 +111,7 @@ describe("Final Report database summaries", () => {
         "select * from final_report_khata('2026-11-01','2026-11-20')",
       )).rows;
       expect(rows).toEqual([{ is_grand_total: true, customer_id: null, name: "Grand total", sort_order: 2147483647,
-        litres: "0", opening_balance: "0", opening_added: "0", charges: "0", total_payable: "0",
+        litres: "0", opening_balance: "0", opening_added: "0", charges: "0", balance_adjustments: "0", total_payable: "0",
         payments: "0", discounts: "0", refunds: "0", closing_balance: "0", receivables_due: "0", customer_credits: "0" }]);
     } finally { await empty.close(); }
 

@@ -8,12 +8,12 @@ import { UI_TEXT } from "@/lib/text";
 import { noonEnabledOn } from "@/lib/milk-shifts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  amount, createCustomer, customerMonthReport, customerRate, finalizeCustomerKhata, getCustomerClosureHistory, insertRow, money, recordCustomerPayment,
+  amount, createCustomer, customerMonthReport, customerRate, finalizeCustomerKhata, getCustomerClosureHistory, insertRow, money, recordCustomerBalanceAdjustment, recordCustomerPayment,
   reopenCustomerKhata, saveCustomerRate, updateCustomerProfile,
   shortDate, useFarmData, compareCustomers, type Customer, type FarmData,
 } from "@/lib/farm-data";
 import {
-  parseCompanyBill, parseCustomerPayment, parseCustomerProfile, parseCustomerRate, parseCustomerSettlement, parseNewCustomer,
+  parseCompanyBill, parseCustomerBalanceAdjustment, parseCustomerPayment, parseCustomerProfile, parseCustomerRate, parseCustomerSettlement, parseNewCustomer,
   type CustomerKind,
 } from "@/lib/customer-forms";
 import {
@@ -58,10 +58,14 @@ function CustomerDetail({ data, customer, save, busy, error, success, initialFro
   const pendingShare = useRef<{ key: string; bytes: Uint8Array<ArrayBuffer> } | null>(null);
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [voidPaymentId, setVoidPaymentId] = useState<string | null>(null);
+  const [adjustingBalance, setAdjustingBalance] = useState(false);
+  const [periodLedgerSyncWarning, setPeriodLedgerSyncWarning] = useState("");
   const [closePending, setClosePending] = useState(false);
   const [pendingSettlement, setPendingSettlement] = useState<ReturnType<typeof parseCustomerSettlement> | null>(null);
   const [settlementAction, setSettlementAction] = useState<"payment" | "discount">("payment");
   const paymentPending = useRef<{ id: string; signature: string } | null>(null);
+  const balanceAdjustmentPending = useRef<{ id: string; signature: string } | null>(null);
+  const queryClient = useQueryClient();
   const discountPending = useRef<{ id: string; signature: string } | null>(null);
   useEffect(() => { void prepareCustomerPdf().catch(() => {}); }, []);
   const reportQuery = useQuery({
@@ -130,6 +134,51 @@ function CustomerDetail({ data, customer, save, busy, error, success, initialFro
       await recordCustomerPayment(c.id, input, paymentPending.current.id);
       paymentPending.current = null; form.reset();
     }, "Wusooli save ho gayi. Neeche register se receipt share karein.");
+  };
+  const onBalanceAdjustment = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    setPeriodLedgerSyncWarning("");
+    void save(async () => {
+      const input = parseCustomerBalanceAdjustment(new FormData(form), data.today, c.opening_date);
+      const signature = JSON.stringify(input);
+      if (balanceAdjustmentPending.current?.signature !== signature) {
+        balanceAdjustmentPending.current = { id: crypto.randomUUID(), signature };
+      }
+      const adjustmentId = balanceAdjustmentPending.current.id;
+      await recordCustomerBalanceAdjustment(c.id, input, balanceAdjustmentPending.current.id);
+      const ledgerKey = ["customer-period-ledger", c.id, periodFrom, periodTo] as const;
+      let refreshedLedger: Awaited<ReturnType<typeof loadCustomerPeriodLedger>> | null = null;
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        try {
+          const rows = await loadCustomerPeriodLedger(c.id, periodFrom, periodTo);
+          if (rows.some((row) => row.reference_id === adjustmentId)) {
+            refreshedLedger = rows;
+            break;
+          }
+        } catch {
+          // Keep the saved adjustment intact; a later read may succeed if the reporting replica is catching up.
+        }
+        if (attempt < 5) await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+      }
+      if (refreshedLedger) {
+        queryClient.setQueryData(ledgerKey, refreshedLedger);
+        let summaryRefreshed = true;
+        try {
+          const summary = await loadCustomerPeriodLedgerSummary(c.id, periodFrom, periodTo);
+          queryClient.setQueryData(["customer-period-ledger-summary", c.id, periodFrom, periodTo], summary);
+        } catch {
+          await periodSummaryQuery.refetch();
+          summaryRefreshed = false;
+        }
+        setPeriodLedgerSyncWarning(summaryRefreshed ? "" : "Purana Khata save ho gaya. Summary abhi sync ho rahi hai; zarurat par dobara load karein.");
+      } else {
+        setPeriodLedgerSyncWarning("Purana Khata save ho gaya, lekin record abhi sync ho raha hai. Thori dair baad dobara load karein.");
+      }
+      balanceAdjustmentPending.current = null;
+      form.reset();
+    }, "Purana Khata save ho gaya. Galla ya aamdani mein nayi raqam shamil nahi hui.")
+      .then((saved) => { if (saved) setAdjustingBalance(false); });
   };
   const onDiscount = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -228,10 +277,10 @@ function CustomerDetail({ data, customer, save, busy, error, success, initialFro
       const rows = periodLedgerQuery.data.map((line) => ({
         entry_date: line.entry_date, detail: line.detail, litres: line.litres == null ? "" : line.litres,
         charge: line.charge ? money(line.charge) : "", payment: line.payment ? money(line.payment) : "",
-        discount: line.discount ? money(line.discount) : "", refund: line.refund ? money(line.refund) : "",
+        discount: line.discount ? money(line.discount) : "", refund: line.refund ? money(line.refund) : "", balance_adjustment: line.balance_adjustment ? money(line.balance_adjustment) : "",
         running_balance: money(line.running_balance),
       }));
-      const bytes = await buildPdf(`${c.name} ka khata — ${periodFrom} se ${periodTo}`, ["entry_date", "detail", "litres", "charge", "payment", "discount", "refund", "running_balance"], rows, data.settings.farm_name);
+      const bytes = await buildPdf(`${c.name} ka khata — ${periodFrom} se ${periodTo}`, ["entry_date", "detail", "litres", "charge", "payment", "discount", "refund", "balance_adjustment", "running_balance"], rows, data.settings.farm_name);
       const filename = `khata-${c.name.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "customer"}-${periodFrom}-to-${periodTo}.pdf`;
       if (action === "download") {
         downloadBlob(filename, new Blob([bytes], { type: "application/pdf" }));
@@ -289,7 +338,7 @@ function CustomerDetail({ data, customer, save, busy, error, success, initialFro
         {reportQuery.isError && <p role="alert" className="text-udhaar">Bill nahi khula: {friendlyError(reportQuery.error)} <button type="button" onClick={() => void reportQuery.refetch()} className="underline">Dobara koshish</button></p>}
         {reportQuery.isSuccess && !report && <p className="text-muted">Is maheene ka hisaab nahi mila.</p>}
         {report && <dl className="divide-y divide-line">
-          {[["Pichla baqaya", report.previous_balance], ["Doodh / parchi ki raqam", report.amount],
+          {[["Pichla baqaya", report.previous_balance], ["Doodh / parchi ki raqam", report.amount], ["Is maheene ka Purana Khata", report.balance_adjustment],
             ["Wusooli", report.paid], ["Riayat", report.discount], ["Advance wapas", report.refund], ["Maheene ke aakhir mein baqi", report.balance]]
             .map(([label, value]) => <div key={String(label)} className="flex justify-between gap-3 py-2"><dt>{label}</dt><dd className="font-bold">{money(amount(value as number))}</dd></div>)}
         </dl>}
@@ -308,12 +357,13 @@ function CustomerDetail({ data, customer, save, busy, error, success, initialFro
         <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-semibold">Shuru ki tareekh<input aria-label="Khata shuru ki tareekh" type="date" value={periodFrom} max={periodTo || data.today} onChange={(event) => setPeriodFrom(event.target.value)} className={`${field} mt-1`} /></label><label className="text-sm font-semibold">Aakhir ki tareekh<input aria-label="Khata aakhir ki tareekh" type="date" value={periodTo} min={periodFrom} max={data.today} onChange={(event) => setPeriodTo(event.target.value)} className={`${field} mt-1`} /></label></div>
         {!validPeriod && <p role="alert" className="mt-2 text-sm text-udhaar">Aaj tak ki sahi shuru aur aakhir ki tareekh chunein.</p>}
         {periodLedgerQuery.isPending && <p role="status" className="mt-2 text-sm text-muted">Khata record load ho raha hai…</p>}
+        {periodLedgerSyncWarning && <p role="status" className="mt-2 text-sm text-udhaar">{periodLedgerSyncWarning} <button type="button" onClick={() => void periodLedgerQuery.refetch()} className="underline">Dobara load karein</button></p>}
         {periodLedgerQuery.isError && <p role="alert" className="mt-2 text-sm text-udhaar">Khata record nahi khula: {friendlyError(periodLedgerQuery.error)} <button type="button" onClick={() => void periodLedgerQuery.refetch()} className="underline">Dobara koshish</button></p>}
-        {periodSummaryQuery.data && <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">{[["Shuru ka baqaya", periodSummaryQuery.data.opening_balance], ["Doodh", `${amount(periodSummaryQuery.data.litres)} L`], ["Charges", periodSummaryQuery.data.charges], ["Wusooli", periodSummaryQuery.data.payments], ["Riayat", periodSummaryQuery.data.discounts], ["Advance wapas", periodSummaryQuery.data.refunds], ["Aakhir ka baqaya", periodSummaryQuery.data.closing_balance]].map(([label, value]) => <div key={String(label)} className="rounded-xl bg-ground p-2"><dt className="text-muted">{label}</dt><dd className="font-bold">{typeof value === "number" ? money(value) : value}</dd></div>)}</dl>}
-        {periodLedgerQuery.data && <><p className="mt-3 text-sm text-muted">{periodLedgerQuery.data.length} entries mili hain.</p><div className="mt-2 overflow-x-auto"><table className="w-full min-w-[900px] text-sm"><thead><tr>{["Tareekh", "Tafseel", "Litre", "Charge", "Wusooli", "Riayat", "Advance wapas", "Baqi"].map((label) => <th key={label} className="border-b border-line px-2 py-2 text-left last:text-right">{label}</th>)}</tr></thead><tbody>{periodLedgerQuery.data.map((line) => <tr key={line.reference_id}><td className="border-b border-line px-2 py-2">{shortDate(line.entry_date)}</td><td className="border-b border-line px-2 py-2">{c.name} · {line.detail}</td><td className="border-b border-line px-2 py-2">{line.litres ?? ""}</td><td className="border-b border-line px-2 py-2">{line.charge ? money(line.charge) : ""}</td><td className="border-b border-line px-2 py-2">{line.payment ? money(line.payment) : ""}</td><td className="border-b border-line px-2 py-2">{line.discount ? money(line.discount) : ""}</td><td className="border-b border-line px-2 py-2">{line.refund ? money(line.refund) : ""}</td><td className="border-b border-line px-2 py-2 text-right font-bold">{money(line.running_balance)}</td></tr>)}</tbody></table></div><div className="mt-3 flex flex-wrap gap-2"><button type="button" disabled={pdfBusy} onClick={() => void exportPeriodLedger("download")} className="min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem disabled:opacity-50">Khata PDF download</button><button type="button" disabled={pdfBusy} onClick={() => void exportPeriodLedger("share")} className="min-h-11 rounded-xl bg-berseem px-4 font-semibold text-white disabled:opacity-50">Khata PDF share karein</button><button type="button" onClick={() => window.print()} className="min-h-11 rounded-xl border border-line px-4 font-semibold">Print</button></div></>}
+        {periodSummaryQuery.data && <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">{[["Shuru ka baqaya", periodSummaryQuery.data.opening_balance], ["Doodh", `${amount(periodSummaryQuery.data.litres)} L`], ["Charges", periodSummaryQuery.data.charges], ["Wusooli", periodSummaryQuery.data.payments], ["Riayat", periodSummaryQuery.data.discounts], ["Advance wapas", periodSummaryQuery.data.refunds], ["Purana Khata", periodSummaryQuery.data.balance_adjustments], ["Aakhir ka baqaya", periodSummaryQuery.data.closing_balance]].map(([label, value]) => <div key={String(label)} className="rounded-xl bg-ground p-2"><dt className="text-muted">{label}</dt><dd className="font-bold">{typeof value === "number" ? money(value) : value}</dd></div>)}</dl>}
+        {periodLedgerQuery.data && <><p className="mt-3 text-sm text-muted">{periodLedgerQuery.data.length} entries mili hain.</p><div className="mt-2 overflow-x-auto"><table className="w-full min-w-[1020px] text-sm"><thead><tr>{["Tareekh", "Tafseel", "Litre", "Charge", "Wusooli", "Riayat", "Advance wapas", "Purana Khata (+/-)", "Baqi"].map((label) => <th key={label} className="border-b border-line px-2 py-2 text-left last:text-right">{label}</th>)}</tr></thead><tbody>{periodLedgerQuery.data.map((line) => <tr key={line.reference_id}><td className="border-b border-line px-2 py-2">{shortDate(line.entry_date)}</td><td className="border-b border-line px-2 py-2">{c.name} · {line.detail}</td><td className="border-b border-line px-2 py-2">{line.litres ?? ""}</td><td className="border-b border-line px-2 py-2">{line.charge ? money(line.charge) : ""}</td><td className="border-b border-line px-2 py-2">{line.payment ? money(line.payment) : ""}</td><td className="border-b border-line px-2 py-2">{line.discount ? money(line.discount) : ""}</td><td className="border-b border-line px-2 py-2">{line.refund ? money(line.refund) : ""}</td><td className="border-b border-line px-2 py-2">{line.balance_adjustment ? money(line.balance_adjustment) : ""}</td><td className="border-b border-line px-2 py-2 text-right font-bold">{money(line.running_balance)}</td></tr>)}</tbody></table></div><div className="mt-3 flex flex-wrap gap-2"><button type="button" disabled={pdfBusy} onClick={() => void exportPeriodLedger("download")} className="min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem disabled:opacity-50">Khata PDF download</button><button type="button" disabled={pdfBusy} onClick={() => void exportPeriodLedger("share")} className="min-h-11 rounded-xl bg-berseem px-4 font-semibold text-white disabled:opacity-50">Khata PDF share karein</button><button type="button" onClick={() => window.print()} className="min-h-11 rounded-xl border border-line px-4 font-semibold">Print</button></div></>}
         {pdfTarget === "period" && pdfStatus && <p role={pdfStatus.startsWith("PDF nahi") ? "alert" : "status"} className="mt-2 text-sm text-berseem-deep">{pdfStatus}</p>}
       </Panel>
-      {c.kind !== "cash" && c.kind !== "free" && <Panel title="Wusooli likhein">
+      {c.kind !== "free" && <Panel title="Wusooli likhein">
         <form onSubmit={onPayment} className="grid gap-2">
           <input name="amount" required type="number" min="0.01" step="0.01" placeholder="Raqam Rs" aria-label="Raqam" className={field} />
           <label className="text-sm text-muted">Wusooli ki tareekh<input name="date" type="date" min={c.opening_date} max={data.today} defaultValue={data.today} required className={field} /></label>
@@ -322,6 +372,22 @@ function CustomerDetail({ data, customer, save, busy, error, success, initialFro
           <button disabled={busy || !activeAccounts.length} className="min-h-11 rounded-xl bg-berseem font-bold text-white disabled:opacity-50">Wusooli save karein</button>
         </form>
         {!activeAccounts.length && <p className="mt-2 text-sm text-muted">Pehle Settings mein active account banayein.</p>}
+      </Panel>}
+      {c.kind !== "free" && <Panel title="Purana Khata darj karein">
+        <p className="mb-3 text-sm text-muted">Pehle se mojood baqaya ya advance yahan likhein. Yeh aglay Khata hisaab mein hamesha shamil rahega, lekin Galla, nayi sale ya aamdani nahi badlega.</p>
+        {!c.active ? <p className="text-sm text-muted">Band Khata mein nayi entry se pehle Khata dobara chalu karein.</p> : <>
+          <button type="button" aria-expanded={adjustingBalance} onClick={() => setAdjustingBalance((open) => !open)} className="min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem">{adjustingBalance ? "Form band karein" : "Purana baqaya ya advance add karein"}</button>
+          {adjustingBalance && <form onSubmit={onBalanceAdjustment} className="mt-3 grid gap-2">
+            <label className="text-sm font-semibold">Kis taraf ka purana hisaab?<select name="direction" defaultValue="due" className={field}>
+              <option value="due">Customer se lena hai (baqaya)</option>
+              <option value="advance">Customer ka advance dena hai</option>
+            </select></label>
+            <label className="text-sm font-semibold">Raqam (Rs)<input name="amount" type="number" min="0.01" max="9999999999.99" step="0.01" required placeholder="Misal: 2500" className={field} /></label>
+            <label className="text-sm font-semibold">Purane hisaab ki tareekh<input name="date" type="date" min={c.opening_date} max={data.today} defaultValue={data.today} required className={field} /></label>
+            <label className="text-sm font-semibold">Wajah / tafseel<input name="reason" required minLength={3} maxLength={500} placeholder="Misal: app se pehle ka baqaya" className={field} /></label>
+            <button disabled={busy} className="min-h-11 rounded-xl bg-berseem px-4 font-bold text-white disabled:opacity-50">Purana Khata save karein</button>
+          </form>}
+        </>}
       </Panel>}
       {c.kind !== "cash" && c.kind !== "free" && <Panel title="Riayat dein">
         <p className="mb-2 text-sm text-muted">Riayat customer ka baqaya kam karti hai; galla mein paisa nahi aata.</p>

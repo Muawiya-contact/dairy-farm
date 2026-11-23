@@ -47,6 +47,7 @@ function row(index: number): KhataPeriodCustomer {
     payments: index * 50,
     discounts: 0,
     refunds: 0,
+    balance_adjustments: 0,
     opening_balance: 0,
     opening_added: 0,
     closing_balance: index * 50,

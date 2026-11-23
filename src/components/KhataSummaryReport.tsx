@@ -17,7 +17,7 @@ type Preset = "day" | "yesterday" | "week" | "month" | "year" | "all" | "custom"
 type ExportAction = "pdf" | "share" | "print" | "csv" | "excel";
 const PAGE_SIZE = 25;
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
-const columns = ["name", "litres", "charges", "payments", "discounts", "refunds", "opening_balance", "opening_added", "closing_balance"];
+const columns = ["name", "litres", "charges", "payments", "discounts", "refunds", "balance_adjustments", "opening_balance", "opening_added", "closing_balance"];
 const sortLabels: Record<KhataCustomerSortKey, string> = {
   name: "Naam",
   litres: "Doodh",
@@ -35,10 +35,11 @@ function totals(rows: KhataPeriodCustomer[]) {
     payments: sum.payments + row.payments,
     discounts: sum.discounts + row.discounts,
     refunds: sum.refunds + row.refunds,
+    balanceAdjustments: sum.balanceAdjustments + row.balance_adjustments,
     opening: sum.opening + row.opening_balance,
     openingAdded: sum.openingAdded + row.opening_added,
     closing: sum.closing + row.closing_balance,
-  }), { litres: 0, charges: 0, payments: 0, discounts: 0, refunds: 0, opening: 0, openingAdded: 0, closing: 0 });
+  }), { litres: 0, charges: 0, payments: 0, discounts: 0, refunds: 0, balanceAdjustments: 0, opening: 0, openingAdded: 0, closing: 0 });
 }
 
 function exportRows(rows: KhataPeriodCustomer[]) {
@@ -51,6 +52,7 @@ function exportRows(rows: KhataPeriodCustomer[]) {
       payments: row.payments,
       discounts: row.discounts,
       refunds: row.refunds,
+      balance_adjustments: row.balance_adjustments,
       opening_balance: row.opening_balance,
       opening_added: row.opening_added,
       closing_balance: row.closing_balance,
@@ -62,6 +64,7 @@ function exportRows(rows: KhataPeriodCustomer[]) {
       payments: summary.payments,
       discounts: summary.discounts,
       refunds: summary.refunds,
+      balance_adjustments: summary.balanceAdjustments,
       opening_balance: summary.opening,
       opening_added: summary.openingAdded,
       closing_balance: summary.closing,
@@ -119,12 +122,12 @@ export default function KhataSummaryReport({ title = "Khata Summary" }: { title?
       const farmName = settings.data.farm_name;
       const totalRows = [
         ["Kul doodh", litres(grand.litres)], ["Kul charges", rs(grand.charges)], ["Kul wusooli", rs(grand.payments)],
-        ["Kul riayat", rs(grand.discounts)], ["Advance wapas", rs(grand.refunds)], ["Shuru ka baqaya", rs(grand.opening)],
+        ["Kul riayat", rs(grand.discounts)], ["Advance wapas", rs(grand.refunds)], ["Purana Khata", rs(grand.balanceAdjustments)], ["Shuru ka baqaya", rs(grand.opening)],
         ["Is muddat ka opening balance", rs(grand.openingAdded)], ["Aakhir ka baqaya", rs(grand.closing)],
       ].map(([item, value]) => ({ item, value }));
       const filteredTotalRows = [
         ["Matching customers", String(matchingRows.length)], ["Doodh", litres(matchingTotals.litres)],
-        ["Charges", rs(matchingTotals.charges)], ["Wusooli", rs(matchingTotals.payments)],
+        ["Charges", rs(matchingTotals.charges)], ["Purana Khata", rs(matchingTotals.balanceAdjustments)], ["Wusooli", rs(matchingTotals.payments)],
         ["Aakhir ka baqaya", rs(matchingTotals.closing)],
       ].map(([item, value]) => ({ item, value }));
       const sections: PdfSection[] = [
@@ -132,7 +135,7 @@ export default function KhataSummaryReport({ title = "Khata Summary" }: { title?
         { title: "Customer filter ka khulasa", columns: ["item", "value"], rows: filteredTotalRows },
         { title: "Customer khata summary", columns, rows: exportRows(matchingRows) },
       ];
-      if (preset === "year" && yearly.data) sections.push({ title: "Maheena ba maheena — tamam customers", columns: ["month_start", "litres", "charges", "payments", "discounts", "refunds", "closing_balance"], rows: yearly.data.map((row) => ({ ...row, litres: litres(row.litres), charges: rs(row.charges), payments: rs(row.payments), discounts: rs(row.discounts), refunds: rs(row.refunds), closing_balance: rs(row.closing_balance) })) });
+      if (preset === "year" && yearly.data) sections.push({ title: "Maheena ba maheena — tamam customers", columns: ["month_start", "litres", "charges", "payments", "discounts", "refunds", "balance_adjustments", "closing_balance"], rows: yearly.data.map((row) => ({ ...row, litres: litres(row.litres), charges: rs(row.charges), payments: rs(row.payments), discounts: rs(row.discounts), refunds: rs(row.refunds), balance_adjustments: rs(row.balance_adjustments), closing_balance: rs(row.closing_balance) })) });
       const reportTitle = `${title} — ${from} se ${to}`;
       const bytes = await buildPdfReport(reportTitle, sections, farmName);
       const filename = `${title === "Customer Report" ? "customer-report" : "khata-summary"}-${from}-to-${to}.pdf`;
@@ -165,8 +168,8 @@ export default function KhataSummaryReport({ title = "Khata Summary" }: { title?
   };
 
   const table = (tableRows: KhataPeriodCustomer[]) => <div className="overflow-x-auto">
-    <table className="w-full min-w-[1180px] text-sm">
-      <thead><tr>{["Customer", "Doodh", "Charges", "Wusooli", "Riayat", "Advance wapas", "Shuru", "Is muddat ka opening", "Aakhir"].map((label) => <th key={label} className="border-b border-line px-2 py-2 text-right first:text-left">{label}</th>)}</tr></thead>
+    <table className="w-full min-w-[1300px] text-sm">
+      <thead><tr>{["Customer", "Doodh", "Charges", "Wusooli", "Riayat", "Advance wapas", "Purana Khata (+/-)", "Shuru", "Is muddat ka opening", "Aakhir"].map((label) => <th key={label} className="border-b border-line px-2 py-2 text-right first:text-left">{label}</th>)}</tr></thead>
       <tbody>{tableRows.map((row) => <tr key={row.customer_id}>
         <td className="border-b border-line px-2 py-2"><a className="font-semibold text-berseem underline" href={`/reports/customer/?id=${encodeURIComponent(row.customer_id)}&from=${from}&to=${to}`}>{row.name}</a>{!row.active && <span className="ml-1 text-muted">(Band)</span>}</td>
         <td className="border-b border-line px-2 py-2 text-right">{litres(row.litres)}</td>
@@ -174,6 +177,7 @@ export default function KhataSummaryReport({ title = "Khata Summary" }: { title?
         <td className="border-b border-line px-2 py-2 text-right">{rs(row.payments)}</td>
         <td className="border-b border-line px-2 py-2 text-right">{rs(row.discounts)}</td>
         <td className="border-b border-line px-2 py-2 text-right">{rs(row.refunds)}</td>
+        <td className="border-b border-line px-2 py-2 text-right">{rs(row.balance_adjustments)}</td>
         <td className="border-b border-line px-2 py-2 text-right">{rs(row.opening_balance)}</td>
         <td className="border-b border-line px-2 py-2 text-right">{rs(row.opening_added)}</td>
         <td className="border-b border-line px-2 py-2 text-right font-bold">{rs(row.closing_balance)}</td>
@@ -185,6 +189,7 @@ export default function KhataSummaryReport({ title = "Khata Summary" }: { title?
         <td className="border-t-2 border-ink px-2 py-2 text-right">{rs(matchingTotals.payments)}</td>
         <td className="border-t-2 border-ink px-2 py-2 text-right">{rs(matchingTotals.discounts)}</td>
         <td className="border-t-2 border-ink px-2 py-2 text-right">{rs(matchingTotals.refunds)}</td>
+        <td className="border-t-2 border-ink px-2 py-2 text-right">{rs(matchingTotals.balanceAdjustments)}</td>
         <td className="border-t-2 border-ink px-2 py-2 text-right">{rs(matchingTotals.opening)}</td>
         <td className="border-t-2 border-ink px-2 py-2 text-right">{rs(matchingTotals.openingAdded)}</td>
         <td className="border-t-2 border-ink px-2 py-2 text-right">{rs(matchingTotals.closing)}</td>

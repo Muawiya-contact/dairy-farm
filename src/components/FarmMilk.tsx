@@ -12,6 +12,7 @@ import { FarmLoading } from "./FarmDashboard";
 import { MinusIcon, PlusIcon } from "./icons";
 import { FarmObservances } from "./FarmObservances";
 import { FormValidationDialog } from "./FormValidationDialog";
+import { SaveErrorDialog } from "./SaveErrorDialog";
 import { SHIFT_LABELS, noonEnabledOn, visibleShifts, type MilkShiftName } from "@/lib/milk-shifts";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
@@ -263,8 +264,9 @@ function ShiftForm({ data, date, shift }: { data: FarmData; date: string; shift:
       {stockQuery.data && shiftRemaining < 0 && <p role="alert" className="text-sm text-udhaar">Is shift ki taqseem chiller ke is waqt available doodh se zyada hai.</p>}
       {stockQuery.data && shiftRemaining >= 0 && dayRemaining < 0 && <p role="alert" className="text-sm text-udhaar">Baad ki saved shifts ya din ke waste ke baad doodh kam par raha hai. Is entry ko kam karein.</p>}
       <button onClick={requestSave} disabled={busy} className="min-h-14 rounded-2xl bg-berseem text-lg font-bold text-white disabled:opacity-50">{busy ? "Save ho raha hai…" : existing ? "Durust entry save karein" : "Entry save karein"}</button>
-      {saved && <p role="status" className="text-berseem-deep">Entry farm ke data mein save ho gayi.</p>}{error && <p role="alert" className="text-udhaar">Save nahi hua: {error}</p>}
+      {saved && <p role="status" className="text-berseem-deep">Entry farm ke data mein save ho gayi.</p>}
       {saveProblems && <FormValidationDialog title="Entry pehle check karein" problems={saveProblems} onClose={closeSaveProblems} />}
+      {error && <SaveErrorDialog title={saved ? "Entry save hui, magar hisaab nahi khula" : undefined} error={error} onClose={() => setError("")} />}
     </div>
     <div className="grid min-w-0 gap-4">
       <Panel title="Khata / credit sale" className="min-w-0"><p className="mb-2 text-sm text-muted">In deliveries se customer ya company ledger/bill update hota hai; Galla mein cash nahi aata. Chiller ka pichla doodh sirf stock hai, income nahi.</p>{company && <button type="button" onClick={() => { setQty((current) => fillCompanyMilk(companyFillAvailable, current, company.id, dispositionTotal)); setSaved(false); }} disabled={!stockQuery.data || shiftRemaining <= 0 || dayRemaining <= 0 || missingTotal || invalidEntry} className="mb-2 min-h-11 rounded-xl bg-berseem-soft px-3 text-sm font-semibold text-berseem-deep disabled:opacity-50">Baqi company ko dein</button>}<ul className="divide-y divide-line">{creditCustomers.map(customerRow)}</ul>{!creditCustomers.length && <p className="text-sm text-muted">Abhi koi Khata customer nahi.</p>}</Panel>

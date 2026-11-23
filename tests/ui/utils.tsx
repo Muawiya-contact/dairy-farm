@@ -18,6 +18,7 @@ const farmMocks = vi.hoisted(() => ({
   correctMilkEntry: vi.fn(),
   loadMilkDayDistribution: vi.fn(() => Promise.resolve({ report_date: fixtures.today, opening_litres: 0, produced_litres: 0, available_litres: 0, khata_litres: 0, cash_litres: 0, free_litres: 0, farm_use_litres: 0, wasted_litres: 0, allocated_litres: 0, remaining_litres: 0, khata_amount: 0, cash_sale_amount: 0, cash_received: 0, shifts: [] })),
   updateCustomerProfile: vi.fn(),
+  recordCustomerPayment: vi.fn(),
   finalizeCustomerKhata: vi.fn(),
   recordCustomerBalanceAdjustment: vi.fn(),
   reopenCustomerKhata: vi.fn(),

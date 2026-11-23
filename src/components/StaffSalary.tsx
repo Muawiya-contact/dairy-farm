@@ -13,6 +13,7 @@ import { ConfirmActionDialog } from "./ConfirmActionDialog";
 import { UI_TEXT } from "@/lib/text";
 import { refreshFarmViews } from "@/lib/query-refresh";
 import { DateFormatHint } from "./DateFormatHint";
+import { SaveErrorDialog } from "./SaveErrorDialog";
 
 const field = "mt-1 min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 type Pending = { id: string; signature: string };
@@ -206,7 +207,7 @@ export default function StaffSalary() {
       {pendingPayment && <ConfirmActionDialog title={UI_TEXT.salaryTitle} message={pendingPayment.message}
         confirmLabel={UI_TEXT.salaryButton} busy={busy} onCancel={() => setPendingPayment(null)} onConfirm={confirmPayment} />}
       {success && <p role="status" className="text-berseem-deep lg:col-span-2">{success}</p>}
-      {error && <p role="alert" className="text-udhaar lg:col-span-2">Save nahi hua: {error} Connection tootne par dobara save se pehle record check karein.</p>}
+      {error && <SaveErrorDialog error={error} onClose={() => setError("")} />}
     </Body>
   </>;
 }

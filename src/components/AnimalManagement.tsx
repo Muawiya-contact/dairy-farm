@@ -10,6 +10,7 @@ import { refreshFarmViews } from "@/lib/query-refresh";
 import { Panel } from "./ui";
 import { ConfirmActionDialog } from "./ConfirmActionDialog";
 import { UI_TEXT } from "@/lib/text";
+import { SaveErrorDialog } from "./SaveErrorDialog";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 const label = "grid gap-1 text-sm text-muted";
@@ -54,7 +55,7 @@ export function AnimalManagement({ animal, animals, accounts, today, linkedBirth
     {animal.exit_reason && <p className="mt-1 text-sm text-muted">{animal.exit_reason}</p>}
   </Panel>;
 
-  return <Panel title="Janwar ka record"><div className="mb-3 flex flex-wrap gap-2">
+  return <><Panel title="Janwar ka record"><div className="mb-3 flex flex-wrap gap-2">
     <button type="button" disabled={busy} onClick={() => { if (mode === "edit") setMode(null); else { setEditVersion(animal.updated_at); setSex(animal.sex); setSource(animal.source); setMode("edit"); } setError(""); }} className="min-h-10 rounded-xl border border-line px-3 text-sm font-semibold disabled:opacity-50">Maloomat badlein</button>
     <button type="button" disabled={busy} onClick={() => { setMode(mode === "exit" ? null : "exit"); setError(""); }} className="min-h-10 rounded-xl border border-line px-3 text-sm font-semibold disabled:opacity-50">Farokht / wafat / doosra</button>
   </div>
@@ -121,6 +122,5 @@ export function AnimalManagement({ animal, animals, accounts, today, linkedBirth
         setPendingExit(null);
         void run(() => closeAnimal(input));
       }} />}
-    {error && <p role="alert" className="mt-3 text-sm text-udhaar">Save nahi hua: {error}</p>}
-  </Panel>;
+  </Panel>{error && <SaveErrorDialog error={error} onClose={() => setError("")} />}</>;
 }

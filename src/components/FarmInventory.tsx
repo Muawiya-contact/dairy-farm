@@ -13,6 +13,7 @@ import {
 import { friendlyError } from "@/lib/errors";
 import { Body, PageHeader, Panel } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
+import { SaveErrorDialog } from "./SaveErrorDialog";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 const unitLabel = (unit: string) => INVENTORY_UNIT_LABEL[unit as InventoryUnit] ?? unit;
@@ -245,7 +246,6 @@ export default function FarmInventory() {
   return <>
     <PageHeader title="Farm ka Stock" sub="Stock, khareed, istemal aur saman ka tareekh-war record." />
     <Body className="grid gap-4">
-      {error && <p role="alert" className="rounded-xl bg-udhaar-soft px-4 py-3 text-sm font-semibold text-udhaar">{error}</p>}
       {success && <p role="status" className="rounded-xl bg-berseem-soft px-4 py-3 text-sm font-semibold text-berseem-deep">{success}</p>}
 
       <section className="grid grid-cols-3 overflow-hidden rounded-2xl border border-line bg-paper">
@@ -399,5 +399,6 @@ export default function FarmInventory() {
       </Panel>}
       {!stockRows.length && <Panel title="Shuru karein"><p className="text-sm text-muted">Chara, dawa, auzaar aur farm ke dusre saman ka stock dekhne ke liye pehla saman add karein.</p><button type="button" onClick={() => setOperation("item")} className="mt-3 min-h-11 rounded-xl bg-berseem px-4 font-bold text-white">Pehla saman add karein</button></Panel>}
     </Body>
+    {error && <SaveErrorDialog error={error} onClose={() => setError("")} />}
   </>;
 }

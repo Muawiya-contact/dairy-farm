@@ -11,6 +11,7 @@ import { buildPdf, downloadBlob } from "@/lib/export-data";
 import { sharePdfFile } from "@/lib/pdf-share";
 import { Body, PageHeader, Panel } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
+import { SaveErrorDialog } from "./SaveErrorDialog";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 const modeNames: Record<ExpenseMode, string> = {
@@ -229,7 +230,7 @@ export default function FarmExpenses() {
         </form>
       </div></Panel>
       {success && <p role="status" className="text-berseem-deep lg:col-span-2">{success}</p>}
-      {error && <p role="alert" className="text-udhaar lg:col-span-2">Save nahi hua: {error} Agar connection toot gaya ho to dobara save se pehle list check karein.</p>}
+      {error && <SaveErrorDialog error={error} onClose={() => setError("")} />}
     </Body>
   </>;
 }

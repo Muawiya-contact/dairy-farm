@@ -11,6 +11,7 @@ vi.mock("@/lib/galla", async (original) => ({ ...(await original<typeof import("
 
 beforeEach(() => {
   farmMocks.updateCustomerProfile.mockResolvedValue(undefined);
+  farmMocks.recordCustomerPayment.mockResolvedValue(undefined);
   farmMocks.finalizeCustomerKhata.mockResolvedValue(undefined);
   farmMocks.recordCustomerBalanceAdjustment.mockResolvedValue(undefined);
   farmMocks.getCustomerClosureHistory.mockResolvedValue([]);
@@ -66,6 +67,27 @@ it("offers the prior-balance option for cash customers too", () => {
   renderWithQuery(<FarmCustomers />);
   expect(screen.getByRole("button", { name: "Purana baqaya ya advance add karein" })).toBeVisible();
   expect(screen.getByRole("button", { name: "Wusooli save karein" })).toBeVisible();
+});
+
+it("shows a focused dialog when a payment cannot be saved", async () => {
+  const user = userEvent.setup();
+  vi.stubGlobal("crypto", { randomUUID: () => "12345678-1234-4234-8234-123456789099" });
+  farmMocks.recordCustomerPayment.mockRejectedValueOnce(new Error("NetworkError"));
+  renderWithQuery(<FarmCustomers />);
+
+  await user.type(screen.getByLabelText("Raqam"), "3500");
+  const saveButton = screen.getByRole("button", { name: "Wusooli save karein" });
+  const paymentForm = saveButton.closest("form");
+  expect(paymentForm).not.toBeNull();
+  await user.selectOptions(within(paymentForm!).getByLabelText("Account"), "account-1");
+  fireEvent.submit(paymentForm!);
+
+  const dialog = await screen.findByRole("alertdialog", { name: "Save nahi hua" });
+  expect(dialog).toHaveTextContent("Internet nahi chal raha. Entry save nahi hui, dobara koshish karein.");
+  const closeButton = within(dialog).getByRole("button", { name: "Theek hai" });
+  expect(closeButton).toHaveFocus();
+  await user.click(closeButton);
+  expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
 });
 
 it("records the exact remaining balance through a confirmed final settlement before closing a customer khata", async () => {

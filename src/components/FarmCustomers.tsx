@@ -31,6 +31,7 @@ import { FarmLoading } from "./FarmDashboard";
 import { PlusIcon } from "./icons";
 import { DateFormatHint } from "./DateFormatHint";
 import { ConfirmActionDialog } from "./ConfirmActionDialog";
+import { SaveErrorDialog } from "./SaveErrorDialog";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 const freeReasons = {
@@ -39,8 +40,8 @@ const freeReasons = {
 type Save = (action: () => Promise<void>, message: string) => Promise<boolean>;
 type PdfAction = "download" | "share" | "whatsapp";
 
-function CustomerDetail({ data, customer, save, busy, error, success, initialFrom, initialTo }: {
-  data: FarmData; customer: Customer; save: Save; busy: boolean; error: string; success: string;
+function CustomerDetail({ data, customer, save, busy, success, initialFrom, initialTo }: {
+  data: FarmData; customer: Customer; save: Save; busy: boolean; success: string;
   initialFrom?: string; initialTo?: string;
 }) {
   const c = customer;
@@ -466,14 +467,13 @@ function CustomerDetail({ data, customer, save, busy, error, success, initialFro
         {!!auditQuery.data?.length && <p className="mt-2 text-xs text-muted">Poori audit history Settings ke data export mein milti hai.</p>}
       </Panel>
       {success && <p role="status" className="text-berseem-deep lg:col-span-2">{success}</p>}
-      {error && <p role="alert" className="text-udhaar lg:col-span-2">Save nahi hua: {error}</p>}
       {closePending && pendingSettlement && <ConfirmActionDialog title="Aakhri hisaab ke saath Khata band karein?" message={pendingSettlement.action === "payment" ? `${money(balance)} ki wusooli record ho gi aur Khata band ho jayega.` : pendingSettlement.action === "discount" ? `${money(balance)} ki riayat record ho gi; galla mein paisa nahi aayega.` : pendingSettlement.action === "refund" ? `${money(-balance)} customer ko advance wapas record hoga aur galla se niklega.` : "Hisaab saaf hai; Khata band ho jayega."} confirmLabel={pendingSettlement.action === "refund" ? "Advance wapas karke band karein" : "Aakhri hisaab save karke band karein"} busy={busy} onConfirm={closeKhata} onCancel={() => { setClosePending(false); setPendingSettlement(null); }} />}
     </Body>
   </>;
 }
 
-function CustomerList({ data, save, busy, error, success }: {
-  data: FarmData; save: Save; busy: boolean; error: string; success: string;
+function CustomerList({ data, save, busy, success }: {
+  data: FarmData; save: Save; busy: boolean; success: string;
 }) {
   const [adding, setAdding] = useState(false);
   const [kind, setKind] = useState<CustomerKind>("regular");
@@ -521,7 +521,6 @@ function CustomerList({ data, save, busy, error, success }: {
         return <li key={c.id} className="border-b border-line last:border-0"><Link href={`/khata/?id=${c.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-ground"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ground font-display font-bold">{c.name.slice(0, 2).toUpperCase()}</span><span className="min-w-0 flex-1"><strong className="block truncate">{c.name}</strong><span className="text-sm text-muted">{c.active ? UI_TEXT.active : "Band"} · Is maah {amount(report?.litres)} L</span></span><strong className={c.kind !== "free" && balance > 0 ? "text-udhaar" : "text-berseem"}>{c.kind === "free" ? "Muft" : balance > 0 ? money(balance) : balance < 0 ? `Advance ${money(-balance)}` : "Saaf"}</strong></Link></li>;
       })}{!visible.length && <li className="p-5 text-muted">{list.length ? "Is talash mein koi customer nahi." : "Abhi koi customer nahi."}</li>}</ul>
       {success && <p role="status" className="text-berseem-deep">{success}</p>}
-      {error && <p role="alert" className="text-udhaar">Save nahi hua: {error}</p>}
     </Body>
   </>;
 }
@@ -558,7 +557,10 @@ export default function FarmCustomers() {
     }
   };
   const customer = data.customers.find((c) => c.id === id);
-  return customer
-    ? <CustomerDetail data={data} customer={customer} save={save} busy={busy} error={error} success={success} initialFrom={searchParams.get("from") ?? undefined} initialTo={searchParams.get("to") ?? undefined} />
-    : <CustomerList data={data} save={save} busy={busy} error={error} success={success} />;
+  return <>
+    {customer
+      ? <CustomerDetail data={data} customer={customer} save={save} busy={busy} success={success} initialFrom={searchParams.get("from") ?? undefined} initialTo={searchParams.get("to") ?? undefined} />
+      : <CustomerList data={data} save={save} busy={busy} success={success} />}
+    {error && <SaveErrorDialog error={error} onClose={() => setError("")} />}
+  </>;
 }

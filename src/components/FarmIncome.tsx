@@ -11,6 +11,7 @@ import { listOtherIncome, parseOtherIncome, recordOtherIncome } from "@/lib/othe
 import { Body, PageHeader, Panel } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
 import { DateFormatHint } from "./DateFormatHint";
+import { SaveErrorDialog } from "./SaveErrorDialog";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 
@@ -63,7 +64,7 @@ export default function FarmIncome() {
         <button disabled={busy || !activeAccounts.length} className="min-h-11 rounded-xl bg-berseem px-4 font-bold text-white disabled:opacity-50">Aamdani save karein</button>
       </form>{!activeAccounts.length && <p role="alert" className="mt-2 text-sm text-udhaar">Pehle Kharcha mein account banayein.</p>}
         {success && <p role="status" className="mt-3 text-sm text-berseem">{success}</p>}
-        {error && <p role="alert" className="mt-3 text-sm text-udhaar">Save nahi hua: {error} Agar connection toot gaya ho to dobara save se pehle list dekhein.</p>}
+        {error && <SaveErrorDialog error={error} onClose={() => setError("")} />}
       </Panel>
       <Panel title="Aamdani ka register"><label className="text-sm">Maheena<input type="month" max={today.slice(0, 7)} value={month} onChange={(event) => setMonth(event.target.value)} className={`${field} block`} /><DateFormatHint kind="month" /></label>
         {entries.isLoading && <p className="mt-3 text-sm text-muted">Record khul raha hai…</p>}

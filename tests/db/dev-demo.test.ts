@@ -218,13 +218,17 @@ describe("checked daily milk entry", () => {
   it("rejects malformed, duplicate, future, and over-delivered requests without partial rows", async () => {
     await db.exec("begin");
     try {
-      const customer = (await db.query<{ id: string }>("select id from public.customers where kind = 'free' limit 1")).rows[0].id;
-      const date = (await db.query<{ day: string }>("select (public.farm_today() - 20)::text as day")).rows[0].day;
+      const customer = (await db.query<{ id: string }>(`
+        insert into public.customers(name,kind,opening_date) values ('No-stock regression buyer','regular','1900-01-01') returning id
+      `)).rows[0].id;
+      await db.query("insert into public.customer_rates(customer_id,rate,effective_from) values ($1,150,'1900-01-01')", [customer]);
+      const date = "1900-01-01";
       const delivery = JSON.stringify([{ customer_id: customer, litres: 1 }]);
       const base = [date, "evening", 1, "total", "[]", delivery, null, ""];
       await expectRejected(save, [date, "evening", 1.001, "total", "[]", delivery, null, ""], /MILK_INVALID/);
       await expectRejected(save, [date, "evening", 1, "total", "[]", JSON.stringify([{ customer_id: customer, litres: 0.5 }, { customer_id: customer, litres: 0.5 }]), null, ""], /MILK_INVALID/);
-      await expectRejected(save, [date, "evening", 1, "total", "[]", JSON.stringify([{ customer_id: customer, litres: 2 }]), null, ""], /MILK_INVALID/);
+      await db.exec("set constraints all immediate");
+      await expectRejected(save, [date, "evening", 1, "total", "[]", JSON.stringify([{ customer_id: customer, litres: 2 }]), null, ""], /MILK_DISTRIBUTION_EXCEEDS_AVAILABLE/);
       await expectRejected(save, [date, "evening", 1, "total", "[]", JSON.stringify([{ customer_id: customer, litres: -1 }]), null, ""], /MILK_INVALID/);
       await expectRejected(save, [date, "evening", 1, "total", "[]", "[{}]", null, ""], /MILK_INVALID/);
       await expectRejected(save, [date, "evening", 1, "total", "[]", delivery, null, "x".repeat(501)], /MILK_INVALID/);
@@ -307,15 +311,16 @@ describe("milk dispositions and daily reconciliation", () => {
   it("rejects missing waste reasons and over-allocation before any shift is saved", async () => {
     await db.exec("begin");
     try {
-      const date = (await db.query<{ day: string }>("select (public.farm_today() - 20)::text as day")).rows[0].day;
+      const date = "1900-01-01";
       const badWaste = JSON.stringify([{ disposition_type: "wastage", category: "spillage", litres: 1, recipient: null, note: "" }]);
       const incompleteFree = JSON.stringify([{ disposition_type: "free", category: "employee", litres: 1, recipient: null, note: null }]);
       const tooMuch = JSON.stringify([{ disposition_type: "internal", category: "farm_use", litres: 2, recipient: null, note: null }]);
-      const save = `select public.save_milk_entry_with_dispositions($1::date,'noon',1,'total','[]'::jsonb,'[]'::jsonb,$2::jsonb,null,'')`;
+      const save = `select public.save_milk_entry_with_dispositions($1::date,'morning',1,'total','[]'::jsonb,'[]'::jsonb,$2::jsonb,null,'')`;
       await expectRejected(save, [date, badWaste], /MILK_DISPOSITION_INVALID/);
       await expectRejected(save, [date, incompleteFree], /MILK_DISPOSITION_INVALID/);
-      await expectRejected(save, [date, tooMuch], /MILK_DISTRIBUTION_EXCEEDS_PRODUCTION/);
-      expect(Number((await db.query<{ count: string }>("select count(*) count from public.milk_shifts where milk_date=$1 and shift='noon'", [date])).rows[0].count)).toBe(0);
+      await db.exec("set constraints all immediate");
+      await expectRejected(save, [date, tooMuch], /MILK_DISTRIBUTION_EXCEEDS_AVAILABLE/);
+      expect(Number((await db.query<{ count: string }>("select count(*) count from public.milk_shifts where milk_date=$1 and shift='morning'", [date])).rows[0].count)).toBe(0);
     } finally { await db.exec("rollback"); }
   });
 

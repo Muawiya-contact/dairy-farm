@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import {
-  parseCompanyBill, parseCustomerPayment, parseCustomerProfile, parseCustomerRate, parseNewCustomer,
+  parseCompanyBill, parseCustomerBalanceAdjustment, parseCustomerPayment, parseCustomerProfile, parseCustomerRate, parseNewCustomer,
 } from "../../src/lib/customer-forms";
 
 const today = "2026-10-14";
@@ -61,4 +61,16 @@ it("checks company bill dates and signed input independently", () => {
   expect(() => parseCompanyBill(form({ ...base, amount: "-1" }), today)).toThrow(/Company bill/);
   expect(() => parseCompanyBill(form({ ...base, from: "2026-10-15" }), today)).toThrow(/aaj se aage/);
   expect(() => parseCompanyBill(form({ ...base, to: "2026-09-30" }), today)).toThrow(/shuru se pehle/);
+});
+
+it("records old Khata dues and advances as separate signed balance changes", () => {
+  const common = { date: "2026-10-10", amount: "1250.50", reason: "Purana cash hisaab" };
+  expect(parseCustomerBalanceAdjustment(form({ ...common, direction: "due" }), today, "2026-10-01"))
+    .toEqual({ date: common.date, balanceChange: 1250.5, reason: common.reason });
+  expect(parseCustomerBalanceAdjustment(form({ ...common, direction: "advance" }), today, "2026-10-01"))
+    .toEqual({ date: common.date, balanceChange: -1250.5, reason: common.reason });
+  expect(() => parseCustomerBalanceAdjustment(form({ ...common, date: "2026-09-30", direction: "due" }), today, "2026-10-01")).toThrow(/pehle/);
+  expect(() => parseCustomerBalanceAdjustment(form({ ...common, date: "2026-10-15", direction: "due" }), today, "2026-10-01")).toThrow(/aaj se aage/);
+  expect(() => parseCustomerBalanceAdjustment(form({ ...common, amount: "0", direction: "due" }), today, "2026-10-01")).toThrow(/Purana Khata/);
+  expect(() => parseCustomerBalanceAdjustment(form({ ...common, reason: "ab", direction: "due" }), today, "2026-10-01")).toThrow(/wajah/);
 });

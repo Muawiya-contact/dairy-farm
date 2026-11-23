@@ -12,7 +12,7 @@ export type PeriodSummary = {
 
 export type PeriodCustomer = {
   customer_id: string; name: string; kind: string; sort_order: number; litres: number;
-  charged: number; paid: number; discount: number; refund: number; period_balance_change: number;
+  charged: number; paid: number; discount: number; refund: number; balance_adjustment: number; period_balance_change: number;
 };
 
 export type PeriodExpense = {
@@ -26,24 +26,24 @@ export type PeriodReport = {
 
 export type CustomerPeriodLedgerLine = {
   entry_date: string; entry_kind: string; detail: string; litres: number | null;
-  charge: number; credit: number; payment: number; discount: number; refund: number;
+  charge: number; credit: number; payment: number; discount: number; refund: number; balance_adjustment: number;
   running_balance: number; reference_id: string;
 };
 
 export type CustomerPeriodLedgerSummary = {
   opening_balance: number; litres: number; charges: number; payments: number;
-  discounts: number; refunds: number; closing_balance: number;
+  discounts: number; refunds: number; balance_adjustments: number; closing_balance: number;
 };
 
 export type KhataPeriodCustomer = {
   customer_id: string; name: string; kind: string; active: boolean; sort_order: number;
-  litres: number; charges: number; payments: number; discounts: number; refunds: number;
+  litres: number; charges: number; payments: number; discounts: number; refunds: number; balance_adjustments: number;
   opening_balance: number; opening_added: number; closing_balance: number;
 };
 
 export type KhataYearMonth = {
   month_start: string; litres: number; charges: number; payments: number; discounts: number;
-  refunds: number; closing_balance: number;
+  refunds: number; balance_adjustments: number; closing_balance: number;
 };
 
 type ReportRpc = <T>(name: string, args: { p_from: string; p_to: string }) => Promise<{ data: T[] | null; error: Error | null }>;
@@ -76,7 +76,7 @@ export type MilkReportDistributionTotals = Omit<MilkReportDistributionDaily, "re
   closing_litres: number; outstanding_khata_amount: number;
 };
 export type MilkReportDistributionShift = {
-  report_date: string; milk_shift: string; produced_litres: number;
+  report_date: string; milk_shift: string; opening_litres: number; produced_litres: number; available_litres: number;
   khata_litres: number; cash_litres: number; free_litres: number;
   farm_use_litres: number; wasted_litres: number; allocated_litres: number; remaining_litres: number;
   khata_delivery_amount: number; cash_sale_amount: number; cash_received: number; galla_cash_received: number;
@@ -220,7 +220,7 @@ export async function loadPeriodReport(from: string, to: string): Promise<Period
       other_income: Number(summary.other_income ?? 0), farm_expenses: Number(summary.farm_expenses ?? 0),
       home_expenses: Number(summary.home_expenses ?? 0), profit: Number(summary.profit ?? 0),
     },
-    customers: customers.map((row) => ({ ...row, litres: Number(row.litres ?? 0), charged: Number(row.charged ?? 0), paid: Number(row.paid ?? 0), discount: Number(row.discount ?? 0), refund: Number(row.refund ?? 0), period_balance_change: Number(row.period_balance_change ?? 0) })) as PeriodCustomer[],
+    customers: customers.map((row) => ({ ...row, litres: Number(row.litres ?? 0), charged: Number(row.charged ?? 0), paid: Number(row.paid ?? 0), discount: Number(row.discount ?? 0), refund: Number(row.refund ?? 0), balance_adjustment: Number(row.balance_adjustment ?? 0), period_balance_change: Number(row.period_balance_change ?? 0) })) as PeriodCustomer[],
     expenses: expenses.map((row) => ({ ...row, amount: Number(row.amount ?? 0) })) as PeriodExpense[],
   };
 }
@@ -228,7 +228,7 @@ export async function loadPeriodReport(from: string, to: string): Promise<Period
 /** The customer detail page asks the database for only this customer's chosen range. */
 export async function loadCustomerPeriodLedger(customerId: string, from: string, to: string): Promise<CustomerPeriodLedgerLine[]> {
   const data = await loadPagedMilkRows<CustomerPeriodLedgerLine>("customer_period_ledger", { p_customer: customerId, p_from: from, p_to: to });
-  return data.map((row) => ({ ...row, litres: row.litres == null ? null : Number(row.litres), charge: Number(row.charge ?? 0), credit: Number(row.credit ?? 0), payment: Number(row.payment ?? 0), discount: Number(row.discount ?? 0), refund: Number(row.refund ?? 0), running_balance: Number(row.running_balance ?? 0) }));
+  return data.map((row) => ({ ...row, litres: row.litres == null ? null : Number(row.litres), charge: Number(row.charge ?? 0), credit: Number(row.credit ?? 0), payment: Number(row.payment ?? 0), discount: Number(row.discount ?? 0), refund: Number(row.refund ?? 0), balance_adjustment: Number(row.balance_adjustment ?? 0), running_balance: Number(row.running_balance ?? 0) }));
 }
 
 export async function loadCustomerPeriodLedgerSummary(customerId: string, from: string, to: string): Promise<CustomerPeriodLedgerSummary> {
@@ -238,13 +238,13 @@ export async function loadCustomerPeriodLedgerSummary(customerId: string, from: 
   const row = data?.[0] ?? {} as CustomerPeriodLedgerSummary;
   return {
     opening_balance: Number(row.opening_balance ?? 0), litres: Number(row.litres ?? 0), charges: Number(row.charges ?? 0),
-    payments: Number(row.payments ?? 0), discounts: Number(row.discounts ?? 0), refunds: Number(row.refunds ?? 0), closing_balance: Number(row.closing_balance ?? 0),
+    payments: Number(row.payments ?? 0), discounts: Number(row.discounts ?? 0), refunds: Number(row.refunds ?? 0), balance_adjustments: Number(row.balance_adjustments ?? 0), closing_balance: Number(row.closing_balance ?? 0),
   };
 }
 
 export async function loadKhataPeriodSummary(from: string, to: string): Promise<KhataPeriodCustomer[]> {
   const data = await loadPagedReportRows<KhataPeriodCustomer>("khata_period_summary", { p_from: from, p_to: to });
-  return data.map((row) => ({ ...row, active: Boolean(row.active), sort_order: Number(row.sort_order ?? 0), litres: Number(row.litres ?? 0), charges: Number(row.charges ?? 0), payments: Number(row.payments ?? 0), discounts: Number(row.discounts ?? 0), refunds: Number(row.refunds ?? 0), opening_balance: Number(row.opening_balance ?? 0), opening_added: Number(row.opening_added ?? 0), closing_balance: Number(row.closing_balance ?? 0) }));
+  return data.map((row) => ({ ...row, active: Boolean(row.active), sort_order: Number(row.sort_order ?? 0), litres: Number(row.litres ?? 0), charges: Number(row.charges ?? 0), payments: Number(row.payments ?? 0), discounts: Number(row.discounts ?? 0), refunds: Number(row.refunds ?? 0), balance_adjustments: Number(row.balance_adjustments ?? 0), opening_balance: Number(row.opening_balance ?? 0), opening_added: Number(row.opening_added ?? 0), closing_balance: Number(row.closing_balance ?? 0) }));
 }
 
 export async function loadInactiveCustomers(from: string, to: string): Promise<InactiveCustomer[]> {
@@ -270,5 +270,5 @@ export async function loadKhataYearMonthSummary(year: number): Promise<KhataYear
   const rpc = getSupabase().rpc.bind(getSupabase()) as unknown as <T>(name: string, args: { p_year: number }) => Promise<{ data: T[] | null; error: Error | null }>;
   const { data, error } = await rpc<KhataYearMonth>("khata_year_month_summary", { p_year: year });
   if (error) throw error;
-  return (data ?? []).map((row) => ({ ...row, litres: Number(row.litres ?? 0), charges: Number(row.charges ?? 0), payments: Number(row.payments ?? 0), discounts: Number(row.discounts ?? 0), refunds: Number(row.refunds ?? 0), closing_balance: Number(row.closing_balance ?? 0) }));
+  return (data ?? []).map((row) => ({ ...row, litres: Number(row.litres ?? 0), charges: Number(row.charges ?? 0), payments: Number(row.payments ?? 0), discounts: Number(row.discounts ?? 0), refunds: Number(row.refunds ?? 0), balance_adjustments: Number(row.balance_adjustments ?? 0), closing_balance: Number(row.closing_balance ?? 0) }));
 }

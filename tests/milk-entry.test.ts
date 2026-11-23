@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { animalMilkRows, fillCompanyMilk, milkLitres, parseMilkDispositions, remainingMilk, sumDispositionLitres, sumMilkLitres, type MilkDispositionDraft } from "../src/lib/milk-entry";
+import { animalMilkRows, fillCompanyMilk, milkLitres, milkShiftOpeningStock, parseMilkDispositions, remainingMilk, sumDispositionLitres, sumMilkLitres, type MilkDispositionDraft } from "../src/lib/milk-entry";
 import { litres } from "../src/lib/format";
 import { localMilkShiftCustomers, milkShiftCustomers, milkShiftLegacyFreeCustomers } from "../src/lib/farm-data";
 
@@ -16,6 +16,15 @@ describe("daily milk entry quantities", () => {
     expect(remainingMilk(12.3, sumMilkLitres([5.1, 4.1]))).toBe(3.1);
     expect(String(sumMilkLitres([0, 3.1]))).toBe("3.1");
     expect(litres(sumMilkLitres([1.1, 2.2]))).toBe("3.3 L");
+  });
+  it("uses the chiller carry-forward when the next shift has little or no new milk", () => {
+    const shifts = [
+      { milk_shift: "morning", opening_litres: 4219, remaining_litres: 4214 },
+    ];
+    expect(milkShiftOpeningStock(4219, shifts, "morning")).toBe(4219);
+    expect(milkShiftOpeningStock(4219, shifts, "noon")).toBe(4214);
+    expect(remainingMilk(milkShiftOpeningStock(4219, shifts, "noon"), 4214)).toBe(0);
+    expect(milkShiftOpeningStock(4219, [], "morning")).toBe(4219);
   });
   it("fills the company only once even when tapped twice before a render", () => {
     const first = fillCompanyMilk(12.3, { customer: "5.1", company: "4.1" }, "company");

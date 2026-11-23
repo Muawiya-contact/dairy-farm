@@ -11,7 +11,7 @@ import type { PdfSection } from "./export-data";
 export type FinalReportPreset = "month" | "previous" | "year" | "custom";
 export type FinalReportKhataRow = {
   is_grand_total: boolean; customer_id: string | null; name: string; sort_order: number;
-  litres: number; opening_balance: number; opening_added: number; charges: number;
+  litres: number; opening_balance: number; opening_added: number; charges: number; balance_adjustments: number;
   total_payable: number; payments: number; discounts: number; refunds: number;
   closing_balance: number; receivables_due: number; customer_credits: number;
 };
@@ -128,7 +128,7 @@ export async function loadFinalReportKhata(from: string, to: string): Promise<Fi
   return rows.map((row) => ({
     ...row,
     litres: Number(row.litres ?? 0), opening_balance: Number(row.opening_balance ?? 0),
-    opening_added: Number(row.opening_added ?? 0), charges: Number(row.charges ?? 0),
+    opening_added: Number(row.opening_added ?? 0), charges: Number(row.charges ?? 0), balance_adjustments: Number(row.balance_adjustments ?? 0),
     total_payable: Number(row.total_payable ?? 0), payments: Number(row.payments ?? 0),
     discounts: Number(row.discounts ?? 0), refunds: Number(row.refunds ?? 0),
     closing_balance: Number(row.closing_balance ?? 0), receivables_due: Number(row.receivables_due ?? 0),
@@ -188,7 +188,8 @@ export function finalReportExportSections(data: FinalReportData, from: string, t
     galla_cash_received: row.galla_cash_received,
   }));
   const shiftRows = data.milk.shifts.map((row) => ({
-    report_date: row.report_date, milk_shift: row.milk_shift, produced_litres: row.produced_litres,
+    report_date: row.report_date, milk_shift: row.milk_shift, opening_litres: row.opening_litres,
+    produced_litres: row.produced_litres, available_litres: row.available_litres,
     khata_litres: row.khata_litres, cash_litres: row.cash_litres, free_litres: row.free_litres,
     farm_use_litres: row.farm_use_litres, wasted_litres: row.wasted_litres,
     allocated_litres: row.allocated_litres, remaining_litres: row.remaining_litres,
@@ -221,20 +222,20 @@ export function finalReportExportSections(data: FinalReportData, from: string, t
       }) },
     ] },
     { title: "Rozana doodh aur sales", columns: milkDailyColumns, rows: dailyRows, repeatColumns: ["report_date"] },
-    { title: "Shift-wise doodh aur distribution", columns: ["report_date", "milk_shift", "produced_litres", "khata_litres", "cash_litres", "free_litres", "farm_use_litres", "wasted_litres", "allocated_litres", "remaining_litres", "khata_amount", "cash_sale_amount", "cash_received", "galla_cash_received"], rows: shiftRows, repeatColumns: ["report_date", "milk_shift"] },
+    { title: "Shift-wise doodh aur distribution", columns: ["report_date", "milk_shift", "opening_litres", "produced_litres", "available_litres", "khata_litres", "cash_litres", "free_litres", "farm_use_litres", "wasted_litres", "allocated_litres", "remaining_litres", "khata_amount", "cash_sale_amount", "cash_received", "galla_cash_received"], rows: shiftRows, repeatColumns: ["report_date", "milk_shift"] },
     { title: "Local / cash sale ki rozana tafseel", columns: ["report_date", "cash_litres", "cash_sale_amount", "cash_received", "galla_cash_received"], rows: cashSales.map((row) => ({
       report_date: row.report_date, cash_litres: row.cash_litres, cash_sale_amount: row.cash_sale_amount,
       cash_received: row.cash_received, galla_cash_received: row.galla_cash_received,
     })) },
-    { title: "Customer Khata ka grand summary", columns: ["litres", "opening_balance", "opening_added", "charges", "total_payable", "payments", "discounts", "refunds", "closing_balance", "receivables_due", "customer_credits"], rows: customerTotals ? [{
+    { title: "Customer Khata ka grand summary", columns: ["litres", "opening_balance", "opening_added", "charges", "balance_adjustments", "total_payable", "payments", "discounts", "refunds", "closing_balance", "receivables_due", "customer_credits"], rows: customerTotals ? [{
       litres: customerTotals.litres, opening_balance: customerTotals.opening_balance, opening_added: customerTotals.opening_added,
-      charges: customerTotals.charges, total_payable: customerTotals.total_payable, payments: customerTotals.payments,
+      charges: customerTotals.charges, balance_adjustments: customerTotals.balance_adjustments, total_payable: customerTotals.total_payable, payments: customerTotals.payments,
       discounts: customerTotals.discounts, refunds: customerTotals.refunds, closing_balance: customerTotals.closing_balance,
       receivables_due: customerTotals.receivables_due, customer_credits: customerTotals.customer_credits,
     }] : [] },
-    { title: "Customer-wise Khata", columns: ["customer", "litres", "opening_balance", "opening_added", "charges", "total_payable", "payments", "discounts", "refunds", "closing_balance"], repeatColumns: ["customer"], rows: customerRows.map((row) => ({
+    { title: "Customer-wise Khata", columns: ["customer", "litres", "opening_balance", "opening_added", "charges", "balance_adjustments", "total_payable", "payments", "discounts", "refunds", "closing_balance"], repeatColumns: ["customer"], rows: customerRows.map((row) => ({
       customer: row.name, litres: row.litres, opening_balance: row.opening_balance, opening_added: row.opening_added,
-      charges: row.charges, total_payable: row.total_payable, payments: row.payments, discounts: row.discounts,
+      charges: row.charges, balance_adjustments: row.balance_adjustments, total_payable: row.total_payable, payments: row.payments, discounts: row.discounts,
       refunds: row.refunds, closing_balance: row.closing_balance,
     })) },
     { title: "Owner deposits aur withdrawals", columns: ["item", "amount_rs", "entries"], rows: [

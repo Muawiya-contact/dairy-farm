@@ -21,12 +21,13 @@ it("checks milk stock in hundredths of a litre", () => {
 });
 
 it("sums saved shift production and does not invent an unsupported shift", () => {
-  const rows = [
-    { milk_shift: "morning", produced_litres: 1.2 },
-    { milk_shift: "morning", produced_litres: 1.35 },
-    { milk_shift: "noon", produced_litres: 0.5 },
-    { milk_shift: "unknown", produced_litres: 99 },
-  ] as MilkReportDistributionShift[];
+  const row = (milk_shift: string, produced_litres: number): MilkReportDistributionShift => ({
+    report_date: "2026-11-23", milk_shift, opening_litres: 0, produced_litres, available_litres: produced_litres,
+    khata_litres: 0, cash_litres: 0, free_litres: 0, farm_use_litres: 0, wasted_litres: 0,
+    allocated_litres: 0, remaining_litres: produced_litres, khata_delivery_amount: 0, cash_sale_amount: 0,
+    cash_received: 0, galla_cash_received: 0, free_details: [], farm_use_details: [], waste_details: [],
+  });
+  const rows = [row("morning", 1.2), row("morning", 1.35), row("noon", 0.5), row("unknown", 99)];
   expect(milkShiftProduction(rows)).toEqual({ morning: 2.55, noon: 0.5, evening: 0 });
 });
 

@@ -33,3 +33,18 @@ it("compares only two complete days, including real zero entries", () => {
   expect(screen.getByText(/Kal se 10 L kam/)).toBeInTheDocument();
   expect(screen.queryByText("Aaj ka doodh abhi nahi likha")).not.toBeInTheDocument();
 });
+
+it("shows yesterday's carried milk as chiller stock, separate from income", async () => {
+  farmMocks.loadMilkDayDistribution.mockResolvedValueOnce({
+    report_date: "2026-10-16", opening_litres: 4219, produced_litres: 500, available_litres: 4719,
+    khata_litres: 0, cash_litres: 0, free_litres: 0, farm_use_litres: 0, wasted_litres: 0,
+    allocated_litres: 0, remaining_litres: 4719, khata_amount: 0, cash_sale_amount: 0, cash_received: 0, shifts: [],
+  });
+  farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({ ...base, shifts: [
+    { id: "morning", milk_date: "2026-10-16", shift: "morning", total_litres: 500 },
+  ] }), error: null });
+  renderWithQuery(<FarmDashboard />);
+  expect(await screen.findByText("Chiller ka pichla doodh (income nahi)")).toBeVisible();
+  expect(screen.getByText("4,219 L")).toBeVisible();
+  expect(screen.getByText("4,719 L")).toBeVisible();
+});

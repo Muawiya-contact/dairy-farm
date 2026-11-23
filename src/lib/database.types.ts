@@ -602,6 +602,51 @@ export type Database = {
           },
         ]
       }
+      customer_balance_adjustments: {
+        Row: {
+          id: string
+          customer_id: string
+          adjustment_date: string
+          balance_change: number
+          reason: string
+          created_at: string
+          actor_id: string | null
+        }
+        Insert: {
+          id: string
+          customer_id: string
+          adjustment_date: string
+          balance_change: number
+          reason: string
+          created_at?: string
+          actor_id?: string | null
+        }
+        Update: {
+          id?: string
+          customer_id?: string
+          adjustment_date?: string
+          balance_change?: number
+          reason?: string
+          created_at?: string
+          actor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_balance_adjustments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_balances"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "customer_balance_adjustments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_rates: {
         Row: {
           customer_id: string
@@ -1948,6 +1993,7 @@ export type Database = {
           active: boolean
           amount: number
           balance: number
+          balance_adjustment: number
           customer_id: string
           discount: number
           free_reason: string
@@ -1959,6 +2005,16 @@ export type Database = {
           sort_order: number
           total: number
         }[]
+      }
+      record_customer_balance_adjustment: {
+        Args: {
+          p_id: string
+          p_customer: string
+          p_date: string
+          p_balance_change: number
+          p_reason: string
+        }
+        Returns: string
       }
       expense_month_report: {
         Args: { p_month: string }
@@ -1990,7 +2046,7 @@ export type Database = {
         Args: { p_from: string; p_to: string }
         Returns: {
           is_grand_total: boolean; customer_id: string | null; name: string; sort_order: number;
-          litres: number; opening_balance: number; opening_added: number; charges: number;
+          litres: number; opening_balance: number; opening_added: number; charges: number; balance_adjustments: number;
           total_payable: number; payments: number; discounts: number; refunds: number;
           closing_balance: number; receivables_due: number; customer_credits: number
         }[]
@@ -2277,6 +2333,7 @@ export type Database = {
         Args: { p_from: string; p_to: string }
         Returns: {
           allocated_litres: number
+          available_litres: number
           cash_litres: number
           cash_received: number
           cash_sale_amount: number
@@ -2288,6 +2345,7 @@ export type Database = {
           khata_delivery_amount: number
           khata_litres: number
           milk_shift: string
+          opening_litres: number
           produced_litres: number
           remaining_litres: number
           report_date: string
@@ -2299,6 +2357,7 @@ export type Database = {
         Args: { p_date: string }
         Returns: {
           allocated_litres: number
+          available_litres: number
           cash_litres: number
           cash_received: number
           cash_sale_amount: number
@@ -2307,6 +2366,7 @@ export type Database = {
           khata_amount: number
           khata_litres: number
           milk_shift: string
+          opening_litres: number
           produced_litres: number
           remaining_litres: number
           wasted_litres: number

@@ -35,7 +35,7 @@ it("adds 7.3 L from one animal, blocks excess deliveries, and fills company milk
   expect(screen.getAllByText("7.3 L").length).toBeGreaterThanOrEqual(2);
   await user.type(screen.getByRole("spinbutton", { name: "Naqd litres" }), "8");
   await user.click(screen.getByRole("button", { name: "Entry save karein" }));
-  expect(within(screen.getByRole("dialog", { name: "Entry pehle check karein" })).getByText(/total niklay huay doodh se zyada/)).toBeVisible();
+  expect(within(screen.getByRole("dialog", { name: "Entry pehle check karein" })).getByText(/chiller ke is waqt available doodh se zyada/)).toBeVisible();
   await user.click(screen.getByRole("button", { name: "Theek hai, durust karta hoon" }));
   await user.clear(screen.getByRole("spinbutton", { name: "Naqd litres" }));
   const fill = screen.getByRole("button", { name: "Baqi company ko dein" });
@@ -90,6 +90,7 @@ it("shows combined daily totals and the saved breakdown for each shift", async (
     khata_litres: 20, cash_litres: 30, free_litres: 5, farm_use_litres: 4, wasted_litres: 1,
     allocated_litres: 60, remaining_litres: 250, khata_amount: 2000, cash_sale_amount: 4500,
     cash_received: 4500, shifts: [{ milk_shift: "morning", produced_litres: 100, khata_litres: 10,
+      opening_litres: 10, available_litres: 110,
       cash_litres: 15, free_litres: 2, farm_use_litres: 1, wasted_litres: 0, allocated_litres: 28,
       remaining_litres: 72, khata_amount: 1000, cash_sale_amount: 2250, cash_received: 2250 }] as never,
   });
@@ -97,8 +98,32 @@ it("shows combined daily totals and the saved breakdown for each shift", async (
   const summary = await screen.findByRole("region", { name: "Subah shift summary" });
   expect(summary).toHaveTextContent("100 L");
   expect(summary).toHaveTextContent("15 L");
+  expect(summary).toHaveTextContent("10 L");
+  expect(summary).toHaveTextContent("110 L");
   expect(summary).toHaveTextContent("Rs 2,250");
   expect(screen.getByText("Rs 6,500")).toBeInTheDocument();
+});
+
+it("allocates against chiller stock after today's production is used", async () => {
+  const user = userEvent.setup();
+  farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({ customers: [{ ...fixtures.customer,
+    name: "Buyer", kind: "regular", active: true, opening_date: "2025-01-01" }] }), error: null });
+  farmMocks.loadMilkDayDistribution.mockResolvedValueOnce({
+    report_date: fixtures.today, opening_litres: 4219, produced_litres: 0, available_litres: 4219,
+    khata_litres: 0, cash_litres: 0, free_litres: 0, farm_use_litres: 0, wasted_litres: 0,
+    allocated_litres: 0, remaining_litres: 4219, khata_amount: 0, cash_sale_amount: 0, cash_received: 0, shifts: [],
+  });
+  renderWithQuery(<FarmMilk />);
+  await screen.findAllByText("4,219 L");
+  await user.type(screen.getByRole("spinbutton", { name: "Kul doodh" }), "500");
+  await user.type(screen.getByRole("spinbutton", { name: "Buyer litres" }), "505");
+  expect(screen.getAllByText("4,214 L").length).toBeGreaterThan(0);
+  const save = screen.getByRole("button", { name: "Entry save karein" });
+  expect(save).toBeEnabled();
+  await user.click(save);
+  await waitFor(() => expect(farmMocks.saveMilkEntry).toHaveBeenCalledWith(expect.objectContaining({
+    total: 500, deliveries: [{ customer_id: "customer-1", litres: 505 }],
+  })));
 });
 
 it("requires a reason before correcting a saved milk shift and sends one audited correction", async () => {

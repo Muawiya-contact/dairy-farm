@@ -10,6 +10,7 @@ export type NewCustomer = {
 };
 export type CustomerProfile = { name: string; phone: string; morning: number; noon: number; evening: number; active: boolean; freeReason: FreeReason | null };
 export type CustomerPayment = { date: string; amount: number; method: string; accountId: string };
+export type CustomerBalanceAdjustment = { date: string; balanceChange: number; reason: string };
 export type CustomerCompanyBill = { from: string; to: string; litres: number; amount: number };
 export type CustomerSettlement = { action: "payment" | "discount" | "refund" | "zero"; date: string; method: string | null; accountId: string | null; reason: string };
 
@@ -95,6 +96,18 @@ export function parseCustomerPayment(form: FormData, today: string, openingDate?
     amount: decimal(form, "amount", "Wusooli", { required: true, min: 0.01 }),
     method, accountId,
   };
+}
+
+/** Positive changes add an amount owed; advance entries are stored as negative changes. */
+export function parseCustomerBalanceAdjustment(form: FormData, today: string, openingDate: string): CustomerBalanceAdjustment {
+  const date = day(form, "date", "Purane Khata ki tareekh", today);
+  if (date < openingDate) throw new RangeError("Purana Khata customer ke pichle hisaab se pehle nahi ho sakta.");
+  const direction = text(form, "direction");
+  if (direction !== "due" && direction !== "advance") throw new RangeError("Baqaya ya customer ka advance chunein.");
+  const amount = decimal(form, "amount", "Purana Khata", { required: true, min: 0.01 });
+  const reason = text(form, "reason");
+  if (reason.length < 3 || reason.length > 500) throw new RangeError("Purane Khata ki wajah 3 se 500 harf tak likhein.");
+  return { date, balanceChange: direction === "advance" ? -amount : amount, reason };
 }
 
 export function parseCustomerSettlement(form: FormData, today: string, openingDate: string, balance: number): CustomerSettlement {

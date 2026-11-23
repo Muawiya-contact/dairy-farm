@@ -195,9 +195,10 @@ test("milk distribution report reconciles all destinations, shift sales, dated r
       "select * from milk_report_distribution_shifts('2026-10-11','2026-10-11')",
     )).rows[0];
     expect(shift).toMatchObject({
-      report_date: new Date("2026-10-11T00:00:00.000Z"), milk_shift: "morning", produced_litres: "160.00",
+      report_date: new Date("2026-10-11T00:00:00.000Z"), milk_shift: "morning", opening_litres: "500.00",
+      produced_litres: "160.00", available_litres: "660.00",
       khata_litres: "65.00", cash_litres: "75.00", free_litres: "10.00", farm_use_litres: "5.00",
-      wasted_litres: "5.00", allocated_litres: "160.00", remaining_litres: "0.00",
+      wasted_litres: "5.00", allocated_litres: "160.00", remaining_litres: "500.00",
       khata_delivery_amount: "650.00", cash_sale_amount: "900.00", cash_received: "900.00", galla_cash_received: "900.00",
     });
 

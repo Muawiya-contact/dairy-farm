@@ -14,6 +14,24 @@ export function remainingMilk(produced: number, delivered: number): number {
   return (Math.round(produced * 100) - Math.round(delivered * 100)) / 100;
 }
 
+const shiftOrder: Record<string, number> = { morning: 0, noon: 1, evening: 2 };
+
+/** Stock carried into a shift, using the database's running shift balances. */
+export function milkShiftOpeningStock(
+  dayOpening: number,
+  shifts: readonly { milk_shift: string; opening_litres: number; remaining_litres: number }[],
+  selectedShift: string,
+): number {
+  const current = shifts.find((row) => row.milk_shift === selectedShift);
+  if (current) return current.opening_litres;
+  const currentOrder = shiftOrder[selectedShift] ?? Number.MAX_SAFE_INTEGER;
+  const previous = shifts
+    .filter((row) => (shiftOrder[row.milk_shift] ?? Number.MAX_SAFE_INTEGER) < currentOrder)
+    .sort((a, b) => (shiftOrder[a.milk_shift] ?? 0) - (shiftOrder[b.milk_shift] ?? 0))
+    .at(-1);
+  return previous?.remaining_litres ?? dayOpening;
+}
+
 export type MilkDispositionType = "free" | "internal" | "wastage";
 export type MilkDispositionCategory =
   | "employee" | "friend" | "guest" | "charity" | "other"

@@ -30,7 +30,7 @@ test("a correction cannot exceed corrected production or omit its reason", async
   await expect(db.query(`select public.correct_milk_entry_checked('2026-10-20', 'morning', 3, 'total', '[]',
     jsonb_build_array(jsonb_build_object('customer_id', (select id from customers), 'litres', 4)),
     (select updated_at from milk_shifts where milk_date = '2026-10-20' and shift = 'morning'), '', 'too low')`))
-    .rejects.toThrow(/diya gaya doodh kul miktar se zyada/i);
+    .rejects.toThrow(/MILK_DISTRIBUTION_EXCEEDS_AVAILABLE/i);
   await expect(db.query(`select public.correct_milk_entry_checked('2026-10-20', 'morning', 9, 'total', '[]',
     '[]', (select updated_at from milk_shifts where milk_date = '2026-10-20' and shift = 'morning'), '', '')`)).rejects.toThrow("MILK_CORRECTION_REASON");
 });

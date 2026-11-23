@@ -52,6 +52,7 @@ export function statementMessage(farm: FarmSettings, customer: Customer, month: 
     `Doodh delivery: ${numeric(report.litres)} L`,
     noonLitres > 0 ? `Dopehr delivery: ${noonLitres} L` : "",
     `Doodh / parchi ki raqam: ${textMoney(numeric(report.amount))}`,
+    numeric(report.balance_adjustment) ? `Purana Khata: ${textMoney(numeric(report.balance_adjustment))}` : "",
     `Wusooli: ${textMoney(numeric(report.paid))}`,
     `Riayat: ${textMoney(numeric(report.discount))}`,
     numeric(report.refund) ? `Advance wapas: ${textMoney(numeric(report.refund))}` : "",
@@ -141,6 +142,7 @@ export async function buildCustomerStatementPdf(input: {
   const summary: [string, number][] = [
     ["Pichla baqaya", numeric(input.report.previous_balance)],
     ["Is maheene ki raqam", numeric(input.report.amount)],
+    ["Purana Khata", numeric(input.report.balance_adjustment)],
     ["Wusooli", numeric(input.report.paid)],
     ["Riayat", numeric(input.report.discount)],
     ["Advance wapas", numeric(input.report.refund)],

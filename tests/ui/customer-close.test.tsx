@@ -31,7 +31,7 @@ it("lets a customer khata add a dated prior advance without calling it a payment
   customerMocks.loadCustomerPeriodLedger.mockResolvedValueOnce([]).mockResolvedValueOnce([{
     entry_date: fixtures.today, entry_kind: "balance_adjustment", detail: "Purana Khata: App se pehle ka advance",
     litres: null, charge: 0, credit: 0, payment: 0, discount: 0, refund: 0, balance_adjustment: -250,
-    running_balance: 250, reference_id: "12345678-1234-4234-8234-123456789098",
+    running_balance: 250, reference_id: "12345678-1234-4234-8234-123456789099",
   }]);
   customerMocks.loadCustomerPeriodLedgerSummary.mockResolvedValueOnce({ opening_balance: 500, litres: 0, charges: 0, payments: 0, discounts: 0, refunds: 0, balance_adjustments: 0, closing_balance: 500 })
     .mockResolvedValueOnce({ opening_balance: 500, litres: 0, charges: 0, payments: 0, discounts: 0, refunds: 0, balance_adjustments: -250, closing_balance: 250 });

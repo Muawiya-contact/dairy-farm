@@ -59,11 +59,13 @@ function CustomerDetail({ data, customer, save, busy, error, success, initialFro
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [voidPaymentId, setVoidPaymentId] = useState<string | null>(null);
   const [adjustingBalance, setAdjustingBalance] = useState(false);
+  const [periodLedgerSyncWarning, setPeriodLedgerSyncWarning] = useState("");
   const [closePending, setClosePending] = useState(false);
   const [pendingSettlement, setPendingSettlement] = useState<ReturnType<typeof parseCustomerSettlement> | null>(null);
   const [settlementAction, setSettlementAction] = useState<"payment" | "discount">("payment");
   const paymentPending = useRef<{ id: string; signature: string } | null>(null);
   const balanceAdjustmentPending = useRef<{ id: string; signature: string } | null>(null);
+  const queryClient = useQueryClient();
   const discountPending = useRef<{ id: string; signature: string } | null>(null);
   useEffect(() => { void prepareCustomerPdf().catch(() => {}); }, []);
   const reportQuery = useQuery({
@@ -136,14 +138,43 @@ function CustomerDetail({ data, customer, save, busy, error, success, initialFro
   const onBalanceAdjustment = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget;
+    setPeriodLedgerSyncWarning("");
     void save(async () => {
       const input = parseCustomerBalanceAdjustment(new FormData(form), data.today, c.opening_date);
       const signature = JSON.stringify(input);
       if (balanceAdjustmentPending.current?.signature !== signature) {
         balanceAdjustmentPending.current = { id: crypto.randomUUID(), signature };
       }
+      const adjustmentId = balanceAdjustmentPending.current.id;
       await recordCustomerBalanceAdjustment(c.id, input, balanceAdjustmentPending.current.id);
-      await Promise.all([periodLedgerQuery.refetch(), periodSummaryQuery.refetch()]);
+      const ledgerKey = ["customer-period-ledger", c.id, periodFrom, periodTo] as const;
+      let refreshedLedger: Awaited<ReturnType<typeof loadCustomerPeriodLedger>> | null = null;
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        try {
+          const rows = await loadCustomerPeriodLedger(c.id, periodFrom, periodTo);
+          if (rows.some((row) => row.reference_id === adjustmentId)) {
+            refreshedLedger = rows;
+            break;
+          }
+        } catch {
+          // Keep the saved adjustment intact; a later read may succeed if the reporting replica is catching up.
+        }
+        if (attempt < 5) await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+      }
+      if (refreshedLedger) {
+        queryClient.setQueryData(ledgerKey, refreshedLedger);
+        let summaryRefreshed = true;
+        try {
+          const summary = await loadCustomerPeriodLedgerSummary(c.id, periodFrom, periodTo);
+          queryClient.setQueryData(["customer-period-ledger-summary", c.id, periodFrom, periodTo], summary);
+        } catch {
+          await periodSummaryQuery.refetch();
+          summaryRefreshed = false;
+        }
+        setPeriodLedgerSyncWarning(summaryRefreshed ? "" : "Purana Khata save ho gaya. Summary abhi sync ho rahi hai; zarurat par dobara load karein.");
+      } else {
+        setPeriodLedgerSyncWarning("Purana Khata save ho gaya, lekin record abhi sync ho raha hai. Thori dair baad dobara load karein.");
+      }
       balanceAdjustmentPending.current = null;
       form.reset();
     }, "Purana Khata save ho gaya. Galla ya aamdani mein nayi raqam shamil nahi hui.")
@@ -326,6 +357,7 @@ function CustomerDetail({ data, customer, save, busy, error, success, initialFro
         <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-semibold">Shuru ki tareekh<input aria-label="Khata shuru ki tareekh" type="date" value={periodFrom} max={periodTo || data.today} onChange={(event) => setPeriodFrom(event.target.value)} className={`${field} mt-1`} /></label><label className="text-sm font-semibold">Aakhir ki tareekh<input aria-label="Khata aakhir ki tareekh" type="date" value={periodTo} min={periodFrom} max={data.today} onChange={(event) => setPeriodTo(event.target.value)} className={`${field} mt-1`} /></label></div>
         {!validPeriod && <p role="alert" className="mt-2 text-sm text-udhaar">Aaj tak ki sahi shuru aur aakhir ki tareekh chunein.</p>}
         {periodLedgerQuery.isPending && <p role="status" className="mt-2 text-sm text-muted">Khata record load ho raha hai…</p>}
+        {periodLedgerSyncWarning && <p role="status" className="mt-2 text-sm text-udhaar">{periodLedgerSyncWarning} <button type="button" onClick={() => void periodLedgerQuery.refetch()} className="underline">Dobara load karein</button></p>}
         {periodLedgerQuery.isError && <p role="alert" className="mt-2 text-sm text-udhaar">Khata record nahi khula: {friendlyError(periodLedgerQuery.error)} <button type="button" onClick={() => void periodLedgerQuery.refetch()} className="underline">Dobara koshish</button></p>}
         {periodSummaryQuery.data && <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">{[["Shuru ka baqaya", periodSummaryQuery.data.opening_balance], ["Doodh", `${amount(periodSummaryQuery.data.litres)} L`], ["Charges", periodSummaryQuery.data.charges], ["Wusooli", periodSummaryQuery.data.payments], ["Riayat", periodSummaryQuery.data.discounts], ["Advance wapas", periodSummaryQuery.data.refunds], ["Purana Khata", periodSummaryQuery.data.balance_adjustments], ["Aakhir ka baqaya", periodSummaryQuery.data.closing_balance]].map(([label, value]) => <div key={String(label)} className="rounded-xl bg-ground p-2"><dt className="text-muted">{label}</dt><dd className="font-bold">{typeof value === "number" ? money(value) : value}</dd></div>)}</dl>}
         {periodLedgerQuery.data && <><p className="mt-3 text-sm text-muted">{periodLedgerQuery.data.length} entries mili hain.</p><div className="mt-2 overflow-x-auto"><table className="w-full min-w-[1020px] text-sm"><thead><tr>{["Tareekh", "Tafseel", "Litre", "Charge", "Wusooli", "Riayat", "Advance wapas", "Purana Khata (+/-)", "Baqi"].map((label) => <th key={label} className="border-b border-line px-2 py-2 text-left last:text-right">{label}</th>)}</tr></thead><tbody>{periodLedgerQuery.data.map((line) => <tr key={line.reference_id}><td className="border-b border-line px-2 py-2">{shortDate(line.entry_date)}</td><td className="border-b border-line px-2 py-2">{c.name} · {line.detail}</td><td className="border-b border-line px-2 py-2">{line.litres ?? ""}</td><td className="border-b border-line px-2 py-2">{line.charge ? money(line.charge) : ""}</td><td className="border-b border-line px-2 py-2">{line.payment ? money(line.payment) : ""}</td><td className="border-b border-line px-2 py-2">{line.discount ? money(line.discount) : ""}</td><td className="border-b border-line px-2 py-2">{line.refund ? money(line.refund) : ""}</td><td className="border-b border-line px-2 py-2">{line.balance_adjustment ? money(line.balance_adjustment) : ""}</td><td className="border-b border-line px-2 py-2 text-right font-bold">{money(line.running_balance)}</td></tr>)}</tbody></table></div><div className="mt-3 flex flex-wrap gap-2"><button type="button" disabled={pdfBusy} onClick={() => void exportPeriodLedger("download")} className="min-h-11 rounded-xl border border-berseem px-4 font-semibold text-berseem disabled:opacity-50">Khata PDF download</button><button type="button" disabled={pdfBusy} onClick={() => void exportPeriodLedger("share")} className="min-h-11 rounded-xl bg-berseem px-4 font-semibold text-white disabled:opacity-50">Khata PDF share karein</button><button type="button" onClick={() => window.print()} className="min-h-11 rounded-xl border border-line px-4 font-semibold">Print</button></div></>}

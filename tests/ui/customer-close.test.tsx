@@ -90,6 +90,23 @@ it("shows a focused dialog when a payment cannot be saved", async () => {
   expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
 });
 
+it("does not call a saved payment a failure when only the refresh fails", async () => {
+  const user = userEvent.setup();
+  vi.stubGlobal("crypto", { randomUUID: () => "12345678-1234-4234-8234-123456789099" });
+  const { client } = renderWithQuery(<FarmCustomers />);
+  vi.spyOn(client, "invalidateQueries").mockRejectedValueOnce(new Error("refresh failed"));
+
+  await user.type(screen.getByLabelText("Raqam"), "3500");
+  const saveButton = screen.getByRole("button", { name: "Wusooli save karein" });
+  const paymentForm = saveButton.closest("form");
+  expect(paymentForm).not.toBeNull();
+  await user.selectOptions(within(paymentForm!).getByLabelText("Account"), "account-1");
+  fireEvent.submit(paymentForm!);
+
+  expect(await screen.findByText(/Wusooli save ho gayi.*naya hisaab foran load nahi hua/i)).toBeVisible();
+  expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+});
+
 it("records the exact remaining balance through a confirmed final settlement before closing a customer khata", async () => {
   const user = userEvent.setup();
   renderWithQuery(<FarmCustomers />);

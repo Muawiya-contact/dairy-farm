@@ -541,16 +541,22 @@ export default function FarmCustomers() {
     busyRef.current = true;
     setBusy(true); setError(""); setSuccess("");
     try {
-      await action();
-      await queryClient.invalidateQueries({ queryKey: ["farm-data"] });
-      await queryClient.invalidateQueries({ queryKey: ["customer-report"] });
-      await queryClient.invalidateQueries({ queryKey: ["payment-audit"] });
-      await queryClient.invalidateQueries({ queryKey: ["galla"] });
-      setSuccess(message);
+      try {
+        await action();
+      } catch (saveError) {
+        setError(friendlyError(saveError));
+        return false;
+      }
+      try {
+        await queryClient.invalidateQueries({ queryKey: ["farm-data"] });
+        await queryClient.invalidateQueries({ queryKey: ["customer-report"] });
+        await queryClient.invalidateQueries({ queryKey: ["payment-audit"] });
+        await queryClient.invalidateQueries({ queryKey: ["galla"] });
+        setSuccess(message);
+      } catch {
+        setSuccess(`${message} Naya hisaab foran load nahi hua; page dobara kholein.`);
+      }
       return true;
-    } catch (saveError) {
-      setError(friendlyError(saveError));
-      return false;
     } finally {
       busyRef.current = false;
       setBusy(false);

@@ -74,3 +74,44 @@ it("uses chiller carry-forward before current production runs out, without treat
     await expect(db.query(save, ["2026-11-23", "noon", 0, deliveries(0.01)])).rejects.toThrow("MILK_DISTRIBUTION_EXCEEDS_AVAILABLE");
   } finally { await db.exec("rollback"); }
 });
+
+it("rejects an earlier shift spending milk from a later shift", async () => {
+  await db.exec("begin");
+  try {
+    const buyer = (await db.query<{ id: string }>(`
+      insert into public.customers(name,kind,opening_date) values ('Shift order buyer','regular','2026-01-01') returning id
+    `)).rows[0].id;
+    await db.query("insert into public.customer_rates(customer_id,rate,effective_from) values ($1,150,'2026-01-01')", [buyer]);
+    const save = `select public.save_milk_entry_with_dispositions(
+      $1::date,$2::text,$3::numeric,'total','[]'::jsonb,$4::jsonb,'[]'::jsonb,null,'')`;
+    await db.query(save, ["2026-11-20", "morning", 0, JSON.stringify([{ customer_id: buyer, litres: 10 }])]);
+    await db.query(save, ["2026-11-20", "evening", 10, "[]"]);
+    await expect(db.exec("set constraints all immediate")).rejects.toThrow("MILK_DISTRIBUTION_EXCEEDS_AVAILABLE");
+  } finally { await db.exec("rollback"); }
+});
+
+it("includes unassigned day-end waste in the last shift's chiller balance", async () => {
+  await db.exec("begin");
+  try {
+    const save = `select public.save_milk_entry_with_dispositions(
+      $1::date,$2::text,$3::numeric,'total','[]'::jsonb,'[]'::jsonb,'[]'::jsonb,null,'')`;
+    await db.query(save, ["2026-11-22", "morning", 100]);
+    await db.query(save, ["2026-11-22", "evening", 0]);
+    await db.query("select public.save_milk_day_waste('2026-11-22',10,'Unassigned spill')");
+
+    const shifts = (await db.query<Record<string, string>>(`
+      select milk_shift, wasted_litres::text, allocated_litres::text, remaining_litres::text
+      from public.milk_shift_distribution_summary('2026-11-22')
+      order by case milk_shift when 'morning' then 1 when 'noon' then 2 else 3 end
+    `)).rows;
+    expect(shifts).toEqual([
+      { milk_shift: "morning", wasted_litres: "0", allocated_litres: "0", remaining_litres: "100.00" },
+      { milk_shift: "evening", wasted_litres: "10.00", allocated_litres: "10.00", remaining_litres: "90.00" },
+    ]);
+    const report = (await db.query<{ wasted_litres: string; remaining_litres: string }>(`
+      select wasted_litres::text,remaining_litres::text from public.milk_report_distribution_shifts('2026-11-22','2026-11-22') where milk_shift='evening'
+    `)).rows[0];
+    expect(report).toEqual({ wasted_litres: "10.00", remaining_litres: "90.00" });
+    await db.exec("set constraints all immediate");
+  } finally { await db.exec("rollback"); }
+});

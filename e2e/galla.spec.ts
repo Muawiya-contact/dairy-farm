@@ -19,6 +19,6 @@ test("a Rs 1000 transfer changes both accounts once and cash difference needs a 
   await expect(count.getByText(/Hisaab ke mutabiq:/)).toBeVisible();
   await count.getByRole("spinbutton", { name: "Gini hui cash" }).fill(String(farmBefore - 999));
   await count.getByRole("button", { name: "Cash ginti save karein" }).click();
-  await expect(page.getByRole("alert").filter({ hasText: /wajah|reason/i })).toBeVisible();
+  await expect(page.getByRole("alertdialog").filter({ hasText: /wajah|reason/i })).toBeVisible();
   await expect.poll(() => accountBalance(page, "Farm galla")).toBe(farmBefore - 1000);
 });

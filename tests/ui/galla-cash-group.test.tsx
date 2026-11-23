@@ -77,7 +77,7 @@ it("requires a purpose before recording an owner movement", async () => {
   await user.selectOptions(within(panel).getByRole("combobox", { name: "Owner account" }), "owner-1");
   await user.type(within(panel).getByRole("spinbutton", { name: "Owner transaction raqam" }), "125");
   fireEvent.submit(panel.querySelector("form")!);
-  await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Owner transaction ki wajah likhein."));
+  await waitFor(() => expect(screen.getByRole("alertdialog")).toHaveTextContent("Owner transaction ki wajah likhein."));
   expect(galla.recordTransfer).not.toHaveBeenCalled();
 });
 

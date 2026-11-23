@@ -34,7 +34,9 @@ it("adds 7.3 L from one animal, blocks excess deliveries, and fills company milk
   await user.type(screen.getByRole("spinbutton", { name: "101 litres" }), "7.3");
   expect(screen.getAllByText("7.3 L").length).toBeGreaterThanOrEqual(2);
   await user.type(screen.getByRole("spinbutton", { name: "Naqd litres" }), "8");
-  expect(screen.getByRole("button", { name: "Entry save karein" })).toBeDisabled();
+  await user.click(screen.getByRole("button", { name: "Entry save karein" }));
+  expect(within(screen.getByRole("dialog", { name: "Entry pehle check karein" })).getByText(/chiller ke is waqt available doodh se zyada/)).toBeVisible();
+  await user.click(screen.getByRole("button", { name: "Theek hai, durust karta hoon" }));
   await user.clear(screen.getByRole("spinbutton", { name: "Naqd litres" }));
   const fill = screen.getByRole("button", { name: "Baqi company ko dein" });
   await user.dblClick(fill);
@@ -129,11 +131,30 @@ it("requires a reason before correcting a saved milk shift and sends one audited
   farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({ shifts: [{ id: "shift-1", milk_date: fixtures.today,
     shift: "morning", total_litres: 10, mode: "total", notes: null, updated_at: "2026-10-16T12:00:00Z" }] }), error: null });
   renderWithQuery(<FarmMilk />);
-  expect(screen.getByRole("button", { name: "Durust entry save karein" })).toBeDisabled();
+  await user.click(screen.getByRole("button", { name: "Durust entry save karein" }));
+  const dialog = screen.getByRole("dialog", { name: "Entry pehle check karein" });
+  expect(within(dialog).getByText(/Miktar durust karne ki wajah kam az kam 3 harf/)).toBeVisible();
+  expect(farmMocks.correctMilkEntry).not.toHaveBeenCalled();
+  await user.click(within(dialog).getByRole("button", { name: "Theek hai, durust karta hoon" }));
+  expect(screen.getByRole("textbox", { name: "Miktar durust karne ki wajah" })).toHaveFocus();
   await user.type(screen.getByRole("textbox", { name: "Miktar durust karne ki wajah" }), "Transfer mein kami");
   await user.click(screen.getByRole("button", { name: "Durust entry save karein" }));
   await waitFor(() => expect(farmMocks.correctMilkEntry).toHaveBeenCalledOnce());
   expect(farmMocks.correctMilkEntry).toHaveBeenCalledWith(expect.objectContaining({ reason: "Transfer mein kami", expectedUpdatedAt: "2026-10-16T12:00:00Z" }));
+  expect(farmMocks.saveMilkEntry).not.toHaveBeenCalled();
+});
+
+it("keeps showing the save dialog until a missing wastage reason is fixed", async () => {
+  const user = userEvent.setup();
+  renderWithQuery(<FarmMilk />);
+  await user.type(screen.getByRole("spinbutton", { name: "Kul doodh" }), "10");
+  await user.click(screen.getByRole("button", { name: "Waste add karein" }));
+  await user.type(screen.getByRole("spinbutton", { name: "Wastage / spillage 1 litres" }), "1");
+  await user.click(screen.getByRole("button", { name: "Entry save karein" }));
+  expect(within(screen.getByRole("dialog", { name: "Entry pehle check karein" })).getByText(/Zaya doodh ki kam az kam 3 harf/)).toBeVisible();
+  await user.click(screen.getByRole("button", { name: "Theek hai, durust karta hoon" }));
+  await user.click(screen.getByRole("button", { name: "Entry save karein" }));
+  expect(screen.getByRole("dialog", { name: "Entry pehle check karein" })).toBeVisible();
   expect(farmMocks.saveMilkEntry).not.toHaveBeenCalled();
 });
 

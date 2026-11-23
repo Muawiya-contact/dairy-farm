@@ -11,6 +11,8 @@ import { Body, PageHeader, Panel } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
 import { MinusIcon, PlusIcon } from "./icons";
 import { FarmObservances } from "./FarmObservances";
+import { FormValidationDialog } from "./FormValidationDialog";
+import { SaveErrorDialog } from "./SaveErrorDialog";
 import { SHIFT_LABELS, noonEnabledOn, visibleShifts, type MilkShiftName } from "@/lib/milk-shifts";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
@@ -109,6 +111,8 @@ function ShiftForm({ data, date, shift }: { data: FarmData; date: string; shift:
   const [version, setVersion] = useState(existing?.updated_at ?? null);
   const [notes, setNotes] = useState(existing?.notes ?? "");
   const [correctionReason, setCorrectionReason] = useState("");
+  const [saveProblems, setSaveProblems] = useState<string[] | null>(null);
+  const correctionReasonRef = useRef<HTMLInputElement>(null);
   const [showLocal, setShowLocal] = useState(false);
   const [localBusy, setLocalBusy] = useState(false);
   const [localError, setLocalError] = useState("");
@@ -149,6 +153,21 @@ function ShiftForm({ data, date, shift }: { data: FarmData; date: string; shift:
     catch { return true; }
   }));
   const invalidEntry = invalidQuantity || invalidTotal || invalidAnimal || !!dispositionResult.error;
+  const problemsBeforeSave = (): string[] => {
+    const problems: string[] = [];
+    if (missingTotal) problems.push("Kul doodh likhein. Doodh na nikla ho to 0 likhein.");
+    if (invalidTotal) problems.push("Kul doodh 0 se 5,000 L tak, do decimal tak likhein.");
+    if (invalidAnimal) problems.push("Har janwar ka doodh 0 se 60 L tak, do decimal tak likhein.");
+    if (invalidQuantity) problems.push("Customer ki doodh miktar 0 ya zyada aur do decimal tak likhein.");
+    if (dispositionResult.error) problems.push(dispositionResult.error);
+    if (stockQuery.isPending) problems.push("Chiller ka pichla balance load hone dein.");
+    if (stockQuery.isError || !stockQuery.data) problems.push("Chiller ka balance nahi khula. Dobara koshish karein.");
+    if (stockQuery.data && shiftRemaining < 0) problems.push("Is shift ki taqseem chiller ke is waqt available doodh se zyada hai.");
+    if (stockQuery.data && shiftRemaining >= 0 && dayRemaining < 0) problems.push("Baad ki saved shifts ya din ke waste ke baad doodh kam par raha hai. Is entry ko kam karein.");
+    if (notes.length > 500) problems.push("Shift ka note 500 harf tak rakhein.");
+    if (existing && correctionReason.trim().length < 3) problems.push("Miktar durust karne ki wajah kam az kam 3 harf mein likhein.");
+    return problems;
+  };
   const step = (id: string, change: number, animal = false) => {
     if (animal) setPerAnimal((current) => {
       const next = Math.min(60, Math.max(0, Math.round(((Number(current[id]) || 0) + change) * 100) / 100));
@@ -204,6 +223,16 @@ function ShiftForm({ data, date, shift }: { data: FarmData; date: string; shift:
     } catch (e) { setError(friendlyError(e)); }
     finally { setBusy(false); }
   };
+  const requestSave = () => {
+    const problems = problemsBeforeSave();
+    if (problems.length) { setSaveProblems(problems); return; }
+    void save();
+  };
+  const closeSaveProblems = () => {
+    const shouldFocusReason = saveProblems?.some((problem) => problem.startsWith("Miktar durust"));
+    setSaveProblems(null);
+    if (shouldFocusReason) requestAnimationFrame(() => correctionReasonRef.current?.focus());
+  };
   const creditCustomers = active.filter((customer) => customer.kind !== "cash");
   const cashCustomers = [...active.filter((customer) => customer.kind === "cash"), ...localCustomers];
   const company = creditCustomers.find((customer) => customer.kind === "company");
@@ -228,16 +257,16 @@ function ShiftForm({ data, date, shift }: { data: FarmData; date: string; shift:
         {mode === "total" ? <><label className="flex items-center gap-2"><input aria-label="Kul doodh" type="number" min="0" max="5000" step="0.01" placeholder="Litre" value={total} onChange={(event) => { setTotal(event.target.value); setSaved(false); }} className="w-40 border-b-2 border-berseem bg-transparent font-display text-5xl font-bold outline-none" /><span>litre</span></label>{missingTotal && <p className="mt-2 text-sm text-muted">Kul doodh likhein. Agar doodh nahi nikla to 0 likhein.</p>}</> : <ul className="divide-y divide-line">{milkers.map((animal) => <li key={animal.id} className="flex min-w-0 flex-wrap items-center gap-2 py-2"><strong className="min-w-0 max-w-full basis-16 break-all">{animal.tag}</strong><span className="min-w-0 flex-1 truncate text-sm text-muted">{animal.name || animal.breed}</span><button aria-label={`${animal.tag} kam`} onClick={() => step(animal.id, -0.5, true)} className="flex h-11 w-11 items-center justify-center rounded-xl border border-line"><MinusIcon /></button><input aria-label={`${animal.tag} litres`} type="number" min="0" max="60" step="0.01" placeholder="0 L" value={perAnimal[animal.id] ?? ""} onChange={(event) => { setPerAnimal((current) => ({ ...current, [animal.id]: event.target.value })); setSaved(false); }} className="w-20 rounded-lg border border-line bg-paper p-1 text-center font-bold" /><button aria-label={`${animal.tag} zyada`} onClick={() => step(animal.id, 0.5, true)} className="flex h-11 w-11 items-center justify-center rounded-xl border border-line"><PlusIcon /></button></li>)}<li className="flex justify-between pt-2 font-bold"><span>Kul</span><span>{invalidAnimal ? "—" : litres(milkTotal)}</span></li></ul>}
       </Panel>
       <label className="text-sm font-semibold">Shift ka note (optional)<textarea value={notes} maxLength={500} placeholder="Misal: bacha hua doodh ghar mein istemal hua" onChange={(event) => { setNotes(event.target.value); setSaved(false); }} className={`${field} mt-1 min-h-20 p-3 font-normal`} /></label>
-      {existing && <label className="text-sm font-semibold">Miktar durust karne ki wajah<input aria-label="Miktar durust karne ki wajah" value={correctionReason} maxLength={500} required placeholder="Misal: transfer ke baad 10 L kam nikla" onChange={(event) => { setCorrectionReason(event.target.value); setSaved(false); }} className={`${field} mt-1`} /><span className="mt-1 block text-xs text-muted">Purani production, sales aur dispositions audit mein mehfooz rahengi.</span></label>}
+      {existing && <label className="text-sm font-semibold">Miktar durust karne ki wajah<input ref={correctionReasonRef} aria-label="Miktar durust karne ki wajah" value={correctionReason} maxLength={500} required placeholder="Misal: transfer ke baad 10 L kam nikla" onChange={(event) => { setCorrectionReason(event.target.value); setSaved(false); }} className={`${field} mt-1`} /><span className="mt-1 block text-xs text-muted">Purani production, sales aur dispositions audit mein mehfooz rahengi.</span></label>}
       <section className="rounded-2xl bg-berseem-deep p-5 text-white"><dl className="grid grid-cols-2 gap-3 sm:grid-cols-5"><div><dt className="text-sm text-[#cfe3cf]">Chiller se pichla</dt><dd className="text-xl font-bold">{stockQuery.data ? litres(openingMilk) : "—"}</dd></div><div><dt className="text-sm text-[#cfe3cf]">Aaj nikla</dt><dd className="text-xl font-bold">{missingTotal || invalidTotal || invalidAnimal ? "—" : litres(milkTotal)}</dd></div><div><dt className="text-sm text-[#cfe3cf]">Kul available</dt><dd className="text-xl font-bold">{stockQuery.data && !missingTotal && !invalidTotal && !invalidAnimal ? litres(shiftAvailable) : "—"}</dd></div><div><dt className="text-sm text-[#cfe3cf]">Allocate hua</dt><dd className="text-xl font-bold">{invalidQuantity || dispositionResult.error ? "—" : litres(allocated)}</dd></div><div><dt className="text-sm text-[#cfe3cf]">Aaj ka chiller closing</dt><dd className="text-xl font-bold">{!stockQuery.data || missingTotal || invalidEntry ? "—" : litres(dayRemaining)}</dd></div></dl><p className="mt-3 border-t border-white/20 pt-3">Andazi sale: <strong>{invalidQuantity ? "—" : money(expectedSale)}</strong></p></section>
       {stockQuery.isPending && <p role="status" className="text-sm text-muted">Chiller ka pichla balance load ho raha hai…</p>}
       {stockQuery.isError && <p role="alert" className="text-sm text-udhaar">Chiller ka balance nahi khula: {friendlyError(stockQuery.error)} <button type="button" onClick={() => void stockQuery.refetch()} className="underline">Dobara koshish</button></p>}
       {stockQuery.data && shiftRemaining < 0 && <p role="alert" className="text-sm text-udhaar">Is shift ki taqseem chiller ke is waqt available doodh se zyada hai.</p>}
       {stockQuery.data && shiftRemaining >= 0 && dayRemaining < 0 && <p role="alert" className="text-sm text-udhaar">Baad ki saved shifts ya din ke waste ke baad doodh kam par raha hai. Is entry ko kam karein.</p>}
-      {invalidEntry && <p role="alert" className="text-sm text-udhaar">{dispositionResult.error || "Doodh ki har miktar 0 ya zyada, 2 decimal tak likhein. Har janwar 60 L tak ho sakta hai."}</p>}
-      {existing && correctionReason.trim().length > 0 && correctionReason.trim().length < 3 && <p role="alert" className="text-sm text-udhaar">Durust karne ki wajah kam az kam 3 harf mein likhein.</p>}
-      <button onClick={() => void save()} disabled={busy || !stockQuery.data || missingTotal || invalidEntry || milkTotal < 0 || shiftRemaining < 0 || dayRemaining < 0 || !!existing && correctionReason.trim().length < 3} className="min-h-14 rounded-2xl bg-berseem text-lg font-bold text-white disabled:opacity-50">{busy ? "Save ho raha hai…" : existing ? "Durust entry save karein" : "Entry save karein"}</button>
-      {saved && <p role="status" className="text-berseem-deep">Entry farm ke data mein save ho gayi.</p>}{error && <p role="alert" className="text-udhaar">Save nahi hua: {error}</p>}
+      <button onClick={requestSave} disabled={busy} className="min-h-14 rounded-2xl bg-berseem text-lg font-bold text-white disabled:opacity-50">{busy ? "Save ho raha hai…" : existing ? "Durust entry save karein" : "Entry save karein"}</button>
+      {saved && <p role="status" className="text-berseem-deep">Entry farm ke data mein save ho gayi.</p>}
+      {saveProblems && <FormValidationDialog title="Entry pehle check karein" problems={saveProblems} onClose={closeSaveProblems} />}
+      {error && <SaveErrorDialog title={saved ? "Entry save hui, magar hisaab nahi khula" : undefined} error={error} onClose={() => setError("")} />}
     </div>
     <div className="grid min-w-0 gap-4">
       <Panel title="Khata / credit sale" className="min-w-0"><p className="mb-2 text-sm text-muted">In deliveries se customer ya company ledger/bill update hota hai; Galla mein cash nahi aata. Chiller ka pichla doodh sirf stock hai, income nahi.</p>{company && <button type="button" onClick={() => { setQty((current) => fillCompanyMilk(companyFillAvailable, current, company.id, dispositionTotal)); setSaved(false); }} disabled={!stockQuery.data || shiftRemaining <= 0 || dayRemaining <= 0 || missingTotal || invalidEntry} className="mb-2 min-h-11 rounded-xl bg-berseem-soft px-3 text-sm font-semibold text-berseem-deep disabled:opacity-50">Baqi company ko dein</button>}<ul className="divide-y divide-line">{creditCustomers.map(customerRow)}</ul>{!creditCustomers.length && <p className="text-sm text-muted">Abhi koi Khata customer nahi.</p>}</Panel>

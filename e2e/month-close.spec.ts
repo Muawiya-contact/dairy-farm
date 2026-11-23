@@ -19,7 +19,7 @@ test("a closed month rejects milk edits and can reopen only with the typed month
   await page.getByLabel("Tareekh", { exact: true }).fill(lastDay);
   await page.getByRole("spinbutton", { name: "Kul doodh" }).fill("200");
   await page.getByRole("button", { name: "Entry save karein" }).click();
-  await expect(page.getByRole("alert").filter({ hasText: "Yeh maheena band hai." })).toBeVisible();
+  await expect(page.getByRole("alertdialog").filter({ hasText: "Yeh maheena band hai." })).toBeVisible();
 
   await page.goto("/settings/");
   await expect(page.getByRole("button", { name: "Maheena band", exact: true })).toHaveAttribute("aria-expanded", "true");

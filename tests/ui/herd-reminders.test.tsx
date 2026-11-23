@@ -4,12 +4,30 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { renderWithQuery, supabaseMocks } from "./utils";
 import { HerdReminders } from "@/components/HerdReminders";
 
+const route = vi.hoisted(() => ({ pathname: "/doodh/" }));
+
+vi.mock("next/navigation", () => ({ usePathname: () => route.pathname }));
+
 beforeEach(() => {
+  route.pathname = "/doodh/";
   localStorage.clear();
   supabaseMocks.getSupabase.mockReturnValue({ rpc: vi.fn(async (name: string) => ({
     data: name === "animal_breeding_alerts" ? [{ animal_id: "cow-1", alert_kind: "ultrasound", due_date: "2026-10-20",
       tag: "101", message: "101: ultrasound — 2 din baad", days_left: 2, severity: "soon" }] : [], error: null,
   })) });
+});
+
+it("closes the reminder list when the owner opens another page", async () => {
+  const user = userEvent.setup();
+  const { rerender } = renderWithQuery(<HerdReminders />);
+
+  await user.click(await screen.findByRole("button", { name: "1 yaad-dihaniyan" }));
+  expect(screen.getByRole("region", { name: "Nasl aur sehat ki yaad-dihaniyan" })).toBeVisible();
+
+  route.pathname = "/galla/";
+  rerender(<HerdReminders />);
+
+  expect(screen.queryByRole("region", { name: "Nasl aur sehat ki yaad-dihaniyan" })).not.toBeInTheDocument();
 });
 
 it("moves the reminder banner aside while the list is open and restores it for dismissal", async () => {

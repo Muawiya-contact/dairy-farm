@@ -15,6 +15,7 @@ import { Body, PageHeader, Panel } from "./ui";
 import { FarmLoading } from "./FarmDashboard";
 import { DateFormatHint } from "./DateFormatHint";
 import { getGallaDailyClosing } from "@/lib/owner-account-report";
+import { SaveErrorDialog } from "./SaveErrorDialog";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 type Pending = { id: string; signature: string };
@@ -226,7 +227,7 @@ export default function FarmGalla() {
         {latestCount?.count_date === countDate && expected.data != null && Math.abs(amount(latestCount.expected_balance) - amount(expected.data)) > 0.009 && <p role="alert" className="mt-2 text-udhaar">Is ginti ke baad purani entry badli hai; nayi ginti karein.</p>}
       </Panel>
       {success && <p role="status" className="text-berseem-deep lg:col-span-2">{success}</p>}
-      {error && <p role="alert" className="text-udhaar lg:col-span-2">Save nahi hua: {error} Agar connection toot gaya ho to dobara save se pehle register check karein.</p>}
+      {error && <SaveErrorDialog error={error} onClose={() => setError("")} />}
     </Body>
   </>;
 }

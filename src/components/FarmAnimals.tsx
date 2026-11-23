@@ -30,6 +30,7 @@ import { animalPhotoDataUrl } from "@/lib/animal-photos";
 import { animalWeightHistory } from "@/lib/animal-weight-history";
 import { downloadBlob } from "@/lib/export-data";
 import { sharePdfFile } from "@/lib/pdf-share";
+import { SaveErrorDialog } from "./SaveErrorDialog";
 
 const field = "min-h-11 w-full rounded-xl border border-line bg-paper px-3";
 const animalLabel = (a: Animal) => `${a.tag}${a.name ? ` · ${a.name}` : ""}`;
@@ -215,7 +216,7 @@ export default function FarmAnimals() {
           return <li key={row.id} className="py-1">{longDate(row.event_date)} · {printedHealthKind[row.kind] ?? "Doosra"} · {row.title}{details.length ? ` · ${details.join(" · ")}` : ""}</li>;
         }) : <li className="py-1">Sehat ka record nahi.</li>}</ul>
       </Panel>
-      {error && <p role="alert" className="text-udhaar lg:col-span-2">Save nahi hua: {error}</p>}</Body></>;
+      </Body>{error && <SaveErrorDialog error={error} onClose={() => setError("")} />}</>;
   }
   const list = d.animals.filter((a) => matchesAnimalFilter(a, filter) && `${a.tag} ${a.name ?? ""} ${a.breed ?? ""}`.toLowerCase().includes(term.toLowerCase())).sort(compareAnimalTags);
   return <><PageHeader title="Janwar" sub={`${active.length} farm par hain, ${active.filter((a) => a.milking_status === "milking").length} doodh de rahe`} action={<button onClick={() => setAdd(!add)} className="flex min-h-11 items-center gap-1 rounded-xl bg-berseem px-4 font-semibold text-white"><PlusIcon width={18} />Naya</button>} />
@@ -232,5 +233,5 @@ export default function FarmAnimals() {
     <label className="mt-4 flex min-h-12 items-center gap-2 rounded-xl border border-line bg-paper px-3"><SearchIcon className="text-muted" /><input value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Tag ya nasal" className="min-w-0 flex-1 bg-transparent outline-none" /></label>
     <div className="my-3 flex gap-2 overflow-x-auto">{[["active",UI_TEXT.active],["all","Sab"],["cow","Gayein"],["buffalo","Bhainsein"],["milking","Doodh"],["dry","Khushk"],["sold","Farokht"],["dead","Wafat"],["removed","Doosre niklay"]].map(([value,label]) => <button key={value} onClick={() => setFilter(value)} className={`min-h-10 shrink-0 rounded-full border px-4 text-sm font-semibold ${filter === value ? "border-ink bg-ink text-white" : "border-line bg-paper"}`}>{label}</button>)}</div>
     <ul className="overflow-hidden rounded-2xl border border-line bg-paper lg:grid lg:grid-cols-2">{list.map((a) => <li key={a.id} className="min-w-0 border-b border-line"><Link href={`/janwar/?id=${a.id}`} className="flex min-w-0 items-center gap-3 px-4 py-3 hover:bg-ground"><span className="flex min-h-12 min-w-14 max-w-32 shrink-0 items-center justify-center break-all rounded-lg border-2 border-berseem px-2 py-1 text-center font-display font-bold leading-tight">{a.tag}</span><span className="min-w-0 flex-1"><strong className="block truncate">{a.name || animalCategoryTitle(a)}</strong><span className="block truncate text-sm text-muted">{a.species === "buffalo" ? "Bhains" : "Gaye"} · {a.breed ?? "Nasl nahi"}</span></span><StatusTag status={a.life_status !== "active" ? a.life_status : a.category === "calf" ? "calf" : a.milking_status} /></Link></li>)}{list.length === 0 && <li className="p-6 text-muted">Koi janwar nahi mila.</li>}</ul>
-    {error && <p role="alert" className="mt-3 text-udhaar">Save nahi hua: {error}</p>}</Body></>;
+    </Body>{error && <SaveErrorDialog error={error} onClose={() => setError("")} />}</>;
 }

@@ -512,6 +512,8 @@ export default function FarmCustomers() {
       await action();
       await queryClient.invalidateQueries({ queryKey: ["farm-data"] });
       await queryClient.invalidateQueries({ queryKey: ["customer-report"] });
+      await queryClient.invalidateQueries({ queryKey: ["customer-period-ledger"] });
+      await queryClient.invalidateQueries({ queryKey: ["customer-period-ledger-summary"] });
       await queryClient.invalidateQueries({ queryKey: ["payment-audit"] });
       await queryClient.invalidateQueries({ queryKey: ["galla"] });
       setSuccess(message);

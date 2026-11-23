@@ -35,6 +35,7 @@ describe("CSV exports", () => {
     expect(DATASETS.find((dataset) => dataset.table === "expenses")?.columns).toContain("salary_period_id");
     expect(DATASETS.find((dataset) => dataset.table === "expenses")?.columns).toContain("received_by");
     expect(DATASETS.find((dataset) => dataset.table === "month_lock_events")?.columns).toContain("reason");
+    expect(DATASETS.find((dataset) => dataset.table === "customer_balance_adjustments")?.columns).toContain("balance_change");
     expect(toCsv(["month", "action", "reason", "created_at"], [], "Maheena band faislay"))
       .toBe('\uFEFF"Maheena","Faisla","Wajah","Waqt"\r\n');
   });

@@ -6,7 +6,7 @@ import { getSettings, type LoadedFarmSettings } from "./settings";
 import { formatDay, todayPK } from "./dates";
 import { addDays } from "./dates";
 import { rs } from "./format";
-import type { CustomerKind, CustomerPayment, CustomerProfile, FreeReason, NewCustomer } from "./customer-forms";
+import type { CustomerBalanceAdjustment, CustomerKind, CustomerPayment, CustomerProfile, FreeReason, NewCustomer } from "./customer-forms";
 import type { Database } from "./database.types";
 import type { MilkShiftConfig, MilkShiftName } from "./milk-shifts";
 import type { MilkDispositionInput } from "./milk-entry";
@@ -64,7 +64,7 @@ export type Expense = { id: string; expense_date: string; category_id: string; a
 export type Account = { id: string; name: string; kind: string; is_farm_cash: boolean; active: boolean; opening_date: string };
 export type CompanyBill = { id: string; customer_id: string; from_date: string; to_date: string; litres: number; amount: number };
 export type OtherIncome = { id: string; income_date: string; amount: number };
-export type CustomerReport = { customer_id: string; name: string; kind: string; litres: number; amount: number; previous_balance: number; paid: number; discount: number; refund: number; balance: number };
+export type CustomerReport = { customer_id: string; name: string; kind: string; litres: number; amount: number; previous_balance: number; paid: number; discount: number; refund: number; balance_adjustment: number; balance: number };
 export type CustomerClosure = { id: string; closed_date: string; settlement_kind: "payment" | "discount" | "refund" | "zero"; amount: number; reason: string; payment_id: string | null; reopened_at: string | null };
 export type CustomerBalance = { customer_id: string; balance: number };
 export type HerdAlert = { alert_kind: string; severity: "overdue" | "today" | "soon" | "upcoming"; due_date: string; animal_id: string; tag: string; message: string; days_left: number };
@@ -427,6 +427,14 @@ export async function recordCustomerPayment(customerId: string, input: CustomerP
   if (!data || data.customer_id !== customerId || data.payment_date !== input.date ||
       Number(data.amount) !== input.amount || data.kind !== "payment" || data.method !== input.method ||
       data.account_id !== input.accountId) throw error;
+}
+
+export async function recordCustomerBalanceAdjustment(customerId: string, input: CustomerBalanceAdjustment, id = crypto.randomUUID()): Promise<void> {
+  const { error } = await getSupabase().rpc("record_customer_balance_adjustment", {
+    p_id: id, p_customer: customerId, p_date: input.date,
+    p_balance_change: input.balanceChange, p_reason: input.reason,
+  });
+  if (error) throw error;
 }
 
 export async function customerMonthReport(customerId: string, month: string): Promise<CustomerReport | null> {

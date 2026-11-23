@@ -25,6 +25,7 @@ export const DATASETS: { table: Table; label: string; key: string; columns: stri
   { table: "milk_deliveries", label: "Doodh ki delivery", key: "id", columns: ["id", "delivery_date", "shift", "customer_id", "litres", "rate", "amount", "created_at"] },
   { table: "milk_dispositions", label: "Doodh ka istemal aur waste", key: "id", columns: ["id", "milk_date", "shift_id", "disposition_type", "category", "litres", "recipient", "note", "created_by", "created_at", "updated_at"] },
   { table: "customers", label: "Customers", key: "id", columns: ["id", "name", "phone", "kind", "free_reason", "is_local", "default_morning", "default_noon", "default_evening", "opening_balance", "opening_date", "active", "sort_order", "notes", "created_at"] },
+  { table: "customer_balance_adjustments", label: "Customer ke purane Khata adjustments", key: "id", columns: ["id", "customer_id", "adjustment_date", "balance_change", "reason", "created_at", "actor_id"] },
   { table: "customer_rates", label: "Doodh ke rate", key: "id", columns: ["id", "customer_id", "rate", "effective_from"] },
   { table: "company_bills", label: "Company bills", key: "id", columns: ["id", "customer_id", "from_date", "to_date", "litres", "amount", "notes", "created_at"] },
   { table: "payments", label: "Wusooli", key: "id", columns: ["id", "customer_id", "payment_date", "amount", "kind", "method", "account_id", "delivery_id", "note", "revision", "created_at"] },
@@ -45,7 +46,7 @@ export const DATASETS: { table: Table; label: string; key: string; columns: stri
 ];
 
 export const REPORTS = [
-  { name: "customer_month_report", label: "Customer ka maheena", columns: ["name", "kind", "litres", "amount", "previous_balance", "total", "paid", "discount", "refund", "balance"] },
+  { name: "customer_month_report", label: "Customer ka maheena", columns: ["name", "kind", "litres", "amount", "previous_balance", "total", "paid", "discount", "refund", "balance_adjustment", "balance"] },
   { name: "expense_month_report", label: "Maheene ke kharchay", columns: ["label", "category", "staff_name", "is_farm_cost", "amount"] },
   { name: "milk_month_summary", label: "Doodh ka khulasa", columns: ["produced", "sold_litres", "free_litres", "delivered", "difference", "company_slip_litres"] },
   { name: "pnl_month", label: "Aamdani aur kharcha", columns: ["milk_income", "other_income", "total_income", "farm_expenses", "personal_expenses", "profit"] },
@@ -61,6 +62,7 @@ const COLUMN_LABELS: Record<string, string> = {
   money_received: "Wasooli (Rs)", money_paid: "Adaigi (Rs)", transfers_in: "Andar transfer (Rs)",
   transfers_out: "Bahar transfer (Rs)", closing_balance: "Aakhri baqaya (Rs)", customer: "Customer",
   opening_added: "Naya shuruati baqaya (Rs)", charges: "Bill (Rs)", payments: "Wasooli (Rs)",
+  balance_adjustment: "Purana Khata (+/-) (Rs)", balance_adjustments: "Purana Khata (+/-) (Rs)",
   discounts: "Riayat (Rs)", refunds: "Wapsi (Rs)", paid_amount: "Ada shuda (Rs)",
   outstanding_amount: "Baqi (Rs)", bucket_start: "Muddat ki tareekh", net_profit: "Farm munafa / nuqsan (Rs)",
   customer_collections: "Wapsi minus kar ke wasooli (Rs)", cash_paid: "Ada ki gayi raqam (Rs)",

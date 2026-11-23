@@ -1,6 +1,6 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { farmMocks, fixtures, makeFarmData, renderWithQuery } from "./utils";
 import FarmCustomers from "@/components/FarmCustomers";
 
@@ -12,6 +12,7 @@ vi.mock("@/lib/galla", async (original) => ({ ...(await original<typeof import("
 beforeEach(() => {
   farmMocks.updateCustomerProfile.mockResolvedValue(undefined);
   farmMocks.finalizeCustomerKhata.mockResolvedValue(undefined);
+  farmMocks.recordCustomerBalanceAdjustment.mockResolvedValue(undefined);
   farmMocks.getCustomerClosureHistory.mockResolvedValue([]);
   farmMocks.customerMonthReport.mockResolvedValue(null);
   customerMocks.loadCustomerPeriodLedger.mockResolvedValue([]);
@@ -20,6 +21,34 @@ beforeEach(() => {
     customers: [{ ...fixtures.customer, id: "customer-1", kind: "regular", active: true, opening_date: "2026-01-01", phone: null, free_reason: null, sort_order: 0, is_local: false }],
     balances: [{ customer_id: "customer-1", balance: 500 }], payments: [], companyBills: [], reports: [],
   }), error: null });
+});
+afterEach(() => vi.unstubAllGlobals());
+
+it("lets a customer khata add a dated prior advance without calling it a payment", async () => {
+  const user = userEvent.setup();
+  vi.stubGlobal("crypto", { randomUUID: () => "12345678-1234-4234-8234-123456789099" });
+  renderWithQuery(<FarmCustomers />);
+  await user.click(screen.getByRole("button", { name: "Purana baqaya ya advance add karein" }));
+  await user.selectOptions(screen.getByLabelText("Kis taraf ka purana hisaab?"), "advance");
+  await user.type(screen.getByLabelText("Raqam (Rs)"), "250");
+  await user.type(screen.getByLabelText("Wajah / tafseel"), "App se pehle ka advance");
+  fireEvent.submit(screen.getByRole("button", { name: "Purana Khata save karein" }).closest("form")!);
+  await waitFor(() => expect(farmMocks.recordCustomerBalanceAdjustment).toHaveBeenCalled());
+  await waitFor(() => expect(farmMocks.recordCustomerBalanceAdjustment).toHaveBeenCalledWith(
+    "customer-1",
+    { date: fixtures.today, balanceChange: -250, reason: "App se pehle ka advance" },
+    expect.any(String),
+  ));
+});
+
+it("offers the prior-balance option for cash customers too", () => {
+  farmMocks.useFarmData.mockReturnValue({ data: makeFarmData({
+    customers: [{ ...fixtures.customer, id: "customer-1", kind: "cash", active: true, opening_date: "2026-01-01", phone: null, free_reason: null, sort_order: 0, is_local: false }],
+    balances: [{ customer_id: "customer-1", balance: 0 }], payments: [], companyBills: [], reports: [],
+  }), error: null });
+  renderWithQuery(<FarmCustomers />);
+  expect(screen.getByRole("button", { name: "Purana baqaya ya advance add karein" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "Wusooli save karein" })).toBeVisible();
 });
 
 it("records the exact remaining balance through a confirmed final settlement before closing a customer khata", async () => {

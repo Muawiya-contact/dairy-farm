@@ -15,7 +15,7 @@ const report: FinancialReportData = {
     },
     customers: [{
       customer_id: "customer-1", name: "Ali", kind: "regular", sort_order: 1,
-      litres: 18, charged: 1000, paid: 400, discount: 0, refund: 0, period_balance_change: 600,
+      litres: 18, charged: 1000, paid: 400, discount: 0, refund: 0, balance_adjustment: 0, period_balance_change: 600,
     }],
     expenses: [{
       expense_date: "2026-11-20", category: "Feed", is_farm_cost: true,
@@ -27,11 +27,11 @@ const report: FinancialReportData = {
   },
   customers: [{
     customer_id: "customer-1", name: "Ali", kind: "regular", active: true, sort_order: 1,
-    litres: 18, charges: 1000, payments: 400, discounts: 0, refunds: 0,
+    litres: 18, charges: 1000, payments: 400, discounts: 0, refunds: 0, balance_adjustments: 0,
     opening_balance: 0, opening_added: 0, closing_balance: 600,
   }, {
     customer_id: "customer-2", name: "Bilal", kind: "regular", active: false, sort_order: 2,
-    litres: 0, charges: 0, payments: 0, discounts: 0, refunds: 0,
+    litres: 0, charges: 0, payments: 0, discounts: 0, refunds: 0, balance_adjustments: 0,
     opening_balance: 0, opening_added: 0, closing_balance: -100,
   }],
   accounts: [{

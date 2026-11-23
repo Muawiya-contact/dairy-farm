@@ -222,9 +222,9 @@ export function financialReportExportSections(
       income_date: row.income_date, kind: incomeLabels[row.kind] ?? "Darj aamdani", animal_tag: row.animal_tag,
       amount: row.amount, note: row.note,
     })) },
-    { title: "Customer ke bill aur wasooli", columns: ["customer", "litres", "charged", "paid", "discount", "refund", "period_balance_change"], rows: data.period.customers.map((row) => ({
+    { title: "Customer ke bill aur wasooli", columns: ["customer", "litres", "charged", "paid", "discount", "refund", "balance_adjustment", "period_balance_change"], rows: data.period.customers.map((row) => ({
       customer: row.name, litres: row.litres, charged: row.charged, paid: row.paid,
-      discount: row.discount, refund: row.refund, period_balance_change: row.period_balance_change,
+      discount: row.discount, refund: row.refund, balance_adjustment: row.balance_adjustment, period_balance_change: row.period_balance_change,
     })) },
     { title: "Kharchay ki tafseel", columns: ["expense_date", "category", "is_farm_cost", "account", "amount", "note"], rows: data.period.expenses.map((row) => ({
       ...row, is_farm_cost: row.is_farm_cost ? "Farm" : "Ghar / zaati",

@@ -11,7 +11,7 @@ import type { PdfSection } from "./export-data";
 export type FinalReportPreset = "month" | "previous" | "year" | "custom";
 export type FinalReportKhataRow = {
   is_grand_total: boolean; customer_id: string | null; name: string; sort_order: number;
-  litres: number; opening_balance: number; opening_added: number; charges: number;
+  litres: number; opening_balance: number; opening_added: number; charges: number; balance_adjustments: number;
   total_payable: number; payments: number; discounts: number; refunds: number;
   closing_balance: number; receivables_due: number; customer_credits: number;
 };
@@ -128,7 +128,7 @@ export async function loadFinalReportKhata(from: string, to: string): Promise<Fi
   return rows.map((row) => ({
     ...row,
     litres: Number(row.litres ?? 0), opening_balance: Number(row.opening_balance ?? 0),
-    opening_added: Number(row.opening_added ?? 0), charges: Number(row.charges ?? 0),
+    opening_added: Number(row.opening_added ?? 0), charges: Number(row.charges ?? 0), balance_adjustments: Number(row.balance_adjustments ?? 0),
     total_payable: Number(row.total_payable ?? 0), payments: Number(row.payments ?? 0),
     discounts: Number(row.discounts ?? 0), refunds: Number(row.refunds ?? 0),
     closing_balance: Number(row.closing_balance ?? 0), receivables_due: Number(row.receivables_due ?? 0),
@@ -227,15 +227,15 @@ export function finalReportExportSections(data: FinalReportData, from: string, t
       report_date: row.report_date, cash_litres: row.cash_litres, cash_sale_amount: row.cash_sale_amount,
       cash_received: row.cash_received, galla_cash_received: row.galla_cash_received,
     })) },
-    { title: "Customer Khata ka grand summary", columns: ["litres", "opening_balance", "opening_added", "charges", "total_payable", "payments", "discounts", "refunds", "closing_balance", "receivables_due", "customer_credits"], rows: customerTotals ? [{
+    { title: "Customer Khata ka grand summary", columns: ["litres", "opening_balance", "opening_added", "charges", "balance_adjustments", "total_payable", "payments", "discounts", "refunds", "closing_balance", "receivables_due", "customer_credits"], rows: customerTotals ? [{
       litres: customerTotals.litres, opening_balance: customerTotals.opening_balance, opening_added: customerTotals.opening_added,
-      charges: customerTotals.charges, total_payable: customerTotals.total_payable, payments: customerTotals.payments,
+      charges: customerTotals.charges, balance_adjustments: customerTotals.balance_adjustments, total_payable: customerTotals.total_payable, payments: customerTotals.payments,
       discounts: customerTotals.discounts, refunds: customerTotals.refunds, closing_balance: customerTotals.closing_balance,
       receivables_due: customerTotals.receivables_due, customer_credits: customerTotals.customer_credits,
     }] : [] },
-    { title: "Customer-wise Khata", columns: ["customer", "litres", "opening_balance", "opening_added", "charges", "total_payable", "payments", "discounts", "refunds", "closing_balance"], repeatColumns: ["customer"], rows: customerRows.map((row) => ({
+    { title: "Customer-wise Khata", columns: ["customer", "litres", "opening_balance", "opening_added", "charges", "balance_adjustments", "total_payable", "payments", "discounts", "refunds", "closing_balance"], repeatColumns: ["customer"], rows: customerRows.map((row) => ({
       customer: row.name, litres: row.litres, opening_balance: row.opening_balance, opening_added: row.opening_added,
-      charges: row.charges, total_payable: row.total_payable, payments: row.payments, discounts: row.discounts,
+      charges: row.charges, balance_adjustments: row.balance_adjustments, total_payable: row.total_payable, payments: row.payments, discounts: row.discounts,
       refunds: row.refunds, closing_balance: row.closing_balance,
     })) },
     { title: "Owner deposits aur withdrawals", columns: ["item", "amount_rs", "entries"], rows: [

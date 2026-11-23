@@ -71,7 +71,7 @@ export default function FinalReport() {
   const dailyWarnings = milk?.daily.filter((row) => milkReconciliationVariance(row) !== 0) ?? [];
   const hasSavedActivity = Boolean(data && (
     milk!.daily.length || financial!.period.customers.length || financial!.period.expenses.length
-    || khataCustomers.some((row) => row.litres || row.charges || row.payments || row.opening_balance || row.opening_added)
+    || khataCustomers.some((row) => row.litres || row.charges || row.balance_adjustments || row.payments || row.opening_balance || row.opening_added)
     || financial!.otherIncome.length || data.ownerTransfers.deposit_count || data.ownerTransfers.withdrawal_count
     || financial!.accounts.some((row) => row.opening_balance || row.money_received || row.money_paid || row.closing_balance)
   ));
@@ -287,16 +287,16 @@ export default function FinalReport() {
         <Panel title="Customer Khata ka maahana hisaab">
           <p className="mb-3 text-sm text-muted">Baqaya ki carry-forward, charges, receipts aur adjustments existing Khata database report se hain. Manfi closing balance customer ka advance hai.</p>
           <div className="overflow-x-auto"><table className="w-full min-w-[1120px] text-sm">
-            <thead><tr>{["Customer", "Doodh (L)", "Shuru ka baqaya", "Naya opening", "Bill", "Total payable", "Wasooli", "Riayat", "Wapsi", "Closing"].map((label) => <th key={label} className="border-b border-line px-2 py-2 text-right first:text-left">{label}</th>)}</tr></thead>
+            <thead><tr>{["Customer", "Doodh (L)", "Shuru ka baqaya", "Naya opening", "Bill", "Purana Khata (+/-)", "Total payable", "Wasooli", "Riayat", "Wapsi", "Closing"].map((label) => <th key={label} className="border-b border-line px-2 py-2 text-right first:text-left">{label}</th>)}</tr></thead>
             <tbody>{khataCustomers.map((row) => <tr key={row.customer_id}>
               <td className="border-b border-line px-2 py-2"><Link className="font-semibold text-berseem underline" href={`/reports/customer/?id=${row.customer_id}&from=${from}&to=${to}`}>{row.name}</Link></td>
               <td className="border-b border-line px-2 py-2 text-right">{litres(row.litres)}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.opening_balance)}</td>
-              <td className="border-b border-line px-2 py-2 text-right">{rs(row.opening_added)}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.charges)}</td>
+              <td className="border-b border-line px-2 py-2 text-right">{rs(row.opening_added)}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.charges)}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.balance_adjustments)}</td>
               <td className="border-b border-line px-2 py-2 text-right">{rs(row.total_payable)}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.payments)}</td>
               <td className="border-b border-line px-2 py-2 text-right">{rs(row.discounts)}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.refunds)}</td>
               <td className="border-b border-line px-2 py-2 text-right font-semibold">{rs(row.closing_balance)}</td>
             </tr>)}</tbody>
-            {customerTotals && <tfoot><tr className="border-t-2 border-line font-bold"><td className="px-2 py-2">Majmua</td><td className="px-2 py-2 text-right">{litres(customerTotals.litres)}</td><td className="px-2 py-2 text-right">{rs(customerTotals.opening_balance)}</td><td className="px-2 py-2 text-right">{rs(customerTotals.opening_added)}</td><td className="px-2 py-2 text-right">{rs(customerTotals.charges)}</td><td className="px-2 py-2 text-right">{rs(customerTotals.total_payable)}</td><td className="px-2 py-2 text-right">{rs(customerTotals.payments)}</td><td className="px-2 py-2 text-right">{rs(customerTotals.discounts)}</td><td className="px-2 py-2 text-right">{rs(customerTotals.refunds)}</td><td className="px-2 py-2 text-right">{rs(customerTotals.closing_balance)}</td></tr></tfoot>}
+            {customerTotals && <tfoot><tr className="border-t-2 border-line font-bold"><td className="px-2 py-2">Majmua</td><td className="px-2 py-2 text-right">{litres(customerTotals.litres)}</td><td className="px-2 py-2 text-right">{rs(customerTotals.opening_balance)}</td><td className="px-2 py-2 text-right">{rs(customerTotals.opening_added)}</td><td className="px-2 py-2 text-right">{rs(customerTotals.charges)}</td><td className="px-2 py-2 text-right">{rs(customerTotals.balance_adjustments)}</td><td className="px-2 py-2 text-right">{rs(customerTotals.total_payable)}</td><td className="px-2 py-2 text-right">{rs(customerTotals.payments)}</td><td className="px-2 py-2 text-right">{rs(customerTotals.discounts)}</td><td className="px-2 py-2 text-right">{rs(customerTotals.refunds)}</td><td className="px-2 py-2 text-right">{rs(customerTotals.closing_balance)}</td></tr></tfoot>}
           </table></div>
           {!khataCustomers.length && <p className="mt-2 text-sm text-muted">Is muddat mein Khata customer ka koi saved balance ya transaction nahi.</p>}
         </Panel>
@@ -355,8 +355,8 @@ export default function FinalReport() {
         <Panel title="Customer receivables aur advances">
           <p className="mb-3 text-sm text-muted">Closing positive balance lena baqi hai. Negative closing balance customer ka advance hai.</p>
           <div className="flex flex-wrap gap-4 text-sm"><strong>Lena baqi: {rs(receivables.due)}</strong><span>Customer advances: {rs(receivables.customerCredits)}</span></div>
-          <div className="mt-3 overflow-x-auto"><table className="w-full min-w-[840px] text-sm"><thead><tr>{["Customer", "Opening", "Charges", "Wasooli", "Riayat", "Wapsi", "Closing"].map((label) => <th key={label} className="border-b border-line px-2 py-2 text-right first:text-left">{label}</th>)}</tr></thead><tbody>
-            {khataCustomers.map((row) => <tr key={row.customer_id}><td className="border-b border-line px-2 py-2">{row.name}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.opening_balance)}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.charges)}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.payments)}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.discounts)}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.refunds)}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.closing_balance)}</td></tr>)}
+          <div className="mt-3 overflow-x-auto"><table className="w-full min-w-[840px] text-sm"><thead><tr>{["Customer", "Opening", "Charges", "Purana Khata", "Wasooli", "Riayat", "Wapsi", "Closing"].map((label) => <th key={label} className="border-b border-line px-2 py-2 text-right first:text-left">{label}</th>)}</tr></thead><tbody>
+            {khataCustomers.map((row) => <tr key={row.customer_id}><td className="border-b border-line px-2 py-2">{row.name}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.opening_balance)}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.charges)}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.balance_adjustments)}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.payments)}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.discounts)}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.refunds)}</td><td className="border-b border-line px-2 py-2 text-right">{rs(row.closing_balance)}</td></tr>)}
           </tbody></table></div>
         </Panel>
       </>}

@@ -4,7 +4,7 @@ import { filterAndSortKhataCustomers } from "@/lib/khata-summary";
 
 const customer = (overrides: Partial<KhataPeriodCustomer>): KhataPeriodCustomer => ({
   customer_id: "customer-1", name: "Ali", kind: "regular", active: true, sort_order: 0,
-  litres: 0, charges: 0, payments: 0, discounts: 0, refunds: 0,
+  litres: 0, charges: 0, payments: 0, discounts: 0, refunds: 0, balance_adjustments: 0,
   opening_balance: 0, opening_added: 0, closing_balance: 0,
   ...overrides,
 });

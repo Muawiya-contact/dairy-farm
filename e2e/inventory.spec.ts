@@ -50,7 +50,7 @@ test("farm stock adds unit-aware items, records stock movements, and filters his
   await usageForm.getByLabel("Miktar").fill("3");
   await usageForm.getByLabel("Maqsad").fill("E2E stock guard");
   await usageForm.getByRole("button", { name: "Stock jari karein" }).click();
-  await expect(page.locator("p[role='alert']")).toContainText("stock zero se kam ho jayega");
+  await expect(page.getByRole("alertdialog")).toContainText("stock zero se kam ho jayega");
   await expect(itemRow.getByText("2 thaila", { exact: true })).toBeVisible();
 
   await usageForm.getByLabel("Miktar").fill("1");

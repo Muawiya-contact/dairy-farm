@@ -143,6 +143,7 @@ function CustomerDetail({ data, customer, save, busy, error, success, initialFro
         balanceAdjustmentPending.current = { id: crypto.randomUUID(), signature };
       }
       await recordCustomerBalanceAdjustment(c.id, input, balanceAdjustmentPending.current.id);
+      await Promise.all([periodLedgerQuery.refetch(), periodSummaryQuery.refetch()]);
       balanceAdjustmentPending.current = null;
       form.reset();
     }, "Purana Khata save ho gaya. Galla ya aamdani mein nayi raqam shamil nahi hui.")
@@ -512,8 +513,6 @@ export default function FarmCustomers() {
       await action();
       await queryClient.invalidateQueries({ queryKey: ["farm-data"] });
       await queryClient.invalidateQueries({ queryKey: ["customer-report"] });
-      await queryClient.invalidateQueries({ queryKey: ["customer-period-ledger"] });
-      await queryClient.invalidateQueries({ queryKey: ["customer-period-ledger-summary"] });
       await queryClient.invalidateQueries({ queryKey: ["payment-audit"] });
       await queryClient.invalidateQueries({ queryKey: ["galla"] });
       setSuccess(message);

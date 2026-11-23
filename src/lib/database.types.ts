@@ -2277,6 +2277,7 @@ export type Database = {
         Args: { p_from: string; p_to: string }
         Returns: {
           allocated_litres: number
+          available_litres: number
           cash_litres: number
           cash_received: number
           cash_sale_amount: number
@@ -2288,6 +2289,7 @@ export type Database = {
           khata_delivery_amount: number
           khata_litres: number
           milk_shift: string
+          opening_litres: number
           produced_litres: number
           remaining_litres: number
           report_date: string
@@ -2299,6 +2301,7 @@ export type Database = {
         Args: { p_date: string }
         Returns: {
           allocated_litres: number
+          available_litres: number
           cash_litres: number
           cash_received: number
           cash_sale_amount: number
@@ -2307,6 +2310,7 @@ export type Database = {
           khata_amount: number
           khata_litres: number
           milk_shift: string
+          opening_litres: number
           produced_litres: number
           remaining_litres: number
           wasted_litres: number

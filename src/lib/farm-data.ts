@@ -48,7 +48,7 @@ export type MilkShift = { id: string; milk_date: string; shift: MilkShiftName; t
 export type MilkDelivery = { id: string; delivery_date: string; shift: MilkShiftName; customer_id: string; litres: number; rate: number | null; amount: number };
 export type MilkDisposition = MilkDispositionInput & { id: string; milk_date: string; shift_id: string | null; created_by: string | null; created_at: string; updated_at: string };
 export type MilkShiftDistribution = {
-  milk_shift: MilkShiftName; produced_litres: number; khata_litres: number; cash_litres: number;
+  milk_shift: MilkShiftName; opening_litres: number; produced_litres: number; available_litres: number; khata_litres: number; cash_litres: number;
   free_litres: number; farm_use_litres: number; wasted_litres: number; allocated_litres: number;
   remaining_litres: number; khata_amount: number; cash_sale_amount: number; cash_received: number;
 };

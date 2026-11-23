@@ -4,7 +4,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { refreshFarmViews } from "@/lib/query-refresh";
 import { amount, correctMilkEntry, createLocalCustomer, customerRate, loadMilkDayDistribution, localMilkShiftCustomers, longDate, milkShiftAnimals, milkShiftCustomers, milkShiftLegacyFreeCustomers, money, saveMilkEntry, useFarmData, type FarmData, type MilkDayDistribution } from "@/lib/farm-data";
-import { animalMilkRows, fillCompanyMilk, milkLitres, parseMilkDispositions, remainingMilk, sumDispositionLitres, sumMilkLitres, type MilkDispositionDraft, type MilkDispositionType } from "@/lib/milk-entry";
+import { animalMilkRows, fillCompanyMilk, milkLitres, milkShiftOpeningStock, parseMilkDispositions, remainingMilk, sumDispositionLitres, sumMilkLitres, type MilkDispositionDraft, type MilkDispositionType } from "@/lib/milk-entry";
 import { litres } from "@/lib/format";
 import { friendlyError } from "@/lib/errors";
 import { Body, PageHeader, Panel } from "./ui";
@@ -59,10 +59,11 @@ function MilkDaySummary({ date }: { date: string }) {
     ["Galla mein asal cash", money(summary.cash_received)],
   ];
   const shiftRows = (shift: MilkDayDistribution["shifts"][number]): [string, string][] => [
+    ["Chiller se pichla", litres(shift.opening_litres)], ["Kul available", litres(shift.available_litres)],
     ["Nikla", litres(shift.produced_litres)], ["Khata sale", litres(shift.khata_litres)],
     ["Cash sale", litres(shift.cash_litres)], ["Free", litres(shift.free_litres)],
     ["Farm / home", litres(shift.farm_use_litres)], ["Wastage", litres(shift.wasted_litres)],
-    ["Allocate hua", litres(shift.allocated_litres)], ["Baqi", litres(shift.remaining_litres)],
+    ["Allocate hua", litres(shift.allocated_litres)], ["Chiller mein baqi", litres(shift.remaining_litres)],
     ["Khata charges", money(shift.khata_amount)], ["Cash sale", money(shift.cash_sale_amount)],
     ["Galla cash", money(shift.cash_received)],
   ];
@@ -81,6 +82,7 @@ function MilkDaySummary({ date }: { date: string }) {
 
 function ShiftForm({ data, date, shift }: { data: FarmData; date: string; shift: MilkShiftName }) {
   const qc = useQueryClient();
+  const stockQuery = useQuery({ queryKey: ["milk-day-distribution", date], queryFn: () => loadMilkDayDistribution(date), staleTime: 15_000 });
   const existing = data.shifts.find((s) => s.milk_date === date && s.shift === shift);
   const active = milkShiftCustomers(data, date, shift);
   const localCustomers = localMilkShiftCustomers(data, date, shift);
@@ -120,7 +122,16 @@ function ShiftForm({ data, date, shift }: { data: FarmData; date: string; shift:
   })();
   const dispositionTotal = sumDispositionLitres(dispositionResult.rows);
   const allocated = sumMilkLitres([delivered, dispositionTotal]);
-  const remaining = remainingMilk(milkTotal, allocated);
+  const openingMilk = stockQuery.data ? milkShiftOpeningStock(stockQuery.data.opening_litres, stockQuery.data.shifts, shift) : 0;
+  const shiftAvailable = sumMilkLitres([openingMilk, milkTotal]);
+  const shiftRemaining = stockQuery.data ? remainingMilk(shiftAvailable, allocated) : 0;
+  const savedShift = stockQuery.data?.shifts.find((row) => row.milk_shift === shift);
+  const dayAvailable = stockQuery.data
+    ? sumMilkLitres([stockQuery.data.available_litres, milkTotal - amount(savedShift?.produced_litres)]) : 0;
+  const dayAllocated = stockQuery.data
+    ? sumMilkLitres([stockQuery.data.allocated_litres, allocated - amount(savedShift?.allocated_litres)]) : 0;
+  const dayRemaining = stockQuery.data ? remainingMilk(dayAvailable, dayAllocated) : 0;
+  const companyFillAvailable = sumMilkLitres([allocated, Math.max(0, Math.min(shiftRemaining, dayRemaining))]);
   const rateFor = (id: string) => data.deliveries.find((row) => row.delivery_date === date && row.shift === shift && row.customer_id === id)?.rate ?? customerRate(data, id, date);
   const expectedSale = visibleCustomers.reduce((n, c) => n + (c.kind === "free" || c.kind === "company" ? 0 : (Number(qty[c.id]) || 0) * rateFor(c.id)), 0);
   const invalidQuantity = Object.values(qty).some((raw) => {
@@ -180,7 +191,7 @@ function ShiftForm({ data, date, shift }: { data: FarmData; date: string; shift:
   const save = async () => {
     setBusy(true); setError(""); setSaved(false);
     try {
-      if (invalidQuantity || invalidTotal || invalidAnimal || dispositionResult.error || missingTotal || remaining < 0 || notes.length > 500) throw new RangeError(dispositionResult.error || "Doodh ki har miktar 0 ya zyada, 2 decimal tak likhein; note 500 harf tak rakhein.");
+      if (!stockQuery.data || invalidQuantity || invalidTotal || invalidAnimal || dispositionResult.error || missingTotal || shiftRemaining < 0 || dayRemaining < 0 || notes.length > 500) throw new RangeError(dispositionResult.error || "Chiller ka baqi balance load hone dein aur doodh ki har miktar dobara check karein.");
       const deliveries = visibleCustomers.filter((c) => (qty[c.id] ?? "").trim()).map((c) => ({ customer_id: c.id, litres: milkLitres(qty[c.id], 3000) })).filter((row) => row.litres > 0);
       const totalValue = mode === "total" ? milkLitres(total, 5000) : milkTotal;
       const updatedAt = existing
@@ -218,14 +229,18 @@ function ShiftForm({ data, date, shift }: { data: FarmData; date: string; shift:
       </Panel>
       <label className="text-sm font-semibold">Shift ka note (optional)<textarea value={notes} maxLength={500} placeholder="Misal: bacha hua doodh ghar mein istemal hua" onChange={(event) => { setNotes(event.target.value); setSaved(false); }} className={`${field} mt-1 min-h-20 p-3 font-normal`} /></label>
       {existing && <label className="text-sm font-semibold">Miktar durust karne ki wajah<input aria-label="Miktar durust karne ki wajah" value={correctionReason} maxLength={500} required placeholder="Misal: transfer ke baad 10 L kam nikla" onChange={(event) => { setCorrectionReason(event.target.value); setSaved(false); }} className={`${field} mt-1`} /><span className="mt-1 block text-xs text-muted">Purani production, sales aur dispositions audit mein mehfooz rahengi.</span></label>}
-      <section className="rounded-2xl bg-berseem-deep p-5 text-white"><dl className="grid grid-cols-3 gap-3"><div><dt className="text-sm text-[#cfe3cf]">Nikla</dt><dd className="text-2xl font-bold">{missingTotal || invalidTotal || invalidAnimal ? "—" : litres(milkTotal)}</dd></div><div><dt className="text-sm text-[#cfe3cf]">Allocate hua</dt><dd className="text-2xl font-bold">{invalidQuantity || dispositionResult.error ? "—" : litres(allocated)}</dd></div><div><dt className="text-sm text-[#cfe3cf]">Baqi</dt><dd className="text-2xl font-bold">{missingTotal || invalidEntry ? "—" : litres(remaining)}</dd></div></dl><p className="mt-3 border-t border-white/20 pt-3">Andazi sale: <strong>{invalidQuantity ? "—" : money(expectedSale)}</strong></p></section>
+      <section className="rounded-2xl bg-berseem-deep p-5 text-white"><dl className="grid grid-cols-2 gap-3 sm:grid-cols-5"><div><dt className="text-sm text-[#cfe3cf]">Chiller se pichla</dt><dd className="text-xl font-bold">{stockQuery.data ? litres(openingMilk) : "—"}</dd></div><div><dt className="text-sm text-[#cfe3cf]">Aaj nikla</dt><dd className="text-xl font-bold">{missingTotal || invalidTotal || invalidAnimal ? "—" : litres(milkTotal)}</dd></div><div><dt className="text-sm text-[#cfe3cf]">Kul available</dt><dd className="text-xl font-bold">{stockQuery.data && !missingTotal && !invalidTotal && !invalidAnimal ? litres(shiftAvailable) : "—"}</dd></div><div><dt className="text-sm text-[#cfe3cf]">Allocate hua</dt><dd className="text-xl font-bold">{invalidQuantity || dispositionResult.error ? "—" : litres(allocated)}</dd></div><div><dt className="text-sm text-[#cfe3cf]">Aaj ka chiller closing</dt><dd className="text-xl font-bold">{!stockQuery.data || missingTotal || invalidEntry ? "—" : litres(dayRemaining)}</dd></div></dl><p className="mt-3 border-t border-white/20 pt-3">Andazi sale: <strong>{invalidQuantity ? "—" : money(expectedSale)}</strong></p></section>
+      {stockQuery.isPending && <p role="status" className="text-sm text-muted">Chiller ka pichla balance load ho raha hai…</p>}
+      {stockQuery.isError && <p role="alert" className="text-sm text-udhaar">Chiller ka balance nahi khula: {friendlyError(stockQuery.error)} <button type="button" onClick={() => void stockQuery.refetch()} className="underline">Dobara koshish</button></p>}
+      {stockQuery.data && shiftRemaining < 0 && <p role="alert" className="text-sm text-udhaar">Is shift ki taqseem chiller ke is waqt available doodh se zyada hai.</p>}
+      {stockQuery.data && shiftRemaining >= 0 && dayRemaining < 0 && <p role="alert" className="text-sm text-udhaar">Baad ki saved shifts ya din ke waste ke baad doodh kam par raha hai. Is entry ko kam karein.</p>}
       {invalidEntry && <p role="alert" className="text-sm text-udhaar">{dispositionResult.error || "Doodh ki har miktar 0 ya zyada, 2 decimal tak likhein. Har janwar 60 L tak ho sakta hai."}</p>}
       {existing && correctionReason.trim().length > 0 && correctionReason.trim().length < 3 && <p role="alert" className="text-sm text-udhaar">Durust karne ki wajah kam az kam 3 harf mein likhein.</p>}
-      <button onClick={() => void save()} disabled={busy || missingTotal || invalidEntry || milkTotal < 0 || remaining < 0 || !!existing && correctionReason.trim().length < 3} className="min-h-14 rounded-2xl bg-berseem text-lg font-bold text-white disabled:opacity-50">{busy ? "Save ho raha hai…" : existing ? "Durust entry save karein" : "Entry save karein"}</button>
+      <button onClick={() => void save()} disabled={busy || !stockQuery.data || missingTotal || invalidEntry || milkTotal < 0 || shiftRemaining < 0 || dayRemaining < 0 || !!existing && correctionReason.trim().length < 3} className="min-h-14 rounded-2xl bg-berseem text-lg font-bold text-white disabled:opacity-50">{busy ? "Save ho raha hai…" : existing ? "Durust entry save karein" : "Entry save karein"}</button>
       {saved && <p role="status" className="text-berseem-deep">Entry farm ke data mein save ho gayi.</p>}{error && <p role="alert" className="text-udhaar">Save nahi hua: {error}</p>}
     </div>
     <div className="grid min-w-0 gap-4">
-      <Panel title="Khata / credit sale" className="min-w-0"><p className="mb-2 text-sm text-muted">In deliveries se customer ya company ledger/bill update hota hai; Galla mein cash nahi aata.</p>{company && <button type="button" onClick={() => { setQty((current) => fillCompanyMilk(milkTotal, current, company.id, dispositionTotal)); setSaved(false); }} disabled={remaining <= 0 || missingTotal || invalidEntry} className="mb-2 min-h-11 rounded-xl bg-berseem-soft px-3 text-sm font-semibold text-berseem-deep disabled:opacity-50">Baqi company ko dein</button>}<ul className="divide-y divide-line">{creditCustomers.map(customerRow)}</ul>{!creditCustomers.length && <p className="text-sm text-muted">Abhi koi Khata customer nahi.</p>}</Panel>
+      <Panel title="Khata / credit sale" className="min-w-0"><p className="mb-2 text-sm text-muted">In deliveries se customer ya company ledger/bill update hota hai; Galla mein cash nahi aata. Chiller ka pichla doodh sirf stock hai, income nahi.</p>{company && <button type="button" onClick={() => { setQty((current) => fillCompanyMilk(companyFillAvailable, current, company.id, dispositionTotal)); setSaved(false); }} disabled={!stockQuery.data || shiftRemaining <= 0 || dayRemaining <= 0 || missingTotal || invalidEntry} className="mb-2 min-h-11 rounded-xl bg-berseem-soft px-3 text-sm font-semibold text-berseem-deep disabled:opacity-50">Baqi company ko dein</button>}<ul className="divide-y divide-line">{creditCustomers.map(customerRow)}</ul>{!creditCustomers.length && <p className="text-sm text-muted">Abhi koi Khata customer nahi.</p>}</Panel>
       <Panel title="Cash sale" className="min-w-0"><p className="mb-2 text-sm text-muted">Saved cash sale ka amount Farm Galla mein aik martaba auto record hota hai.</p><ul className="divide-y divide-line">{cashCustomers.map(customerRow)}</ul>
         <button type="button" onClick={() => setShowLocal((current) => !current)} className="mt-3 min-h-11 rounded-xl border border-berseem px-3 text-sm font-semibold text-berseem">Walk-in customer shamil karein</button>
         {showLocal && <form onSubmit={addLocal} className="mt-3 grid gap-2 rounded-xl bg-ground p-3"><label className="text-sm font-semibold">Local customer ka naam<input name="localName" required placeholder="Misal: Ahmed" className={`${field} mt-1`} /></label><label className="text-sm font-semibold">Phone (optional)<input name="localPhone" type="tel" placeholder="03xxxxxxxxx" className={`${field} mt-1`} /></label><label className="text-sm font-semibold">Rate Rs/L<input name="localRate" type="number" min="0.01" step="0.01" required defaultValue={data.settings.default_milk_rate} className={`${field} mt-1`} /><span className="mt-1 block text-xs font-normal text-muted">Naya rate agli delivery par lagu hoga; purani sale ka rate nahi badlega.</span></label><button disabled={localBusy} className="min-h-11 rounded-xl bg-berseem font-semibold text-white disabled:opacity-50">{localBusy ? "Save ho raha hai…" : "Cash customer save karein"}</button>{localError && <p role="alert" className="text-sm text-udhaar">{localError}</p>}</form>}

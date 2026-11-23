@@ -76,7 +76,7 @@ export type MilkReportDistributionTotals = Omit<MilkReportDistributionDaily, "re
   closing_litres: number; outstanding_khata_amount: number;
 };
 export type MilkReportDistributionShift = {
-  report_date: string; milk_shift: string; produced_litres: number;
+  report_date: string; milk_shift: string; opening_litres: number; produced_litres: number; available_litres: number;
   khata_litres: number; cash_litres: number; free_litres: number;
   farm_use_litres: number; wasted_litres: number; allocated_litres: number; remaining_litres: number;
   khata_delivery_amount: number; cash_sale_amount: number; cash_received: number; galla_cash_received: number;

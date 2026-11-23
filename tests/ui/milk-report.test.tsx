@@ -26,7 +26,8 @@ beforeEach(() => {
     cash_received: 300, galla_cash_received: 0, free_details: [], farm_use_details: [], waste_details: [],
   }]);
   reportMocks.loadMilkReportDistributionShifts.mockResolvedValue([{
-    report_date: "2026-10-16", milk_shift: "morning", produced_litres: 10, khata_litres: 4, cash_litres: 0,
+    report_date: "2026-10-16", milk_shift: "morning", opening_litres: 2, produced_litres: 10, available_litres: 12,
+    khata_litres: 4, cash_litres: 0,
     free_litres: 2, farm_use_litres: 0, wasted_litres: 0, allocated_litres: 6, remaining_litres: 4,
     khata_delivery_amount: 600, cash_sale_amount: 0, cash_received: 0, galla_cash_received: 0,
     free_details: [], farm_use_details: [], waste_details: [],

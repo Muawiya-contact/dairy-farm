@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { amount, longDate, money, shortDate, useFarmData } from "@/lib/farm-data";
+import { amount, loadMilkDayDistribution, longDate, money, shortDate, useFarmData } from "@/lib/farm-data";
 import { addDays, monthStart } from "@/lib/dates";
 import { friendlyError } from "@/lib/errors";
 import { litres } from "@/lib/format";
@@ -30,6 +30,13 @@ function MonthCloseReminder({ today, goLiveDate }: { today: string; goLiveDate: 
 
 export default function FarmDashboard() {
   const query = useFarmData("dashboard");
+  const today = query.data?.today;
+  const milkStock = useQuery({
+    queryKey: ["milk-day-distribution", today],
+    queryFn: () => loadMilkDayDistribution(today!),
+    enabled: Boolean(today),
+    staleTime: 15_000,
+  });
   if (!query.data) return <FarmLoading error={query.error} retry={() => void query.refetch()} />;
   const d = query.data;
   const shifts = d.shifts.filter((s) => s.milk_date === d.today);
@@ -73,6 +80,11 @@ export default function FarmDashboard() {
           ? <p className="mt-2 text-[15px] text-[#cfe3cf]">Kal se {litres(Math.abs(remainingMilk(todayMilk, yMilk)))} {todayMilk < yMilk ? "kam" : "zyada"}</p>
           : missingToday.length > 0 ? <div className="mt-2 text-[15px] text-[#cfe3cf]"><p>{shifts.length === 0 ? "Aaj ka doodh abhi nahi likha" : `${missingToday.map((name) => ({ morning: "Subah", noon: "Dopehr", evening: "Shaam" })[name]).join(", ")} ka doodh abhi nahi likha`}</p><Link href="/doodh/" className="mt-2 inline-flex min-h-10 items-center rounded-xl border border-white px-3 font-semibold text-white">Doodh likhein</Link></div> : null}
         <dl className="mt-5 flex gap-6"><div><dt className="text-[14px] text-[#cfe3cf]">Subah</dt><dd className="font-display text-[24px] font-bold tnum">{litres(morning)}</dd></div>{(noonEnabledOn(d.today,d.milkShiftConfig) || noon > 0) && <div><dt className="text-[14px] text-[#cfe3cf]">Dopehr</dt><dd className="font-display text-[24px] font-bold tnum">{litres(noon)}</dd></div>}<div><dt className="text-[14px] text-[#cfe3cf]">Shaam</dt><dd className="font-display text-[24px] font-bold tnum">{litres(evening)}</dd></div></dl>
+        <div className="mt-5 grid gap-2 border-t border-white/20 pt-4 sm:grid-cols-2">
+          {milkStock.data ? <><p><span className="block text-sm text-[#cfe3cf]">Chiller ka pichla doodh (income nahi)</span><strong className="text-xl">{litres(milkStock.data.opening_litres)}</strong></p><p><span className="block text-sm text-[#cfe3cf]">Aaj kul available</span><strong className="text-xl">{litres(milkStock.data.available_litres)}</strong></p></>
+            : milkStock.isError ? <p role="alert" className="text-sm text-[#ffe2d8] sm:col-span-2">Chiller ka balance nahi khula: {friendlyError(milkStock.error)} <button type="button" onClick={() => void milkStock.refetch()} className="underline">Dobara koshish</button></p>
+              : <p role="status" className="text-sm text-[#cfe3cf] sm:col-span-2">Chiller ka pichla balance load ho raha hai…</p>}
+        </div>
       </div><MilkCan morning={morning} noon={noon} evening={evening} noonEnabled={noonEnabledOn(d.today,d.milkShiftConfig)} /></div></section>
       <Panel title="Aaj ka hisaab"><dl className="divide-y divide-line"><div className="flex justify-between py-2.5"><dt>Kamai</dt><dd className="font-bold tnum">{money(sale)}</dd></div><div className="flex justify-between py-2.5"><dt>Farm kharcha</dt><dd className="font-bold tnum">{money(expense)}</dd></div><div className="flex justify-between py-2.5"><dt>Munafa</dt><dd className="font-bold tnum">{money(sale - expense)}</dd></div></dl><div className="mt-3 grid grid-cols-2 gap-2"><Link href="/doodh/" className="flex min-h-12 items-center justify-center gap-1 rounded-xl bg-berseem font-semibold text-white"><PlusIcon width={18} />Doodh</Link><Link href="/kharcha/" className="flex min-h-12 items-center justify-center gap-1 rounded-xl border border-berseem font-semibold text-berseem"><PlusIcon width={18} />Kharcha</Link></div></Panel>
       <div className="lg:col-span-2"><ProfitChart daily={daily} monthly={monthly} dailyLabel={`${shortDate(firstDay)} se ${shortDate(d.today)}`} monthlyLabel={`${d.today.slice(0, 4)}, January se ab tak`} year={{ label: `${d.today.slice(0, 4)}, January se ab tak`, sales: yearSales, expenses: yearExpenses }} /></div>

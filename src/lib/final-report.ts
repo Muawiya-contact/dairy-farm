@@ -188,7 +188,8 @@ export function finalReportExportSections(data: FinalReportData, from: string, t
     galla_cash_received: row.galla_cash_received,
   }));
   const shiftRows = data.milk.shifts.map((row) => ({
-    report_date: row.report_date, milk_shift: row.milk_shift, produced_litres: row.produced_litres,
+    report_date: row.report_date, milk_shift: row.milk_shift, opening_litres: row.opening_litres,
+    produced_litres: row.produced_litres, available_litres: row.available_litres,
     khata_litres: row.khata_litres, cash_litres: row.cash_litres, free_litres: row.free_litres,
     farm_use_litres: row.farm_use_litres, wasted_litres: row.wasted_litres,
     allocated_litres: row.allocated_litres, remaining_litres: row.remaining_litres,
@@ -221,7 +222,7 @@ export function finalReportExportSections(data: FinalReportData, from: string, t
       }) },
     ] },
     { title: "Rozana doodh aur sales", columns: milkDailyColumns, rows: dailyRows, repeatColumns: ["report_date"] },
-    { title: "Shift-wise doodh aur distribution", columns: ["report_date", "milk_shift", "produced_litres", "khata_litres", "cash_litres", "free_litres", "farm_use_litres", "wasted_litres", "allocated_litres", "remaining_litres", "khata_amount", "cash_sale_amount", "cash_received", "galla_cash_received"], rows: shiftRows, repeatColumns: ["report_date", "milk_shift"] },
+    { title: "Shift-wise doodh aur distribution", columns: ["report_date", "milk_shift", "opening_litres", "produced_litres", "available_litres", "khata_litres", "cash_litres", "free_litres", "farm_use_litres", "wasted_litres", "allocated_litres", "remaining_litres", "khata_amount", "cash_sale_amount", "cash_received", "galla_cash_received"], rows: shiftRows, repeatColumns: ["report_date", "milk_shift"] },
     { title: "Local / cash sale ki rozana tafseel", columns: ["report_date", "cash_litres", "cash_sale_amount", "cash_received", "galla_cash_received"], rows: cashSales.map((row) => ({
       report_date: row.report_date, cash_litres: row.cash_litres, cash_sale_amount: row.cash_sale_amount,
       cash_received: row.cash_received, galla_cash_received: row.galla_cash_received,
